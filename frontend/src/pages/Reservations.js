@@ -307,16 +307,16 @@ const Reservations = () => {
 
                   <div className="col-span-2">
                     <label className="block text-sm font-medium mb-2">Tur Tipi</label>
-                    <Select value={formData.tour_type_id} onValueChange={(value) => setFormData({ ...formData, tour_type_id: value })}>
-                      <SelectTrigger className="bg-[#1a1f2e] border-[#14b8dc]/30 text-white">
-                        <SelectValue placeholder="Tur tipi seçin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tourTypes.map(tt => (
-                          <SelectItem key={tt.id} value={tt.id}>{tt.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={formData.tour_type_id}
+                      onChange={(e) => setFormData({ ...formData, tour_type_id: e.target.value })}
+                      className="w-full px-3 py-2 bg-[#1a1f2e] border border-[#14b8dc]/30 rounded-lg text-white focus:outline-none focus:border-[#14b8dc]"
+                    >
+                      <option value="">Tur tipi seçin</option>
+                      {tourTypes.map(tt => (
+                        <option key={tt.id} value={tt.id}>{tt.name}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="col-span-2">
