@@ -392,16 +392,15 @@ const Reservations = () => {
 
                   <div>
                     <label className="block text-sm font-medium mb-2">Döviz</label>
-                    <Select value={formData.currency} onValueChange={(value) => setFormData({ ...formData, currency: value, exchange_rate: rates[value] })}>
-                      <SelectTrigger className="bg-[#1a1f2e] border-[#14b8dc]/30 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="TRY">TRY</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={formData.currency}
+                      onChange={(e) => setFormData({ ...formData, currency: e.target.value, exchange_rate: rates[e.target.value] })}
+                      className="w-full px-3 py-2 bg-[#1a1f2e] border border-[#14b8dc]/30 rounded-lg text-white focus:outline-none focus:border-[#14b8dc]"
+                    >
+                      <option value="EUR">EUR</option>
+                      <option value="USD">USD</option>
+                      <option value="TRY">TRY</option>
+                    </select>
                   </div>
 
                   <div className="col-span-2">
