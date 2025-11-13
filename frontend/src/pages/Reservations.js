@@ -188,18 +188,17 @@ const Reservations = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-3xl font-bold text-white">Rezervasyonlar</h1>
         <div className="flex items-center gap-4">
-          <Select value={filteredStatus} onValueChange={setFilteredStatus}>
-            <SelectTrigger className="w-48 bg-[#1a1f2e] border-[#14b8dc]/30 text-white" data-testid="status-filter">
-              <Filter size={18} className="mr-2" />
-              <SelectValue placeholder="Durum Filtrele" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Tümü</SelectItem>
-              <SelectItem value="confirmed">Onaylandı</SelectItem>
-              <SelectItem value="completed">Tamamlandı</SelectItem>
-              <SelectItem value="cancelled">İptal</SelectItem>
-            </SelectContent>
-          </Select>
+          <select
+            value={filteredStatus}
+            onChange={(e) => setFilteredStatus(e.target.value)}
+            className="w-48 px-3 py-2 bg-[#1a1f2e] border border-[#14b8dc]/30 rounded-lg text-white focus:outline-none focus:border-[#14b8dc]"
+            data-testid="status-filter"
+          >
+            <option value="">Tümü</option>
+            <option value="confirmed">Onaylandı</option>
+            <option value="completed">Tamamlandı</option>
+            <option value="cancelled">İptal</option>
+          </select>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="btn-primary" data-testid="new-reservation-btn" onClick={() => { setEditingReservation(null); resetForm(); }}>
