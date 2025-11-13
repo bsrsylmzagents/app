@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Filter } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const Reservations = () => {
   const [reservations, setReservations] = useState([]);
