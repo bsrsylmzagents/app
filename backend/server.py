@@ -12299,22 +12299,26 @@ if MODULES_ENABLED:
     
 
 # CORS Configuration
-CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '').split(',')
-# Eğer CORS_ORIGINS boşsa ve credentials kullanılıyorsa, varsayılan origin'leri ekle
-if not CORS_ORIGINS or CORS_ORIGINS == ['']:
-    CORS_ORIGINS = [
-        "https://app-one-lake-13.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:5173"
-    ]
+# Production'da Render dashboard'dan CORS_ORIGINS set edilmeli
+# Format: "https://app-one-lake-13.vercel.app,http://localhost:3000"
+cors_origins_str = os.environ.get('CORS_ORIGINS', '').strip()
+if cors_origins_str:
+    CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 else:
-    # Boş string'leri temizle
-    CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS if origin.strip()]
+    # Development için varsayılan değerler (production'da CORS_ORIGINS set edilmeli)
+    CORS_ORIGINS = [
+        "https://app-one-lake-13.vercel.app",  # Production frontend
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ]
+    logger.warning("CORS_ORIGINS not set in environment, using default origins")
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=CORS_ORIGINS,  # '*' yerine spesifik origin'ler
     allow_methods=["*"],
     allow_headers=["*"],
 )
