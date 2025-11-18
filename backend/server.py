@@ -12298,10 +12298,23 @@ if MODULES_ENABLED:
         logger.warning(f"Failed to load billing module: {e}")
     
 
+# CORS Configuration
+CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '').split(',')
+# Eğer CORS_ORIGINS boşsa ve credentials kullanılıyorsa, varsayılan origin'leri ekle
+if not CORS_ORIGINS or CORS_ORIGINS == ['']:
+    CORS_ORIGINS = [
+        "https://app-one-lake-13.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+    ]
+else:
+    # Boş string'leri temizle
+    CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
