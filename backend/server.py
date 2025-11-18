@@ -12318,10 +12318,11 @@ else:
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=CORS_ORIGINS,  # '*' yerine spesifik origin'ler
+    allow_origins=CORS_ORIGINS,  # sadece listeyi ver
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.on_event("startup")
 async def startup_event():
