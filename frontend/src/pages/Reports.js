@@ -1,33 +1,97 @@
 import React from 'react';
-import { FileText, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  DollarSign, 
+  Receipt,
+  CreditCard,
+  ListChecks,
+  TrendingUp,
+  TrendingDown,
+  User
+} from 'lucide-react';
 
 const Reports = () => {
-  const reportCards = [
-    { title: 'Kazanç Raporu', icon: DollarSign, color: 'from-green-500 to-emerald-600' },
-    { title: 'Tahsilat Raporu', icon: TrendingUp, color: 'from-blue-500 to-cyan-600' },
-    { title: 'Depar Raporu', icon: FileText, color: 'from-purple-500 to-pink-600' },
-    { title: 'Borçlu Cariler', icon: AlertCircle, color: 'from-orange-500 to-red-600' },
-    { title: 'Alacaklı Cariler', icon: AlertCircle, color: 'from-teal-500 to-green-600' },
-    { title: 'İptal Edilen Rezervasyonlar', icon: FileText, color: 'from-red-500 to-rose-600' },
+  const navigate = useNavigate();
+
+  const reportMenuItems = [
+    { 
+      id: 'income',
+      title: 'Gelir', 
+      icon: DollarSign, 
+      path: '/reports/income',
+      description: 'Tur tiplerine ve döviz tiplerine göre gelir analizi'
+    },
+    { 
+      id: 'expenses',
+      title: 'Gider', 
+      icon: Receipt, 
+      path: '/reports/expenses',
+      description: 'Gider kalemlerine ve döviz tiplerine göre gider analizi'
+    },
+    { 
+      id: 'collections',
+      title: 'Tahsilat', 
+      icon: CreditCard, 
+      path: '/reports/collections',
+      description: 'Ödeme tiplerine ve döviz tiplerine göre tahsilat analizi'
+    },
+    { 
+      id: 'logs',
+      title: 'Loglar', 
+      icon: ListChecks, 
+      path: '/reports/logs',
+      description: 'Sistem logları ve aktivite kayıtları'
+    },
+    { 
+      id: 'profit',
+      title: 'Kazanç', 
+      icon: TrendingUp, 
+      path: '/reports/profit',
+      description: 'Kar/Zarar analizi ve kazanç raporu'
+    },
+    { 
+      id: 'cash-flow',
+      title: 'Nakit Akış', 
+      icon: TrendingDown, 
+      path: '/reports/cash-flow',
+      description: 'Günlük/haftalık/aylık nakit giriş-çıkış analizi'
+    },
+    { 
+      id: 'customer-analysis',
+      title: 'Müşteri Analizi', 
+      icon: User, 
+      path: '/reports/customer-analysis',
+      description: 'Müşteri bazlı satış, gelir ve tekrar ziyaret analizi'
+    },
   ];
 
   return (
     <div className="space-y-6" data-testid="reports-page">
-      <h1 className="text-3xl font-bold text-white">Raporlar</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {reportCards.map((report, idx) => {
+      {/* Header */}
+          <div>
+        <h1 className="text-3xl font-bold text-white mb-2">Raporlar</h1>
+        <p className="text-[#A5A5A5]">Kapsamlı raporlama ve analiz sistemi</p>
+      </div>
+
+      {/* Report Menu Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+        {reportMenuItems.map((report) => {
           const Icon = report.icon;
           return (
             <div
-              key={idx}
-              className="card-hover bg-[#0f1419]/80 backdrop-blur-xl border border-[#14b8dc]/20 rounded-xl p-6 cursor-pointer"
-              data-testid={`report-card-${idx}`}
+              key={report.id}
+              onClick={() => navigate(report.path)}
+              className="bg-[#25272A] backdrop-blur-xl border border-[#2D2F33] rounded-lg p-6 cursor-pointer hover:border-[#3EA6FF]/50 hover:bg-[#25272A]/80 transition-all group"
             >
-              <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${report.color} flex items-center justify-center mb-4`}>
-                <Icon size={32} className="text-white" />
+              <div className="flex flex-col items-center text-center gap-4">
+                <div className="w-14 h-14 rounded-lg bg-[#2D2F33] border border-[#3EA6FF]/20 flex items-center justify-center group-hover:border-[#3EA6FF]/50 group-hover:bg-[#2D2F33]/80 transition-all">
+                  <Icon size={24} className="text-[#3EA6FF]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white leading-tight mb-2">{report.title}</h3>
+                  <p className="text-xs text-[#A5A5A5] leading-relaxed">{report.description}</p>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold text-white">{report.title}</h3>
-              <p className="text-sm text-gray-400 mt-2">Raporu görüntülemek için tıklayın</p>
             </div>
           );
         })}

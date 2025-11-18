@@ -19,7 +19,6 @@ idna==3.11
 iniconfig==2.3.0
 isort==7.0.0
 jmespath==1.0.1
-jq==1.10.0
 markdown-it-py==4.0.0
 mccabe==0.7.0
 mdurl==0.1.2
@@ -67,3 +66,7 @@ tzdata==2025.2
 urllib3==2.5.0
 uvicorn==0.25.0
 watchfiles==1.1.1
+# Modular SaaS dependencies
+stripe==10.8.0
+icalendar==5.0.11
+apscheduler==3.10.4

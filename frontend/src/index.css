@@ -5,27 +5,127 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 220 20% 7%;
-    --foreground: 210 20% 98%;
-    --card: 220 20% 10%;
-    --card-foreground: 210 20% 98%;
-    --popover: 220 20% 10%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 188 90% 50%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 199 95% 45%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 220 17% 20%;
-    --muted-foreground: 210 20% 65%;
-    --accent: 188 90% 50%;
-    --accent-foreground: 210 20% 98%;
+  /* DARK THEME - Mevcut dark theme korunuyor */
+  :root.dark,
+  :root:not(.light) {
+    /* HSL format (Tailwind uyumlu) */
+    --background: 0 0% 12%; /* #1E1E1E */
+    --foreground: 0 0% 100%; /* #FFFFFF */
+    --card: 0 0% 15%; /* #25272A */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 15%; /* #25272A */
+    --popover-foreground: 0 0% 100%;
+    --primary: 200 100% 65%; /* #3EA6FF */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 18%; /* #2D2F33 */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 18%; /* #2D2F33 */
+    --muted-foreground: 0 0% 65%; /* #A5A5A5 */
+    --accent: 200 100% 65%; /* #3EA6FF */
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 17% 20%;
-    --input: 220 17% 20%;
-    --ring: 188 90% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 18%; /* #2D2F33 */
+    --input: 0 0% 18%; /* #2D2F33 */
+    --ring: 200 100% 65%; /* #3EA6FF */
     --radius: 0.5rem;
+    
+    /* Eksiksiz Dark Theme Değişkenleri */
+    --bg-primary: #1E1E1E;
+    --bg-surface: #222426;
+    --bg-elevated: #25272A;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A5A5A5;
+    --muted: #7B7B7B;
+    --border: #2D2F33;
+    --divider: #2D2F33;
+    --border-width: 1px;            /* Dark mode'da normal border */
+    --accent: #3EA6FF;
+    --accent-hover: #2C8BDD;
+    --success: #16A34A;
+    --danger: #DC2626;
+    --warning: #F59E0B;
+    --chip-bg: #2D2F33;
+    --table-header: #1F2023;
+    --modal-overlay: rgba(0,0,0,0.5);
+    --popup-bg: #1E1E1E;
+    --tooltip-bg: #111;
+    --tooltip-text: #FFF;
+    --card-shadow: 0 4px 12px rgba(0,0,0,0.35);
+    --timeline-bg: #1D1F22;
+    --input-bg: #1F2023;
+    --placeholder: #A5A5A5;
+    --sidebar-bg: #222426;
+    --sidebar-hover: #2D2F33;
+  }
+
+  /* LIGHT THEME - Modern, Soft, Premium Light Mode */
+  :root.light,
+  [data-theme="light"] {
+    /* HSL format (Tailwind uyumlu) */
+    --background: 0 0% 98%; /* #F8F9FB - Modern nötr beyaz ton */
+    --foreground: 0 0% 11%; /* #1C1E21 - Soft text primary */
+    --card: 0 0% 100%; /* #FFFFFF - Kart yüzeyi */
+    --card-foreground: 0 0% 11%;
+    --popover: 0 0% 100%; /* #FFFFFF */
+    --popover-foreground: 0 0% 11%;
+    --primary: 217 91% 60%; /* #3B82F6 - Modern mavi */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 16% 47%; /* #64748B - Soft secondary */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 96%; /* #F3F4F6 */
+    --muted-foreground: 0 0% 29%; /* #4B5563 */
+    --accent: 217 91% 60%; /* #3B82F6 */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%; /* #E5E7EB - Subtle border */
+    --input: 0 0% 100%; /* #FFFFFF */
+    --ring: 217 91% 60%; /* #3B82F6 */
+    --radius: 0.75rem; /* 12px - Yumuşak border radius */
+    
+    /* Modern Light Theme Değişkenleri - Soft & Premium */
+    --bg-primary: #F8F9FB;          /* Modern nötr arka plan */
+    --bg-surface: #FFFFFF;           /* Kart yüzeyi */
+    --bg-elevated: #FAFAFC;         /* Yükseltilmiş yüzey */
+    --text-primary: #1C1E21;         /* Soft text primary */
+    --text-secondary: #4B5563;       /* Soft text secondary */
+    --muted: #6B7280;               /* Soft muted text */
+    --border: #E5E7EB;              /* Subtle border - soft */
+    --divider: #E5E7EB;             /* Soft divider */
+    --border-width: 1px;            /* İnce border */
+    --accent: #3B82F6;              /* Modern primary mavi */
+    --accent-hover: #2563EB;        /* Hover durumu */
+    --success: #16A34A;
+    --danger: #DC2626;
+    --warning: #F59E0B;
+    --chip-bg: #F1F3F5;             /* Soft chip arka planı */
+    --table-header: #F8F9FB;        /* Soft tablo header */
+    --modal-overlay: rgba(0,0,0,0.05); /* Soft backdrop blur */
+    --popup-bg: #FFFFFF;
+    --tooltip-bg: #1C1E21;
+    --tooltip-text: #FFFFFF;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06); /* Soft shadow */
+    --soft-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Çok yumuşak gölge */
+    --medium-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); /* Medium shadow */
+    --timeline-bg: #F8F9FB;         /* Soft timeline */
+    --input-bg: #FFFFFF;
+    --input-border: #E0E3E7;        /* Subtle input border */
+    --input-focus: rgba(59, 130, 246, 0.15);  /* Soft focus ring */
+    --placeholder: #9CA3AF;          /* Soft placeholder */
+    --sidebar-bg: #A68CFF;          /* Sidebar arka plan - mor yoğunluğu 7/10 */
+    --sidebar-hover: rgba(255,255,255,0.25); /* Sidebar hover efekti - beyaz overlay */
+    --sidebar-active: #8A6CFF;      /* Aktif item mor tonu - mor yoğunluğu 8/10 */
+    --sidebar-text: #FFFFFF;        /* Sidebar yazıları - beyaz */
+    --hover-surface: rgba(0,0,0,0.03); /* Soft hover arka planı */
+    --hover-soft: rgba(255,255,255,0.18); /* Yumuşak hover efekti - açık mor overlay */
+    --disabled-bg: #F1F3F5;         /* Disabled arka plan */
+    --button-radius: 0.625rem;       /* 10px - Modern buton radius */
+    --card-radius: 0.875rem;         /* 14px - Yumuşak kart radius */
+    /* Mor tonlu tema renkleri - Güncellenmiş yoğun mor tonlar */
+    --background-soft-purple: #C7B5FF;  /* Content wrapper arka plan - mor yoğunluğu 5/10 */
+    --sidebar-purple: #A68CFF;          /* Sidebar arka plan - mor yoğunluğu 7/10 */
+    --header-purple: #8A6CFF;           /* Header arka plan - mor yoğunluğu 8/10 */
   }
 }
 
@@ -36,8 +136,322 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
+    line-height: 1.5;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  
+  /* Light Mode Typography Improvements */
+  [data-theme="light"] body {
+    line-height: 1.6;
+  }
+  
+  [data-theme="light"] h1, 
+  [data-theme="light"] h2, 
+  [data-theme="light"] h3, 
+  [data-theme="light"] h4, 
+  [data-theme="light"] h5, 
+  [data-theme="light"] h6 {
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  
+  [data-theme="light"] p,
+  [data-theme="light"] span,
+  [data-theme="light"] div {
+    line-height: 1.6;
+  }
+}
+
+@layer components {
+  .stat-card {
+    @apply bg-[#0f1419]/80 backdrop-blur-xl;
+    border: var(--border-width) solid var(--border);
+  }
+
+  /* Theme-aware utility classes - CSS değişkenleri kullanıyor */
+  .bg-main {
+    background-color: var(--bg-primary);
+  }
+
+  .bg-card {
+    background-color: var(--bg-elevated);
+  }
+
+  .bg-panel {
+    background-color: var(--chip-bg);
+  }
+
+  .text-primary {
+    color: var(--text-primary);
+  }
+
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .text-accent {
+    color: var(--accent);
+  }
+
+  .bg-accent {
+    background-color: var(--accent);
+  }
+
+  .border-accent {
+    border-color: var(--accent);
+  }
+
+  .border-main {
+    border-color: var(--border);
+  }
+
+  .hover\:bg-panel:hover {
+    background-color: var(--sidebar-hover);
+  }
+
+  /* ========== LIGHT MODE MODERN STYLES ========== */
+  
+  /* Light mode için özel kart stilleri - Modern, Soft, Premium */
+  [data-theme="light"] .stat-card {
+    background: var(--bg-surface) !important;
+    border: none !important;
+    box-shadow: var(--card-shadow) !important;
+    border-radius: var(--card-radius) !important;
+    padding: 1.5rem !important;
+  }
+
+  /* Light mode için kartlar - Soft shadow, no border */
+  [data-theme="light"] .bg-card {
+    background: var(--bg-surface) !important;
+    border: none !important;
+    box-shadow: var(--card-shadow) !important;
+    border-radius: var(--card-radius) !important;
+  }
+
+  /* Light mode için paneller - Yumuşak gölge */
+  [data-theme="light"] .bg-panel {
+    background: var(--bg-elevated) !important;
+    border: none !important;
+    box-shadow: var(--soft-shadow) !important;
+    border-radius: 0.75rem !important;
+  }
+
+  /* Light mode Butonlar - Modern, Dolgun, Yuvarlatılmış */
+  [data-theme="light"] button,
+  [data-theme="light"] .btn {
+    border-radius: var(--button-radius) !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    padding: 0.625rem 1.25rem !important;
+    transition: all 0.2s ease !important;
+    box-shadow: var(--soft-shadow) !important;
+  }
+
+  [data-theme="light"] button:hover,
+  [data-theme="light"] .btn:hover {
+    box-shadow: var(--medium-shadow) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  [data-theme="light"] button:disabled,
+  [data-theme="light"] .btn:disabled {
+    background-color: var(--disabled-bg) !important;
+    opacity: 0.6 !important;
+  }
+
+  /* Light mode Input alanları - Subtle border, Soft focus */
+  [data-theme="light"] input,
+  [data-theme="light"] textarea,
+  [data-theme="light"] select {
+    border: 1px solid var(--input-border) !important;
+    border-radius: 0.625rem !important;
+    background-color: var(--input-bg) !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.95rem !important;
+    transition: all 0.2s ease !important;
+  }
+
+  [data-theme="light"] input:focus,
+  [data-theme="light"] textarea:focus,
+  [data-theme="light"] select:focus {
+    outline: none !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--input-focus) !important;
+  }
+
+  /* Light mode Label'lar - Soft gri, Belirgin */
+  [data-theme="light"] label {
+    color: var(--muted) !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Light mode Tablolar - İnce çizgiler, Soft hover */
+  [data-theme="light"] table {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+  }
+
+  [data-theme="light"] table thead th {
+    background-color: var(--table-header) !important;
+    font-weight: 600 !important;
+    padding: 1rem !important;
+    border-bottom: 1px solid var(--border) !important;
+    color: var(--text-primary) !important;
+  }
+
+  [data-theme="light"] table tbody tr {
+    border-bottom: 1px solid var(--border) !important;
+    min-height: 3rem !important;
+  }
+
+  [data-theme="light"] table tbody tr:hover {
+    background-color: var(--hover-surface) !important;
+  }
+
+  [data-theme="light"] table tbody td {
+    padding: 1rem !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Light mode Modal - Yumuşak gölge, Blur backdrop */
+  [data-theme="light"] [role="dialog"],
+  [data-theme="light"] .modal {
+    border-radius: 0.875rem !important;
+    box-shadow: var(--medium-shadow) !important;
+    padding: 1.5rem !important;
+    background: var(--bg-surface) !important;
+  }
+
+  [data-theme="light"] .modal-overlay,
+  [data-theme="light"] [data-radix-dialog-overlay] {
+    background: var(--modal-overlay) !important;
+    backdrop-filter: blur(4px) !important;
+  }
+
+  /* Light mode Sidebar - Yoğun mor, Beyaz yazılar */
+  [data-theme="light"] .sidebar,
+  [data-theme="light"] aside {
+    background: var(--sidebar-purple) !important;
+    border-right: 1px solid var(--border) !important;
+  }
+
+  [data-theme="light"] .sidebar *,
+  [data-theme="light"] aside * {
+    color: var(--sidebar-text) !important;
+  }
+
+  [data-theme="light"] .nav-item {
+    border-radius: 0.5rem !important;
+    padding: 0.75rem 1rem !important;
+    margin: 0.25rem 0 !important;
+    transition: all 0.2s ease !important;
+    color: var(--sidebar-text) !important;
+  }
+
+  [data-theme="light"] .nav-item:hover {
+    background-color: var(--sidebar-hover) !important;
+    color: var(--sidebar-text) !important;
+  }
+
+  [data-theme="light"] .nav-item.active {
+    background-color: var(--sidebar-active) !important;
+    color: var(--sidebar-text) !important;
+    font-weight: 600 !important;
+  }
+
+  /* Sidebar içindeki tüm yazılar için */
+  [data-theme="light"] .sidebar h1,
+  [data-theme="light"] .sidebar h2,
+  [data-theme="light"] .sidebar h3,
+  [data-theme="light"] .sidebar p,
+  [data-theme="light"] .sidebar span,
+  [data-theme="light"] .sidebar div,
+  [data-theme="light"] aside h1,
+  [data-theme="light"] aside h2,
+  [data-theme="light"] aside h3,
+  [data-theme="light"] aside p,
+  [data-theme="light"] aside span,
+  [data-theme="light"] aside div {
+    color: var(--sidebar-text) !important;
+  }
+
+  /* Sidebar içindeki hardcoded renkleri override et */
+  [data-theme="light"] .sidebar .text-\[#3EA6FF\],
+  [data-theme="light"] .sidebar .text-\[#A5A5A5\],
+  [data-theme="light"] aside .text-\[#3EA6FF\],
+  [data-theme="light"] aside .text-\[#A5A5A5\] {
+    color: var(--sidebar-text) !important;
+  }
+
+  /* Sidebar nav item hover text rengi */
+  [data-theme="light"] .sidebar .nav-item.hover\:text-white:hover,
+  [data-theme="light"] aside .nav-item.hover\:text-white:hover {
+    color: var(--sidebar-text) !important;
+  }
+
+  /* Sidebar aktif item text rengi */
+  [data-theme="light"] .sidebar .nav-item.active.text-\[#3EA6FF\],
+  [data-theme="light"] aside .nav-item.active.text-\[#3EA6FF\] {
+    color: var(--sidebar-text) !important;
+  }
+
+  /* Sidebar border rengi */
+  [data-theme="light"] .sidebar .border-\[#2D2F33\],
+  [data-theme="light"] aside .border-\[#2D2F33\] {
+    border-color: var(--border) !important;
+  }
+
+  /* Light mode Header/Navigation - Yoğun mor, Hafif gölge */
+  [data-theme="light"] header {
+    background: var(--header-purple) !important;
+    border-bottom: 1px solid var(--border) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+  }
+
+  /* Light mode Cards genel - Padding artırıldı */
+  [data-theme="light"] .card,
+  [data-theme="light"] [class*="card"] {
+    padding: 1.5rem !important;
+    border-radius: var(--card-radius) !important;
+  }
+
+  /* Light mode Calendar & Dashboard Widgets - Modern kartlar */
+  [data-theme="light"] .widget,
+  [data-theme="light"] [class*="widget"] {
+    background: var(--bg-surface) !important;
+    border: none !important;
+    box-shadow: var(--card-shadow) !important;
+    border-radius: var(--card-radius) !important;
+    padding: 1.5rem !important;
+  }
+
+  /* Light mode Grafikler - Sadeleştirilmiş */
+  [data-theme="light"] svg,
+  [data-theme="light"] canvas {
+    border-radius: 0.75rem !important;
+  }
+
+  /* Light mode Content Wrapper / Main Content Area - Açık mor arka plan */
+  [data-theme="light"] main,
+  [data-theme="light"] .main-content,
+  [data-theme="light"] .content-wrapper,
+  [data-theme="light"] .page-content {
+    background-color: var(--background-soft-purple) !important;
+  }
+
+  /* Layout.js'deki main content area için özel stil - flex-1 overflow-y-auto */
+  [data-theme="light"] main.flex-1.overflow-y-auto {
+    background-color: var(--background-soft-purple) !important;
+  }
+
+  /* Ana content wrapper div'i */
+  [data-theme="light"] .flex-1.flex.flex-col.overflow-hidden {
+    background-color: var(--background-soft-purple) !important;
   }
 }
