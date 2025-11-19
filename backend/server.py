@@ -21,114 +21,186 @@ from urllib.parse import urlparse
 import base64
 import shutil
 
-ROOT_DIR = Path(__file__).parent
+# -------------------- ENV & ROOT --------------------
+
+ROOT_DIR = Path(**file**).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# Logger setup - EN BAŞTA TANIMLA
+# -------------------- LOGGER --------------------
+
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("server")
 logger.setLevel(logging.INFO)
 
-# MongoDB connection
-MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+# -------------------- MONGODB --------------------
+
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017").strip('"').strip("'")
 DB_NAME = os.environ.get("DB_NAME", "travel_system_online")
 
-# MongoDB URL'den tırnak işaretlerini temizle (eğer varsa)
-MONGO_URL = MONGO_URL.strip('"').strip("'")
-
-# MongoDB bağlantısı - timeout ve retry ile
 try:
-    client = AsyncIOMotorClient(
-        MONGO_URL,
-        serverSelectionTimeoutMS=5000,  # 5 saniye timeout
-        connectTimeoutMS=5000
-    )
-    logger.info(f"MongoDB bağlantısı oluşturuldu: {MONGO_URL}")
+client = AsyncIOMotorClient(
+MONGO_URL,
+serverSelectionTimeoutMS=5000,
+connectTimeoutMS=5000
+)
+logger.info(f"MongoDB bağlantısı oluşturuldu: {MONGO_URL}")
 except Exception as e:
-    logger.error(f"MongoDB bağlantı hatası: {str(e)}")
-    raise
+logger.error(f"MongoDB bağlantı hatası: {str(e)}")
+raise
 
-# Eğer URL içinde DB adı varsa otomatik al
 try:
-    parsed_url = urlparse(MONGO_URL)
-    db_name_from_url = parsed_url.path.strip('/').split('/')[0] if parsed_url.path else None
-
-    if db_name_from_url:
-        db = client[db_name_from_url]
-    else:
-        db = client[DB_NAME]
+parsed_url = urlparse(MONGO_URL)
+db_name_from_url = parsed_url.path.strip('/').split('/')[0] if parsed_url.path else None
+db = client[db_name_from_url] if db_name_from_url else client[DB_NAME]
 except Exception:
-    db = client[DB_NAME]
+db = client[DB_NAME]
 
-# Security
+# -------------------- SECURITY --------------------
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 
-# Create the main app
+# -------------------- FASTAPI APP --------------------
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-# --- CORS middleware en başta ---
+# -------------------- CORS --------------------
+
 cors_origins_str = os.environ.get('CORS_ORIGINS', '').strip().strip('"').strip("'")
 if cors_origins_str:
-    CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
+CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 else:
-    CORS_ORIGINS = [
-        "https://app-one-lake-13.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173"
-    ]
-    logger.warning("CORS_ORIGINS not set in environment, using default origins")
+CORS_ORIGINS = [
+"[https://app-one-lake-13.vercel.app](https://app-one-lake-13.vercel.app)",
+"http://localhost:3000",
+"http://localhost:5173",
+"[http://127.0.0.1:3000](http://127.0.0.1:3000)",
+"[http://127.0.0.1:5173](http://127.0.0.1:5173)"
+]
+logger.warning("CORS_ORIGINS not set in environment, using default origins")
 
 logger.info(f"CORS_ORIGINS={CORS_ORIGINS}")
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=CORS_ORIGINS,
-    allow_methods=["*"],
-    allow_headers=["*"],
+CORSMiddleware,
+allow_credentials=True,
+allow_origins=CORS_ORIGINS,
+allow_methods=["*"],
+allow_headers=["*"]
 )
 
-# --- Router'ları CORS middleware’den sonra ekle ---
+# -------------------- ROUTERS --------------------
+
 app.include_router(api_router)
 
 MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
 if MODULES_ENABLED:
-    try:
-        from modules.billing.routes import billing_router
-        app.include_router(billing_router)
-        logger.info("Billing module router loaded")
-    except Exception as e:
-        logger.warning(f"Failed to load billing module: {e}")
+try:
+from modules.billing.routes import billing_router
+app.include_router(billing_router)
+logger.info("Billing module router loaded")
+except Exception as e:
+logger.warning(f"Failed to load billing module: {e}")
 
-# --- Startup ve Shutdown event'leri ---
+# -------------------- STARTUP / SHUTDOWN --------------------
+
 @app.on_event("startup")
 async def startup_event():
-    if MODULES_ENABLED:
-        try:
-            from modules.scheduler import start_scheduler
-            start_scheduler()
-        except Exception as e:
-            logger.warning(f"Failed to start scheduler: {e}")
+if MODULES_ENABLED:
+try:
+from modules.scheduler import start_scheduler
+start_scheduler()
+except Exception as e:
+logger.warning(f"Failed to start scheduler: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    if MODULES_ENABLED:
-        try:
-            from modules.scheduler import stop_scheduler
-            stop_scheduler()
-        except Exception as e:
-            logger.warning(f"Failed to stop scheduler: {e}")
-    client.close()
+if MODULES_ENABLED:
+try:
+from modules.scheduler import stop_scheduler
+stop_scheduler()
+except Exception as e:
+logger.warning(f"Failed to stop scheduler: {e}")
+client.close()
 
+# -------------------- AUTH ENDPOINTS --------------------
+
+from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+company_code: str
+username: str
+password: str
+
+def verify_password(plain_password, hashed_password):
+return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict):
+# Basit token örneği, kendi JWT implementation'ınızı kullanın
+return secrets.token_urlsafe(32)
+
+async def get_current_user():
+# Placeholder, implement JWT decode + user lookup
+return {"user_id": "user_id", "company_id": "company_id"}
+
+@api_router.post("/auth/login")
+async def login(data: LoginRequest):
+company = await db.companies.find_one({"company_code": data.company_code})
+if not company:
+raise HTTPException(status_code=401, detail="Invalid company code")
+
+```
+user = await db.users.find_one({"company_id": company["id"], "username": data.username})
+if not user:
+    raise HTTPException(status_code=401, detail="Invalid username or password")
+
+if not verify_password(data.password, user["password"]):
+    raise HTTPException(status_code=401, detail="Invalid username or password")
+
+token = create_access_token({
+    "sub": user["id"],
+    "company_id": user["company_id"],
+    "is_admin": user.get("is_admin", False)
+})
+
+return {
+    "access_token": token,
+    "token_type": "bearer",
+    "user": {
+        "id": user["id"],
+        "username": user["username"],
+        "full_name": user["full_name"],
+        "is_admin": user.get("is_admin", False),
+        "permissions": user.get("permissions", {})
+    },
+    "company": {
+        "id": company["id"],
+        "name": company["company_name"],
+        "code": company["company_code"]
+    }
+}
+```
+
+@api_router.get("/auth/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+user = await db.users.find_one({"id": current_user["user_id"]}, {"_id": 0, "password": 0})
+if not user:
+raise HTTPException(status_code=404, detail="User not found")
+company = await db.companies.find_one({"id": current_user["company_id"]}, {"_id": 0})
+return {"user": user, "company": company}
+
+@api_router.get("/companies/me")
+async def get_my_company(current_user: dict = Depends(get_current_user)):
+company = await db.companies.find_one({"id": current_user["company_id"]}, {"_id": 0})
+if not company:
+raise HTTPException(status_code=404, detail="Company not found")
+return {"company": company}
 
 # ==================== OWNER & COMPANY UPDATE EXAMPLE ====================
 
