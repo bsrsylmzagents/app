@@ -40,16 +40,18 @@ logger.setLevel(logging.INFO)
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017").strip('"').strip("'")
 DB_NAME = os.environ.get("DB_NAME", "travel_system_online")
 
+# MongoDB bağlantısı - timeout ve retry ile
 try:
     client = AsyncIOMotorClient(
         MONGO_URL,
-        serverSelectionTimeoutMS=5000,
+        serverSelectionTimeoutMS=5000,  # 5 saniye timeout
         connectTimeoutMS=5000
     )
     logger.info(f"MongoDB bağlantısı oluşturuldu: {MONGO_URL}")
 except Exception as e:
     logger.error(f"MongoDB bağlantı hatası: {str(e)}")
-    raise
+    # Render'da startup'ta raise etme, sadece log'la
+    logger.warning("MongoDB bağlantısı başarısız, ancak uygulama başlatılıyor...")
 
 try:
     parsed_url = urlparse(MONGO_URL)
