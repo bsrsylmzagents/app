@@ -92,6 +92,7 @@
     --text-secondary: #4A4A4A;         /* Body text, labels */
     --text-tertiary: #8585B8;          /* Helper text, descriptions */
     --border-color: rgba(0, 0, 0, 0.08);
+    --card-border: rgba(0, 0, 0, 0.07); /* Cards için daha ince border */
     --divider-color: rgba(0, 0, 0, 0.05);
     --border-width: 1px;
     
@@ -958,7 +959,7 @@
   [data-theme="light"] [class*="card"],
   [data-theme="light"] [class*="Card"] {
     background-color: var(--bg-surface) !important;
-    border: 1px solid var(--border-color) !important;
+    border: 1px solid var(--card-border) !important;
     box-shadow: var(--card-shadow) !important;
   }
 
@@ -1010,6 +1011,26 @@
     color: var(--table-header-text) !important;
   }
 
+  /* Table Pagination */
+  [data-theme="light"] [class*="pagination"] button[aria-current="true"],
+  [data-theme="light"] [class*="pagination"] [aria-current="true"],
+  [data-theme="light"] [class*="pagination"] .active {
+    background-color: var(--accent) !important;
+    color: #FFFFFF !important;
+    border-color: var(--accent) !important;
+  }
+
+  [data-theme="light"] [class*="pagination"] button:not([aria-current="true"]):not(.active),
+  [data-theme="light"] [class*="pagination"] a:not([aria-current="true"]):not(.active) {
+    color: var(--text-primary) !important;
+  }
+
+  [data-theme="light"] [class*="pagination"] button:hover:not([aria-current="true"]):not(.active),
+  [data-theme="light"] [class*="pagination"] a:hover:not([aria-current="true"]):not(.active) {
+    background-color: var(--hover-surface) !important;
+    color: var(--accent) !important;
+  }
+
   /* ========== LIGHT MODE BADGES/TAGS ========== */
   
   [data-theme="light"] [class*="badge"],
@@ -1038,6 +1059,13 @@
   [data-theme="light"] [class*="chip"][class*="success"] {
     background-color: var(--success-bg) !important;
     color: var(--success) !important;
+  }
+
+  [data-theme="light"] [class*="badge"][class*="neutral"],
+  [data-theme="light"] [class*="tag"][class*="neutral"],
+  [data-theme="light"] [class*="chip"][class*="neutral"] {
+    background-color: var(--bg-primary) !important; /* #EEF2F7 */
+    color: var(--text-secondary) !important; /* #4A4A4A */
   }
 
   /* ========== LIGHT MODE ALERTS ========== */
