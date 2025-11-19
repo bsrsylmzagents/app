@@ -81,7 +81,7 @@ ALGORITHM = "HS256"
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-    --- CORS middleware en başta ---
+    #--- CORS middleware en başta ---
 
 cors_origins_str = os.environ.get('CORS_ORIGINS', '').strip().strip('"').strip("'")
 if cors_origins_str:
@@ -106,7 +106,7 @@ allow_methods=[""],
 allow_headers=[""],
 )
 
---- Router'ları CORS middleware’den sonra ekle ---
+#--- Router'ları CORS middleware’den sonra ekle ---
 
 app.include_router(api_router)
 
@@ -119,7 +119,7 @@ logger.info("Billing module router loaded")
 except Exception as e:
 logger.warning(f"Failed to load billing module: {e}")
 
---- Startup ve Shutdown event'leri ---
+#--- Startup ve Shutdown event'leri ---
 
 @app.on_event("startup")
 async def startup_event():
