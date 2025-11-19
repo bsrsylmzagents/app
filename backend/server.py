@@ -87,19 +87,17 @@ api_router = APIRouter(prefix="/api")
 # ==================== CORS CONFIGURATION ====================
 
 # CORS middleware en başta
-
-cors_origins_str = os.environ.get('CORS_ORIGINS', '').strip().strip('"').strip("'")
 if cors_origins_str:
-CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
+    CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 else:
-CORS_ORIGINS = [
-"[https://app-one-lake-13.vercel.app](https://app-one-lake-13.vercel.app)",
-"http://localhost:3000",
-"http://localhost:5173",
-"[http://127.0.0.1:3000](http://127.0.0.1:3000)",
-"[http://127.0.0.1:5173](http://127.0.0.1:5173)"
-]
-logger.warning("CORS_ORIGINS not set in environment, using default origins")
+    CORS_ORIGINS = [
+        "https://app-one-lake-13.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ]
+    logger.warning("CORS_ORIGINS not set in environment, using default origins")
 
 logger.info(f"CORS_ORIGINS={CORS_ORIGINS}")
 
