@@ -23,7 +23,7 @@ import shutil
 
 # -------------------- ENV & ROOT --------------------
 
-ROOT_DIR = Path(**file**).parent
+ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # -------------------- LOGGER --------------------
