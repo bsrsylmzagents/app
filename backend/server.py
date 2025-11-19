@@ -102,20 +102,7 @@ app.add_middleware(
 )
 
 # -------------------- ROUTERS --------------------
-
-# Test endpoint to verify router is working
-@api_router.get("/test")
-async def test_endpoint():
-    return {"message": "API router is working", "status": "ok"}
-
-# Log router info before including
-logger.info(f"Including api_router with prefix: {api_router.prefix}")
-logger.info(f"Router routes count before include: {len(api_router.routes)}")
-
-app.include_router(api_router)
-
-# Log after including
-logger.info(f"App routes count after include: {len(app.routes)}")
+# Router will be included at the END of the file, after all endpoints are defined
 
 MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
 if MODULES_ENABLED:
@@ -12531,4 +12518,20 @@ async def update_admin_customer(company_id: str, data: dict, current_user: dict 
     )
     
     return {"message": "Company updated successfully"}
+
+# ==================== INCLUDE ROUTER (MUST BE AT THE END) ====================
+# All endpoints must be defined BEFORE this line
+# Test endpoint to verify router is working
+@api_router.get("/test")
+async def test_endpoint():
+    return {"message": "API router is working", "status": "ok"}
+
+# Log router info before including
+logger.info(f"Including api_router with prefix: {api_router.prefix}")
+logger.info(f"Router routes count before include: {len(api_router.routes)}")
+
+app.include_router(api_router)
+
+# Log after including
+logger.info(f"App routes count after include: {len(app.routes)}")
 
