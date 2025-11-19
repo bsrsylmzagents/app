@@ -103,7 +103,19 @@ app.add_middleware(
 
 # -------------------- ROUTERS --------------------
 
+# Test endpoint to verify router is working
+@api_router.get("/test")
+async def test_endpoint():
+    return {"message": "API router is working", "status": "ok"}
+
+# Log router info before including
+logger.info(f"Including api_router with prefix: {api_router.prefix}")
+logger.info(f"Router routes count before include: {len(api_router.routes)}")
+
 app.include_router(api_router)
+
+# Log after including
+logger.info(f"App routes count after include: {len(app.routes)}")
 
 MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
 if MODULES_ENABLED:
