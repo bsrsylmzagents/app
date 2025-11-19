@@ -77,24 +77,29 @@ security = HTTPBearer()
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 
+# ==================== MAIN APP ====================
+
 # Create the main app
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-    #--- CORS middleware en başta ---
+# ==================== CORS CONFIGURATION ====================
 
+# CORS middleware en başta
+
+cors_origins_str = os.environ.get('CORS_ORIGINS', '').strip().strip('"').strip("'")
 if cors_origins_str:
-    CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
+CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 else:
-    CORS_ORIGINS = [
-        "https://app-one-lake-13.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173"
-    ]
-    logger.warning("CORS_ORIGINS not set in environment, using default origins")
-
+CORS_ORIGINS = [
+"[https://app-one-lake-13.vercel.app](https://app-one-lake-13.vercel.app)",
+"http://localhost:3000",
+"http://localhost:5173",
+"[http://127.0.0.1:3000](http://127.0.0.1:3000)",
+"[http://127.0.0.1:5173](http://127.0.0.1:5173)"
+]
+logger.warning("CORS_ORIGINS not set in environment, using default origins")
 
 logger.info(f"CORS_ORIGINS={CORS_ORIGINS}")
 
@@ -102,13 +107,17 @@ app.add_middleware(
 CORSMiddleware,
 allow_credentials=True,
 allow_origins=CORS_ORIGINS,
-allow_methods=[""],
-allow_headers=[""],
+allow_methods=["*"],
+allow_headers=["*"],
 )
 
-#--- Router'ları CORS middleware’den sonra ekle ---
+# ==================== ROUTERS ====================
+
+# Main API router
 
 app.include_router(api_router)
+
+# Modular SaaS routers (billing, etc.)
 
 MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
 if MODULES_ENABLED:
@@ -119,10 +128,11 @@ logger.info("Billing module router loaded")
 except Exception as e:
 logger.warning(f"Failed to load billing module: {e}")
 
-#--- Startup ve Shutdown event'leri ---
+# ==================== STARTUP & SHUTDOWN EVENTS ====================
 
 @app.on_event("startup")
 async def startup_event():
+"""Startup event - initialize scheduler"""
 if MODULES_ENABLED:
 try:
 from modules.scheduler import start_scheduler
@@ -132,6 +142,7 @@ logger.warning(f"Failed to start scheduler: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
+"""Shutdown event - cleanup"""
 if MODULES_ENABLED:
 try:
 from modules.scheduler import stop_scheduler
@@ -139,6 +150,48 @@ stop_scheduler()
 except Exception as e:
 logger.warning(f"Failed to stop scheduler: {e}")
 client.close()
+
+# ==================== OWNER & COMPANY UPDATE EXAMPLE ====================
+
+async def update_company_and_owner(data: dict, company_id: str, current_user: dict):
+# Owner bilgilerini güncelle
+if "owner_username" in data or "owner_full_name" in data:
+owner = await db.users.find_one({"company_id": company_id, "is_owner": True})
+if owner:
+owner_update = {}
+if "owner_username" in data:
+owner_update["username"] = data["owner_username"]
+if "owner_full_name" in data:
+owner_update["full_name"] = data["owner_full_name"]
+if "reset_password" in data and data["reset_password"]:
+new_password = data.get("owner_username", owner.get("username"))
+owner_update["password_hash"] = get_password_hash(new_password)
+if owner_update:
+await db.users.update_one({"id": owner["id"]}, {"$set": owner_update})
+
+```
+# Company'yi güncelle
+update_data = {k: v for k, v in data.items() if k not in ["owner_username", "owner_full_name", "reset_password"]}
+if update_data:
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.companies.update_one({"id": company_id}, {"$set": update_data})
+
+# Activity log
+await create_activity_log(
+    company_id=company_id,
+    user_id=current_user["user_id"],
+    username="admin",
+    full_name="Admin",
+    action="update",
+    entity_type="company",
+    entity_id=company_id,
+    description=f"Admin tarafından firma güncellendi: {data.get('company_name', 'Unknown')}",
+    ip_address=current_user.get("ip_address", "unknown")
+)
+
+return {"message": "Company updated successfully"}
+```
+
 
 # ==================== MODELS ====================
 
