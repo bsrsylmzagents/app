@@ -33,7 +33,6 @@ logger = logging.getLogger("server")
 logger.setLevel(logging.INFO)
 
 # MongoDB connection
-
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "travel_system_online")
 
@@ -54,22 +53,15 @@ except Exception as e:
 
 # Eğer URL içinde DB adı varsa otomatik al
 try:
-    # URL'i parse et ve database adını kontrol et
-    # mongodb://host:port/dbname formatı veya mongodb+srv://user:pass@host/dbname
     parsed_url = urlparse(MONGO_URL)
-    # Path'ten database adını çıkar (başındaki / işaretini kaldır)
     db_name_from_url = parsed_url.path.strip('/').split('/')[0] if parsed_url.path else None
-    
+
     if db_name_from_url:
-        # URL'de database adı varsa onu kullan
         db = client[db_name_from_url]
     else:
-        # URL'de database adı yoksa DB_NAME kullan
         db = client[DB_NAME]
 except Exception:
-    # Hata durumunda varsayılan olarak DB_NAME kullan
     db = client[DB_NAME]
-
 
 # Security
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -77,16 +69,12 @@ security = HTTPBearer()
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 
-# ==================== MAIN APP ====================
-
 # Create the main app
-
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-# ==================== CORS CONFIGURATION ====================
-
-# CORS middleware en başta
+# --- CORS middleware en başta ---
+cors_origins_str = os.environ.get('CORS_ORIGINS', '').strip().strip('"').strip("'")
 if cors_origins_str:
     CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 else:
@@ -102,52 +90,45 @@ else:
 logger.info(f"CORS_ORIGINS={CORS_ORIGINS}")
 
 app.add_middleware(
-CORSMiddleware,
-allow_credentials=True,
-allow_origins=CORS_ORIGINS,
-allow_methods=["*"],
-allow_headers=["*"],
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=CORS_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# ==================== ROUTERS ====================
-
-# Main API router
-
+# --- Router'ları CORS middleware’den sonra ekle ---
 app.include_router(api_router)
-
-# Modular SaaS routers (billing, etc.)
 
 MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
 if MODULES_ENABLED:
-try:
-from modules.billing.routes import billing_router
-app.include_router(billing_router)
-logger.info("Billing module router loaded")
-except Exception as e:
-logger.warning(f"Failed to load billing module: {e}")
+    try:
+        from modules.billing.routes import billing_router
+        app.include_router(billing_router)
+        logger.info("Billing module router loaded")
+    except Exception as e:
+        logger.warning(f"Failed to load billing module: {e}")
 
-# ==================== STARTUP & SHUTDOWN EVENTS ====================
-
+# --- Startup ve Shutdown event'leri ---
 @app.on_event("startup")
 async def startup_event():
-"""Startup event - initialize scheduler"""
-if MODULES_ENABLED:
-try:
-from modules.scheduler import start_scheduler
-start_scheduler()
-except Exception as e:
-logger.warning(f"Failed to start scheduler: {e}")
+    if MODULES_ENABLED:
+        try:
+            from modules.scheduler import start_scheduler
+            start_scheduler()
+        except Exception as e:
+            logger.warning(f"Failed to start scheduler: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-"""Shutdown event - cleanup"""
-if MODULES_ENABLED:
-try:
-from modules.scheduler import stop_scheduler
-stop_scheduler()
-except Exception as e:
-logger.warning(f"Failed to stop scheduler: {e}")
-client.close()
+    if MODULES_ENABLED:
+        try:
+            from modules.scheduler import stop_scheduler
+            stop_scheduler()
+        except Exception as e:
+            logger.warning(f"Failed to stop scheduler: {e}")
+    client.close()
+
 
 # ==================== OWNER & COMPANY UPDATE EXAMPLE ====================
 
