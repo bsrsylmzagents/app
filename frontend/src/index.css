@@ -59,73 +59,171 @@
     --sidebar-hover: #2D2F33;
   }
 
-  /* LIGHT THEME - Modern, Soft, Premium Light Mode */
+  /* LIGHT THEME - Modern Clean Light Mode */
   :root.light,
   [data-theme="light"] {
     /* HSL format (Tailwind uyumlu) */
-    --background: 0 0% 98%; /* #F8F9FB - Modern nötr beyaz ton */
-    --foreground: 0 0% 11%; /* #1C1E21 - Soft text primary */
-    --card: 0 0% 100%; /* #FFFFFF - Kart yüzeyi */
-    --card-foreground: 0 0% 11%;
+    --background: 220 20% 95%; /* #EEF2F7 - Ana arka plan */
+    --foreground: 0 0% 16%; /* #282828 - Koyu gri (sadece başlıklar için) */
+    --card: 0 0% 100%; /* #FFFFFF - Beyaz kart yüzeyi */
+    --card-foreground: 0 0% 16%;
     --popover: 0 0% 100%; /* #FFFFFF */
-    --popover-foreground: 0 0% 11%;
-    --primary: 217 91% 60%; /* #3B82F6 - Modern mavi */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 215 16% 47%; /* #64748B - Soft secondary */
+    --popover-foreground: 0 0% 16%;
+    --primary: 200 90% 50%; /* #1696F0 - Ana birincil mavi */
+    --primary-foreground: 0 0% 100%; /* Beyaz metin */
+    --secondary: 175 45% 55%; /* #63BDB5 - Mint secondary */
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 96%; /* #F3F4F6 */
-    --muted-foreground: 0 0% 29%; /* #4B5563 */
-    --accent: 217 91% 60%; /* #3B82F6 */
+    --muted: 240 20% 60%; /* #8585B8 - Soft gri-mor */
+    --muted-foreground: 0 0% 29%; /* #4A4A4A - Secondary text */
+    --accent: 200 90% 50%; /* #1696F0 - Primary accent */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%; /* #E5E7EB - Subtle border */
+    --border: 0 0% 0% / 0.08; /* rgba(0,0,0,0.08) */
     --input: 0 0% 100%; /* #FFFFFF */
-    --ring: 217 91% 60%; /* #3B82F6 */
-    --radius: 0.75rem; /* 12px - Yumuşak border radius */
+    --ring: 200 90% 50%; /* #1696F0 */
+    --radius: 0.5rem;
     
-    /* Modern Light Theme Değişkenleri - Soft & Premium */
-    --bg-primary: #F8F9FB;          /* Modern nötr arka plan */
-    --bg-surface: #FFFFFF;           /* Kart yüzeyi */
-    --bg-elevated: #FAFAFC;         /* Yükseltilmiş yüzey */
-    --text-primary: #1C1E21;         /* Soft text primary */
-    --text-secondary: #4B5563;       /* Soft text secondary */
-    --muted: #6B7280;               /* Soft muted text */
-    --border: #E5E7EB;              /* Subtle border - soft */
-    --divider: #E5E7EB;             /* Soft divider */
-    --border-width: 1px;            /* İnce border */
-    --accent: #3B82F6;              /* Modern primary mavi */
-    --accent-hover: #2563EB;        /* Hover durumu */
-    --success: #16A34A;
+    /* Complete Color System */
+    --bg-primary: #EEF2F7;              /* Ana arka plan */
+    --bg-surface: #FFFFFF;              /* Kart, header, menu, modal yüzeyleri */
+    --bg-elevated: #FFFFFF;            /* Yükseltilmiş yüzeyler */
+    --text-primary: #282828;           /* H1-H3 başlıklar (sadece burada) */
+    --text-secondary: #4A4A4A;         /* Body text, labels */
+    --text-tertiary: #8585B8;          /* Helper text, descriptions */
+    --border-color: rgba(0, 0, 0, 0.08);
+    --divider-color: rgba(0, 0, 0, 0.05);
+    --border-width: 1px;
+    
+    /* Primary Accent (#1696F0) */
+    --accent: #1696F0;
+    --accent-hover: #0E7BC4;           /* darken(#1696F0, 8%) */
+    --accent-active: #0B6BA8;         /* darken(#1696F0, 12%) */
+    --accent-disabled: rgba(22, 150, 240, 0.25);
+    
+    /* Secondary Accent (#63BDB5) */
+    --secondary-accent: #63BDB5;
+    --secondary-accent-hover: #4FA89F; /* darken(#63BDB5, 7%) */
+    --secondary-accent-disabled: rgba(99, 189, 181, 0.35);
+    
+    /* Status Colors */
+    --success: #63BDB5;
+    --success-bg: rgba(99, 189, 181, 0.15); /* mix(#63BDB5, white, 80%) */
     --danger: #DC2626;
-    --warning: #F59E0B;
-    --chip-bg: #F1F3F5;             /* Soft chip arka planı */
-    --table-header: #F8F9FB;        /* Soft tablo header */
-    --modal-overlay: rgba(0,0,0,0.05); /* Soft backdrop blur */
+    --warning: #8585B8;
+    --info: #1696F0;
+    --info-bg: rgba(22, 150, 240, 0.1); /* mix(#1696F0, white, 85%) */
+    
+    /* Chips/Tags */
+    --chip-bg: rgba(99, 189, 181, 0.15); /* mix(#63BDB5, white, 85%) */
+    --chip-text: #63BDB5;
+    --chip-muted-bg: rgba(133, 133, 184, 0.2);
+    --chip-muted-text: #8585B8;
+    
+    /* Tables */
+    --table-header-bg: rgba(22, 150, 240, 0.08); /* mix(#1696F0, white, 92%) */
+    --table-header-text: #282828;
+    --table-row-bg: #FFFFFF;
+    --table-row-hover: rgba(22, 150, 240, 0.05);
+    --table-border: rgba(0, 0, 0, 0.08);
+    
+    /* Modals/Popups */
+    --modal-overlay: rgba(0, 0, 0, 0.25);
+    --modal-bg: #FFFFFF;
+    --modal-border-radius: 16px;
     --popup-bg: #FFFFFF;
-    --tooltip-bg: #1C1E21;
-    --tooltip-text: #FFFFFF;
-    --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06); /* Soft shadow */
-    --soft-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Çok yumuşak gölge */
-    --medium-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); /* Medium shadow */
-    --timeline-bg: #F8F9FB;         /* Soft timeline */
+    --popup-shadow: rgba(0, 0, 0, 0.06) 0 2px 8px;
+    
+    /* Shadows */
+    --card-shadow: rgba(0, 0, 0, 0.05) 0 2px 8px;
+    --soft-shadow: rgba(0, 0, 0, 0.06) 0 1px 3px;
+    --medium-shadow: rgba(0, 0, 0, 0.06) 0 4px 12px;
+    
+    /* Inputs */
     --input-bg: #FFFFFF;
-    --input-border: #E0E3E7;        /* Subtle input border */
-    --input-focus: rgba(59, 130, 246, 0.15);  /* Soft focus ring */
-    --placeholder: #9CA3AF;          /* Soft placeholder */
-    --sidebar-bg: #A68CFF;          /* Sidebar arka plan - mor yoğunluğu 7/10 */
-    --sidebar-hover: rgba(255,255,255,0.25); /* Sidebar hover efekti - beyaz overlay */
-    --sidebar-active: #8A6CFF;      /* Aktif item mor tonu - mor yoğunluğu 8/10 */
-    --sidebar-text: #FFFFFF;        /* Sidebar yazıları - beyaz */
-    --hover-surface: rgba(0,0,0,0.03); /* Soft hover arka planı */
-    --hover-soft: rgba(255,255,255,0.18); /* Yumuşak hover efekti - açık mor overlay */
-    --disabled-bg: #F1F3F5;         /* Disabled arka plan */
-    --button-radius: 0.625rem;       /* 10px - Modern buton radius */
-    --card-radius: 0.875rem;         /* 14px - Yumuşak kart radius */
-    /* Mor tonlu tema renkleri - Güncellenmiş yoğun mor tonlar */
-    --background-soft-purple: #C7B5FF;  /* Content wrapper arka plan - mor yoğunluğu 5/10 */
-    --sidebar-purple: #A68CFF;          /* Sidebar arka plan - mor yoğunluğu 7/10 */
-    --header-purple: #8A6CFF;           /* Header arka plan - mor yoğunluğu 8/10 */
+    --input-border: rgba(0, 0, 0, 0.12);
+    --input-border-focus: #1696F0;
+    --input-text: #282828;
+    --input-label: #4A4A4A;
+    --input-placeholder: #8585B8;
+    --input-disabled-bg: rgba(0, 0, 0, 0.05);
+    
+    /* Sidebar */
+    --sidebar-bg: #FFFFFF;
+    --sidebar-text: #4A4A4A;
+    --sidebar-text-hover: #1696F0;
+    --sidebar-text-active: #1696F0;
+    --sidebar-icon: #8585B8;
+    --sidebar-icon-active: #1696F0;
+    --sidebar-divider: rgba(0, 0, 0, 0.05);
+    --sidebar-selected-bg: rgba(22, 150, 240, 0.1); /* mix(#1696F0, white, 90%) */
+    
+    /* Header */
+    --header-bg: #FFFFFF;
+    --header-text: #282828;
+    --header-icon: #8585B8;
+    --header-icon-hover: #1696F0;
+    --header-border: rgba(0, 0, 0, 0.06);
+    --header-active-underline: #1696F0;
+    
+    /* Buttons */
+    --button-primary-bg: #1696F0;
+    --button-primary-text: #FFFFFF;
+    --button-primary-hover: #0E7BC4;
+    --button-primary-active: #0B6BA8;
+    --button-primary-disabled: rgba(22, 150, 240, 0.25);
+    
+    --button-secondary-bg: #63BDB5;
+    --button-secondary-text: #FFFFFF;
+    --button-secondary-hover: #4FA89F;
+    --button-secondary-disabled: rgba(99, 189, 181, 0.35);
+    
+    --button-ghost-bg: transparent;
+    --button-ghost-border: rgba(0, 0, 0, 0.12);
+    --button-ghost-text: #282828;
+    --button-ghost-hover: rgba(22, 150, 240, 0.1);
+    
+    /* Icons */
+    --icon-default: #8585B8;
+    --icon-hover: #1696F0;
+    --icon-active: #1696F0;
+    
+    /* Links */
+    --link-color: #1696F0;
+    --link-hover: #0E7BC4; /* darken(#1696F0, 10%) */
+    
+    /* Alerts */
+    --alert-info-border: #1696F0;
+    --alert-info-bg: rgba(22, 150, 240, 0.1); /* mix(#1696F0, white, 90%) */
+    --alert-info-text: #282828;
+    
+    --alert-success-border: #63BDB5;
+    --alert-success-bg: rgba(99, 189, 181, 0.12); /* mix(#63BDB5, white, 88%) */
+    --alert-success-text: #282828;
+    
+    --alert-warning-border: #8585B8;
+    --alert-warning-bg: rgba(133, 133, 184, 0.08); /* mix(#8585B8, white, 92%) */
+    --alert-warning-text: #282828;
+    
+    /* Tooltips */
+    --tooltip-bg: #282828;
+    --tooltip-text: #FFFFFF;
+    
+    /* Timeline */
+    --timeline-bg: #EEF2F7;
+    
+    /* Hover States */
+    --hover-surface: rgba(22, 150, 240, 0.05);
+    --hover-soft: rgba(22, 150, 240, 0.1);
+    
+    /* Disabled */
+    --disabled-bg: rgba(0, 0, 0, 0.05);
+    --disabled-text: #8585B8;
+    
+    /* Legacy compatibility (will be removed gradually) */
+    --background-soft-purple: #EEF2F7;
+    --sidebar-purple: #FFFFFF;
+    --header-purple: #FFFFFF;
   }
 }
 
@@ -138,37 +236,23 @@
     font-family: 'Inter', sans-serif;
     line-height: 1.5;
   }
+
+  /* Light mode body background */
+  [data-theme="light"] body {
+    background-color: var(--bg-primary) !important;
+  }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Playfair Display', serif;
     font-weight: 600;
     line-height: 1.5;
   }
   
-  /* Light Mode Typography Improvements */
-  [data-theme="light"] body {
-    line-height: 1.6;
-  }
-  
-  [data-theme="light"] h1, 
-  [data-theme="light"] h2, 
-  [data-theme="light"] h3, 
-  [data-theme="light"] h4, 
-  [data-theme="light"] h5, 
-  [data-theme="light"] h6 {
-    font-weight: 600;
-    line-height: 1.5;
-  }
-  
-  [data-theme="light"] p,
-  [data-theme="light"] span,
-  [data-theme="light"] div {
-    line-height: 1.6;
-  }
 }
 
 @layer components {
   .stat-card {
-    @apply bg-[#0f1419]/80 backdrop-blur-xl;
+    background: var(--bg-elevated);
+    backdrop-filter: blur(10px);
     border: var(--border-width) solid var(--border);
   }
 
@@ -213,245 +297,806 @@
     background-color: var(--sidebar-hover);
   }
 
-  /* ========== LIGHT MODE MODERN STYLES ========== */
+  /* ========== LIGHT MODE - SADECE RENK OVERRIDE'LARI ========== */
   
-  /* Light mode için özel kart stilleri - Modern, Soft, Premium */
-  [data-theme="light"] .stat-card {
-    background: var(--bg-surface) !important;
-    border: none !important;
-    box-shadow: var(--card-shadow) !important;
-    border-radius: var(--card-radius) !important;
-    padding: 1.5rem !important;
-  }
-
-  /* Light mode için kartlar - Soft shadow, no border */
-  [data-theme="light"] .bg-card {
-    background: var(--bg-surface) !important;
-    border: none !important;
-    box-shadow: var(--card-shadow) !important;
-    border-radius: var(--card-radius) !important;
-  }
-
-  /* Light mode için paneller - Yumuşak gölge */
-  [data-theme="light"] .bg-panel {
-    background: var(--bg-elevated) !important;
-    border: none !important;
-    box-shadow: var(--soft-shadow) !important;
-    border-radius: 0.75rem !important;
-  }
-
-  /* Light mode Butonlar - Modern, Dolgun, Yuvarlatılmış */
-  [data-theme="light"] button,
-  [data-theme="light"] .btn {
-    border-radius: var(--button-radius) !important;
-    font-size: 0.95rem !important;
-    font-weight: 500 !important;
-    padding: 0.625rem 1.25rem !important;
-    transition: all 0.2s ease !important;
-    box-shadow: var(--soft-shadow) !important;
-  }
-
-  [data-theme="light"] button:hover,
-  [data-theme="light"] .btn:hover {
-    box-shadow: var(--medium-shadow) !important;
-    transform: translateY(-1px) !important;
-  }
-
-  [data-theme="light"] button:disabled,
-  [data-theme="light"] .btn:disabled {
-    background-color: var(--disabled-bg) !important;
-    opacity: 0.6 !important;
-  }
-
-  /* Light mode Input alanları - Subtle border, Soft focus */
-  [data-theme="light"] input,
-  [data-theme="light"] textarea,
-  [data-theme="light"] select {
-    border: 1px solid var(--input-border) !important;
-    border-radius: 0.625rem !important;
-    background-color: var(--input-bg) !important;
-    padding: 0.75rem 1rem !important;
-    font-size: 0.95rem !important;
-    transition: all 0.2s ease !important;
-  }
-
-  [data-theme="light"] input:focus,
-  [data-theme="light"] textarea:focus,
-  [data-theme="light"] select:focus {
-    outline: none !important;
-    border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px var(--input-focus) !important;
-  }
-
-  /* Light mode Label'lar - Soft gri, Belirgin */
-  [data-theme="light"] label {
-    color: var(--muted) !important;
-    font-size: 0.875rem !important;
-    font-weight: 500 !important;
-    margin-bottom: 0.5rem !important;
-  }
-
-  /* Light mode Tablolar - İnce çizgiler, Soft hover */
-  [data-theme="light"] table {
-    border-collapse: separate !important;
-    border-spacing: 0 !important;
-  }
-
-  [data-theme="light"] table thead th {
-    background-color: var(--table-header) !important;
-    font-weight: 600 !important;
-    padding: 1rem !important;
-    border-bottom: 1px solid var(--border) !important;
-    color: var(--text-primary) !important;
-  }
-
-  [data-theme="light"] table tbody tr {
-    border-bottom: 1px solid var(--border) !important;
-    min-height: 3rem !important;
-  }
-
-  [data-theme="light"] table tbody tr:hover {
-    background-color: var(--hover-surface) !important;
-  }
-
-  [data-theme="light"] table tbody td {
-    padding: 1rem !important;
-    line-height: 1.5 !important;
-  }
-
-  /* Light mode Modal - Yumuşak gölge, Blur backdrop */
-  [data-theme="light"] [role="dialog"],
-  [data-theme="light"] .modal {
-    border-radius: 0.875rem !important;
-    box-shadow: var(--medium-shadow) !important;
-    padding: 1.5rem !important;
-    background: var(--bg-surface) !important;
-  }
-
-  [data-theme="light"] .modal-overlay,
-  [data-theme="light"] [data-radix-dialog-overlay] {
-    background: var(--modal-overlay) !important;
-    backdrop-filter: blur(4px) !important;
-  }
-
-  /* Light mode Sidebar - Yoğun mor, Beyaz yazılar */
+  /* Sidebar background */
   [data-theme="light"] .sidebar,
   [data-theme="light"] aside {
-    background: var(--sidebar-purple) !important;
-    border-right: 1px solid var(--border) !important;
+    background-color: var(--sidebar-bg) !important;
+    border-right: 1px solid var(--sidebar-divider) !important;
   }
 
-  [data-theme="light"] .sidebar *,
-  [data-theme="light"] aside * {
+  /* Sidebar içindeki tüm yazılar için - default */
+  [data-theme="light"] .sidebar,
+  [data-theme="light"] aside {
     color: var(--sidebar-text) !important;
   }
 
-  [data-theme="light"] .nav-item {
-    border-radius: 0.5rem !important;
-    padding: 0.75rem 1rem !important;
-    margin: 0.25rem 0 !important;
-    transition: all 0.2s ease !important;
+  /* Sidebar nav items - default */
+  [data-theme="light"] .sidebar .nav-item,
+  [data-theme="light"] aside .nav-item {
     color: var(--sidebar-text) !important;
   }
 
-  [data-theme="light"] .nav-item:hover {
-    background-color: var(--sidebar-hover) !important;
-    color: var(--sidebar-text) !important;
+  /* Sidebar nav items - hover */
+  [data-theme="light"] .sidebar .nav-item:hover,
+  [data-theme="light"] aside .nav-item:hover {
+    color: var(--sidebar-text-hover) !important;
+    background-color: var(--sidebar-selected-bg) !important;
   }
 
-  [data-theme="light"] .nav-item.active {
-    background-color: var(--sidebar-active) !important;
-    color: var(--sidebar-text) !important;
+  /* Sidebar nav items - active */
+  [data-theme="light"] .sidebar .nav-item.active,
+  [data-theme="light"] aside .nav-item.active {
+    color: var(--sidebar-text-active) !important;
     font-weight: 600 !important;
+    background-color: var(--sidebar-selected-bg) !important;
   }
 
-  /* Sidebar içindeki tüm yazılar için */
+  /* Sidebar içindeki hardcoded renkleri override et */
+  [data-theme="light"] .sidebar .text-\[#3EA6FF\],
+  [data-theme="light"] .sidebar .text-\[#A5A5A5\],
+  [data-theme="light"] .sidebar .text-white,
+  [data-theme="light"] aside .text-\[#3EA6FF\],
+  [data-theme="light"] aside .text-\[#A5A5A5\],
+  [data-theme="light"] aside .text-white {
+    color: var(--sidebar-text) !important;
+  }
+
+  /* Sidebar içindeki tüm h1, h2, p, span, div, li, a elementleri */
   [data-theme="light"] .sidebar h1,
   [data-theme="light"] .sidebar h2,
   [data-theme="light"] .sidebar h3,
   [data-theme="light"] .sidebar p,
   [data-theme="light"] .sidebar span,
   [data-theme="light"] .sidebar div,
+  [data-theme="light"] .sidebar li,
+  [data-theme="light"] .sidebar a,
   [data-theme="light"] aside h1,
   [data-theme="light"] aside h2,
   [data-theme="light"] aside h3,
   [data-theme="light"] aside p,
   [data-theme="light"] aside span,
-  [data-theme="light"] aside div {
+  [data-theme="light"] aside div,
+  [data-theme="light"] aside li,
+  [data-theme="light"] aside a {
     color: var(--sidebar-text) !important;
   }
 
-  /* Sidebar içindeki hardcoded renkleri override et */
-  [data-theme="light"] .sidebar .text-\[#3EA6FF\],
-  [data-theme="light"] .sidebar .text-\[#A5A5A5\],
-  [data-theme="light"] aside .text-\[#3EA6FF\],
-  [data-theme="light"] aside .text-\[#A5A5A5\] {
+  /* Sidebar içindeki butonlar */
+  [data-theme="light"] .sidebar button,
+  [data-theme="light"] aside button {
     color: var(--sidebar-text) !important;
   }
 
-  /* Sidebar nav item hover text rengi */
-  [data-theme="light"] .sidebar .nav-item.hover\:text-white:hover,
-  [data-theme="light"] aside .nav-item.hover\:text-white:hover {
+  /* Sidebar içindeki linkler hover durumu */
+  [data-theme="light"] .sidebar a:hover,
+  [data-theme="light"] aside a:hover {
     color: var(--sidebar-text) !important;
   }
 
-  /* Sidebar aktif item text rengi */
-  [data-theme="light"] .sidebar .nav-item.active.text-\[#3EA6FF\],
-  [data-theme="light"] aside .nav-item.active.text-\[#3EA6FF\] {
+  /* Sidebar içindeki tüm SVG ikonlar - default */
+  [data-theme="light"] .sidebar svg,
+  [data-theme="light"] aside svg {
+    color: var(--sidebar-icon) !important;
+    fill: var(--sidebar-icon) !important;
+    stroke: var(--sidebar-icon) !important;
+  }
+
+  /* Sidebar nav item içindeki ikonlar - hover */
+  [data-theme="light"] .sidebar .nav-item:hover svg,
+  [data-theme="light"] aside .nav-item:hover svg {
+    color: var(--sidebar-icon-active) !important;
+    fill: var(--sidebar-icon-active) !important;
+    stroke: var(--sidebar-icon-active) !important;
+  }
+
+  /* Sidebar nav item içindeki ikonlar - active */
+  [data-theme="light"] .sidebar .nav-item.active svg,
+  [data-theme="light"] aside .nav-item.active svg {
+    color: var(--sidebar-icon-active) !important;
+    fill: var(--sidebar-icon-active) !important;
+    stroke: var(--sidebar-icon-active) !important;
+  }
+
+  /* Sidebar submenu linkleri */
+  [data-theme="light"] .sidebar ul li a,
+  [data-theme="light"] aside ul li a {
     color: var(--sidebar-text) !important;
   }
 
-  /* Sidebar border rengi */
-  [data-theme="light"] .sidebar .border-\[#2D2F33\],
-  [data-theme="light"] aside .border-\[#2D2F33\] {
-    border-color: var(--border) !important;
+  /* Sidebar logo ve başlıklar */
+  [data-theme="light"] .sidebar h1.text-\[#3EA6FF\],
+  [data-theme="light"] .sidebar h1,
+  [data-theme="light"] aside h1.text-\[#3EA6FF\],
+  [data-theme="light"] aside h1 {
+    color: var(--sidebar-text) !important;
   }
 
-  /* Light mode Header/Navigation - Yoğun mor, Hafif gölge */
+  /* Sidebar içindeki tüm uppercase başlıklar (Panel, vb.) */
+  [data-theme="light"] .sidebar .uppercase,
+  [data-theme="light"] aside .uppercase {
+    color: var(--sidebar-text) !important;
+  }
+
+  /* ========== LIGHT MODE HEADER YAZI VE İKONLARI ========== */
+  
+  /* Header içindeki tüm yazılar için - sadece renk */
+  [data-theme="light"] .header-gradient,
   [data-theme="light"] header {
-    background: var(--header-purple) !important;
-    border-bottom: 1px solid var(--border) !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+    color: var(--header-text) !important;
   }
 
-  /* Light mode Cards genel - Padding artırıldı */
+  /* Header içindeki hardcoded renkleri override et - sadece renk */
+  [data-theme="light"] .header-gradient .text-\[#3EA6FF\],
+  [data-theme="light"] .header-gradient .text-\[#A5A5A5\],
+  [data-theme="light"] .header-gradient .text-white,
+  [data-theme="light"] header .text-\[#3EA6FF\],
+  [data-theme="light"] header .text-\[#A5A5A5\],
+  [data-theme="light"] header .text-white {
+    color: var(--header-text) !important;
+  }
+
+  /* Header içindeki tüm h1, h2, h3, p, span, div, button, a elementleri */
+  [data-theme="light"] .header-gradient h1,
+  [data-theme="light"] .header-gradient h2,
+  [data-theme="light"] .header-gradient h3,
+  [data-theme="light"] .header-gradient p,
+  [data-theme="light"] .header-gradient span,
+  [data-theme="light"] .header-gradient div,
+  [data-theme="light"] .header-gradient button,
+  [data-theme="light"] .header-gradient a,
+  [data-theme="light"] header h1,
+  [data-theme="light"] header h2,
+  [data-theme="light"] header h3,
+  [data-theme="light"] header p,
+  [data-theme="light"] header span,
+  [data-theme="light"] header div,
+  [data-theme="light"] header button,
+  [data-theme="light"] header a {
+    color: var(--header-text) !important;
+  }
+
+  /* Header içindeki tüm SVG ikonlar */
+  [data-theme="light"] .header-gradient svg,
+  [data-theme="light"] header svg {
+    color: var(--header-text) !important;
+    fill: var(--header-text) !important;
+    stroke: var(--header-text) !important;
+  }
+
+  /* Header içindeki hover durumları */
+  [data-theme="light"] .header-gradient .hover\:text-white:hover,
+  [data-theme="light"] .header-gradient button:hover,
+  [data-theme="light"] .header-gradient a:hover,
+  [data-theme="light"] header .hover\:text-white:hover,
+  [data-theme="light"] header button:hover,
+  [data-theme="light"] header a:hover {
+    color: var(--header-text) !important;
+  }
+
+  /* Header içindeki hover SVG ikonlar */
+  [data-theme="light"] .header-gradient button:hover svg,
+  [data-theme="light"] .header-gradient a:hover svg,
+  [data-theme="light"] header button:hover svg,
+  [data-theme="light"] header a:hover svg {
+    color: var(--header-text) !important;
+    fill: var(--header-text) !important;
+    stroke: var(--header-text) !important;
+  }
+
+  /* Header içindeki CurrencyConverter component'i */
+  [data-theme="light"] .header-gradient [style*="color"],
+  [data-theme="light"] header [style*="color"] {
+    color: var(--header-text) !important;
+  }
+
+  /* Header içindeki tüm inline style renkleri override et */
+  [data-theme="light"] .header-gradient [style*="var(--text-secondary)"],
+  [data-theme="light"] .header-gradient [style*="var(--accent)"],
+  [data-theme="light"] header [style*="var(--text-secondary)"],
+  [data-theme="light"] header [style*="var(--accent)"] {
+    color: var(--header-text) !important;
+  }
+
+  /* ========== LIGHT MODE BUTONLAR (Header ve Sidebar dışı) ========== */
+  
+  /* Main content alanındaki tüm butonlar */
+  [data-theme="light"] main button,
+  [data-theme="light"] .main-content button,
+  [data-theme="light"] .page-content button,
+  [data-theme="light"] [class*="content"] button:not(.header-gradient button):not(.sidebar button):not(header button):not(aside button) {
+    background-color: var(--button-bg) !important;
+    color: var(--button-text) !important;
+    border-color: var(--button-bg) !important;
+  }
+
+  /* Main content alanındaki butonların içindeki yazılar */
+  [data-theme="light"] main button *,
+  [data-theme="light"] .main-content button *,
+  [data-theme="light"] .page-content button * {
+    color: var(--button-text) !important;
+  }
+
+  /* Main content alanındaki butonların içindeki SVG ikonlar */
+  [data-theme="light"] main button svg,
+  [data-theme="light"] .main-content button svg,
+  [data-theme="light"] .page-content button svg {
+    color: var(--button-text) !important;
+    fill: var(--button-text) !important;
+    stroke: var(--button-text) !important;
+  }
+
+  /* Main content alanındaki butonlar hover durumu */
+  [data-theme="light"] main button:hover,
+  [data-theme="light"] .main-content button:hover,
+  [data-theme="light"] .page-content button:hover {
+    background-color: var(--button-bg) !important;
+    opacity: 0.9 !important;
+  }
+
+  /* Genel buton class'ları (header ve sidebar dışı) */
+  [data-theme="light"] .btn-primary:not(.header-gradient .btn-primary):not(.sidebar .btn-primary):not(header .btn-primary):not(aside .btn-primary),
+  [data-theme="light"] .btn:not(.header-gradient .btn):not(.sidebar .btn):not(header .btn):not(aside .btn) {
+    background-color: var(--button-bg) !important;
+    color: var(--button-text) !important;
+    border-color: var(--button-bg) !important;
+  }
+
+  [data-theme="light"] .btn-primary:not(.header-gradient .btn-primary):not(.sidebar .btn-primary):not(header .btn-primary):not(aside .btn-primary) *,
+  [data-theme="light"] .btn:not(.header-gradient .btn):not(.sidebar .btn):not(header .btn):not(aside .btn) * {
+    color: var(--button-text) !important;
+  }
+
+  /* ========== LIGHT MODE MODAL VE POPUP ========== */
+  
+  /* Tüm modallar, popup'lar, dropdown'lar ve açılır ekranlar */
+  [data-theme="light"] [role="dialog"],
+  [data-theme="light"] .modal,
+  [data-theme="light"] .popup,
+  [data-theme="light"] [class*="modal"],
+  [data-theme="light"] [class*="popup"],
+  [data-theme="light"] [class*="dialog"],
+  [data-theme="light"] [data-radix-dialog-content],
+  [data-theme="light"] [data-radix-popover-content],
+  [data-theme="light"] [data-radix-dropdown-content],
+  [data-theme="light"] [data-radix-select-content],
+  [data-theme="light"] [data-radix-menu-content],
+  [data-theme="light"] [data-radix-tooltip-content],
+  [data-theme="light"] .dropdown,
+  [data-theme="light"] .dropdown-menu,
+  [data-theme="light"] .dropdown-content,
+  [data-theme="light"] [class*="dropdown"],
+  [data-theme="light"] [class*="menu"],
+  [data-theme="light"] [class*="tooltip"],
+  [data-theme="light"] select option,
+  [data-theme="light"] [role="listbox"],
+  [data-theme="light"] [role="menu"],
+  [data-theme="light"] [role="tooltip"] {
+    background-color: var(--modal-bg) !important;
+    color: var(--text-secondary) !important;
+  }
+
+  /* Modal, popup ve açılır ekranlar içindeki genel text (body) */
+  [data-theme="light"] [role="dialog"] p,
+  [data-theme="light"] [role="dialog"] span:not(h1 span):not(h2 span):not(h3 span),
+  [data-theme="light"] [role="dialog"] div:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(button):not(label),
+  [data-theme="light"] .modal p,
+  [data-theme="light"] .modal span:not(h1 span):not(h2 span):not(h3 span),
+  [data-theme="light"] .modal div:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(button):not(label),
+  [data-theme="light"] .popup p,
+  [data-theme="light"] .popup span:not(h1 span):not(h2 span):not(h3 span),
+  [data-theme="light"] .popup div:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(button):not(label) {
+    color: var(--text-secondary) !important;
+  }
+
+  /* Modal ve popup içindeki başlıklar */
+  [data-theme="light"] [role="dialog"] h1,
+  [data-theme="light"] [role="dialog"] h2,
+  [data-theme="light"] [role="dialog"] h3,
+  [data-theme="light"] [role="dialog"] h4,
+  [data-theme="light"] [role="dialog"] h5,
+  [data-theme="light"] [role="dialog"] h6,
+  [data-theme="light"] .modal h1,
+  [data-theme="light"] .modal h2,
+  [data-theme="light"] .modal h3,
+  [data-theme="light"] .modal h4,
+  [data-theme="light"] .modal h5,
+  [data-theme="light"] .modal h6,
+  [data-theme="light"] .popup h1,
+  [data-theme="light"] .popup h2,
+  [data-theme="light"] .popup h3,
+  [data-theme="light"] .popup h4,
+  [data-theme="light"] .popup h5,
+  [data-theme="light"] .popup h6 {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+  }
+
+  /* Modal, popup ve açılır ekranlar içindeki SVG ikonlar (button içinde değil) */
+  [data-theme="light"] [role="dialog"] svg:not(button svg),
+  [data-theme="light"] .modal svg:not(button svg),
+  [data-theme="light"] .popup svg:not(button svg),
+  [data-theme="light"] [class*="modal"] svg:not(button svg),
+  [data-theme="light"] [class*="popup"] svg:not(button svg),
+  [data-theme="light"] [data-radix-dropdown-content] svg:not(button svg),
+  [data-theme="light"] [data-radix-select-content] svg:not(button svg),
+  [data-theme="light"] [data-radix-menu-content] svg:not(button svg),
+  [data-theme="light"] [data-radix-tooltip-content] svg:not(button svg),
+  [data-theme="light"] .dropdown svg:not(button svg),
+  [data-theme="light"] .dropdown-menu svg:not(button svg),
+  [data-theme="light"] [class*="dropdown"] svg:not(button svg),
+  [data-theme="light"] [class*="menu"] svg:not(button svg) {
+    color: var(--icon-default) !important;
+    fill: var(--icon-default) !important;
+    stroke: var(--icon-default) !important;
+  }
+
+  /* ========== MODAL İÇİNDEKİ INPUT ALANLARI ========== */
+  
+  /* Modal, popup ve açılır ekranlar içindeki input alanları */
+  [data-theme="light"] [role="dialog"] input,
+  [data-theme="light"] [role="dialog"] textarea,
+  [data-theme="light"] [role="dialog"] select,
+  [data-theme="light"] .modal input,
+  [data-theme="light"] .modal textarea,
+  [data-theme="light"] .modal select,
+  [data-theme="light"] .popup input,
+  [data-theme="light"] .popup textarea,
+  [data-theme="light"] .popup select,
+  [data-theme="light"] [class*="modal"] input,
+  [data-theme="light"] [class*="modal"] textarea,
+  [data-theme="light"] [class*="modal"] select,
+  [data-theme="light"] [class*="popup"] input,
+  [data-theme="light"] [class*="popup"] textarea,
+  [data-theme="light"] [class*="popup"] select,
+  [data-theme="light"] [data-radix-dropdown-content] input,
+  [data-theme="light"] [data-radix-dropdown-content] textarea,
+  [data-theme="light"] [data-radix-dropdown-content] select,
+  [data-theme="light"] .dropdown input,
+  [data-theme="light"] .dropdown textarea,
+  [data-theme="light"] .dropdown select {
+    background-color: var(--input-bg) !important;
+    color: var(--input-text) !important;
+    border-color: var(--input-border) !important;
+  }
+
+  [data-theme="light"] [role="dialog"] input:focus,
+  [data-theme="light"] [role="dialog"] textarea:focus,
+  [data-theme="light"] [role="dialog"] select:focus,
+  [data-theme="light"] .modal input:focus,
+  [data-theme="light"] .modal textarea:focus,
+  [data-theme="light"] .modal select:focus,
+  [data-theme="light"] .popup input:focus,
+  [data-theme="light"] .popup textarea:focus,
+  [data-theme="light"] .popup select:focus {
+    border-color: var(--input-border-focus) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(22, 150, 240, 0.1) !important;
+  }
+
+  /* Modal içindeki input placeholder */
+  [data-theme="light"] [role="dialog"] input::placeholder,
+  [data-theme="light"] [role="dialog"] textarea::placeholder,
+  [data-theme="light"] .modal input::placeholder,
+  [data-theme="light"] .modal textarea::placeholder,
+  [data-theme="light"] .popup input::placeholder,
+  [data-theme="light"] .popup textarea::placeholder {
+    color: var(--input-placeholder) !important;
+  }
+
+  /* Modal içindeki select option'lar */
+  [data-theme="light"] [role="dialog"] select option,
+  [data-theme="light"] .modal select option,
+  [data-theme="light"] .popup select option {
+    background-color: var(--input-bg) !important;
+    color: var(--input-text) !important;
+  }
+
+  /* Modal içindeki label'lar */
+  [data-theme="light"] [role="dialog"] label,
+  [data-theme="light"] .modal label,
+  [data-theme="light"] .popup label {
+    color: var(--input-label) !important;
+  }
+
+  /* Modal içindeki form grupları ve container'lar */
+  [data-theme="light"] [role="dialog"] [class*="form"],
+  [data-theme="light"] [role="dialog"] [class*="field"],
+  [data-theme="light"] .modal [class*="form"],
+  [data-theme="light"] .modal [class*="field"],
+  [data-theme="light"] .popup [class*="form"],
+  [data-theme="light"] .popup [class*="field"] {
+    color: var(--text-secondary) !important;
+  }
+
+  /* ========== MODAL İÇİNDEKİ BUTONLAR ========== */
+  
+  /* Modal, popup ve açılır ekranlar içindeki primary butonlar */
+  [data-theme="light"] [role="dialog"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] .modal button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] .popup button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] [class*="modal"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] [class*="popup"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] [data-radix-dropdown-content] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] [data-radix-select-content] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] [data-radix-menu-content] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] .dropdown button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] .dropdown-menu button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] [class*="dropdown"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+  [data-theme="light"] [class*="menu"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) {
+    background-color: var(--button-primary-bg) !important;
+    color: var(--button-primary-text) !important;
+    border-color: var(--button-primary-bg) !important;
+  }
+
+  [data-theme="light"] [role="dialog"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]):hover,
+  [data-theme="light"] .modal button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]):hover,
+  [data-theme="light"] .popup button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]):hover {
+    background-color: var(--button-primary-hover) !important;
+  }
+
+  /* Modal içindeki secondary butonlar */
+  [data-theme="light"] [role="dialog"] .btn-secondary,
+  [data-theme="light"] .modal .btn-secondary,
+  [data-theme="light"] .popup .btn-secondary {
+    background-color: var(--button-secondary-bg) !important;
+    color: var(--button-secondary-text) !important;
+    border-color: var(--button-secondary-bg) !important;
+  }
+
+  [data-theme="light"] [role="dialog"] .btn-secondary:hover,
+  [data-theme="light"] .modal .btn-secondary:hover,
+  [data-theme="light"] .popup .btn-secondary:hover {
+    background-color: var(--button-secondary-hover) !important;
+  }
+
+  /* Modal, popup ve açılır ekranlar içindeki butonların içindeki yazılar */
+  [data-theme="light"] [role="dialog"] button *,
+  [data-theme="light"] .modal button *,
+  [data-theme="light"] .popup button *,
+  [data-theme="light"] [class*="modal"] button *,
+  [data-theme="light"] [class*="popup"] button *,
+  [data-theme="light"] [data-radix-dropdown-content] button *,
+  [data-theme="light"] [data-radix-select-content] button *,
+  [data-theme="light"] [data-radix-menu-content] button *,
+  [data-theme="light"] .dropdown button *,
+  [data-theme="light"] .dropdown-menu button *,
+  [data-theme="light"] [class*="dropdown"] button *,
+  [data-theme="light"] [class*="menu"] button * {
+    color: var(--modal-button-text) !important;
+  }
+
+  /* Modal, popup ve açılır ekranlar içindeki butonların içindeki SVG ikonlar */
+  [data-theme="light"] [role="dialog"] button svg,
+  [data-theme="light"] .modal button svg,
+  [data-theme="light"] .popup button svg,
+  [data-theme="light"] [data-radix-dropdown-content] button svg,
+  [data-theme="light"] [data-radix-select-content] button svg,
+  [data-theme="light"] [data-radix-menu-content] button svg,
+  [data-theme="light"] .dropdown button svg,
+  [data-theme="light"] .dropdown-menu button svg,
+  [data-theme="light"] [class*="dropdown"] button svg,
+  [data-theme="light"] [class*="menu"] button svg {
+    color: var(--modal-button-text) !important;
+    fill: var(--modal-button-text) !important;
+    stroke: var(--modal-button-text) !important;
+  }
+
+  /* Modal overlay */
+  [data-theme="light"] [data-radix-dialog-overlay],
+  [data-theme="light"] .modal-overlay,
+  [data-theme="light"] [class*="overlay"] {
+    background-color: var(--modal-overlay) !important;
+  }
+
+  /* Dropdown, modal ve popup içindeki hardcoded background renklerini override et */
+  [data-theme="light"] [role="dialog"] [class*="bg-[#1E1E1E]"],
+  [data-theme="light"] [role="dialog"] [class*="bg-[#25272A]"],
+  [data-theme="light"] [role="dialog"] [class*="bg-[#2D2F33]"],
+  [data-theme="light"] .modal [class*="bg-[#1E1E1E]"],
+  [data-theme="light"] .modal [class*="bg-[#25272A]"],
+  [data-theme="light"] .modal [class*="bg-[#2D2F33]"],
+  [data-theme="light"] .popup [class*="bg-[#1E1E1E]"],
+  [data-theme="light"] .popup [class*="bg-[#25272A]"],
+  [data-theme="light"] .popup [class*="bg-[#2D2F33]"],
+  [data-theme="light"] .dropdown [class*="bg-[#1E1E1E]"],
+  [data-theme="light"] .dropdown [class*="bg-[#25272A]"],
+  [data-theme="light"] .dropdown [class*="bg-[#2D2F33]"],
+  [data-theme="light"] [data-radix-dropdown-content] [class*="bg-[#1E1E1E]"],
+  [data-theme="light"] [data-radix-dropdown-content] [class*="bg-[#25272A]"],
+  [data-theme="light"] [data-radix-dropdown-content] [class*="bg-[#2D2F33]"] {
+    background-color: var(--modal-bg) !important;
+  }
+
+  /* Dropdown, modal ve popup içindeki hardcoded text renklerini override et */
+  [data-theme="light"] [role="dialog"] [class*="text-white"],
+  [data-theme="light"] [role="dialog"] [class*="text-[#A5A5A5]"],
+  [data-theme="light"] [role="dialog"] [class*="text-[#3EA6FF]"],
+  [data-theme="light"] .modal [class*="text-white"],
+  [data-theme="light"] .modal [class*="text-[#A5A5A5]"],
+  [data-theme="light"] .modal [class*="text-[#3EA6FF]"],
+  [data-theme="light"] .popup [class*="text-white"],
+  [data-theme="light"] .popup [class*="text-[#A5A5A5]"],
+  [data-theme="light"] .popup [class*="text-[#3EA6FF]"],
+  [data-theme="light"] .dropdown [class*="text-white"],
+  [data-theme="light"] .dropdown [class*="text-[#A5A5A5]"],
+  [data-theme="light"] .dropdown [class*="text-[#3EA6FF]"],
+  [data-theme="light"] [data-radix-dropdown-content] [class*="text-white"],
+  [data-theme="light"] [data-radix-dropdown-content] [class*="text-[#A5A5A5]"],
+  [data-theme="light"] [data-radix-dropdown-content] [class*="text-[#3EA6FF]"] {
+    color: var(--modal-text) !important;
+  }
+
+  /* Modal içindeki hardcoded input background renklerini override et */
+  [data-theme="light"] [role="dialog"] input[class*="bg-"],
+  [data-theme="light"] [role="dialog"] textarea[class*="bg-"],
+  [data-theme="light"] [role="dialog"] select[class*="bg-"],
+  [data-theme="light"] .modal input[class*="bg-"],
+  [data-theme="light"] .modal textarea[class*="bg-"],
+  [data-theme="light"] .modal select[class*="bg-"],
+  [data-theme="light"] .popup input[class*="bg-"],
+  [data-theme="light"] .popup textarea[class*="bg-"],
+  [data-theme="light"] .popup select[class*="bg-"] {
+    background-color: var(--modal-input-bg) !important;
+  }
+
+  /* Modal içindeki hardcoded input text renklerini override et */
+  [data-theme="light"] [role="dialog"] input[class*="text-"],
+  [data-theme="light"] [role="dialog"] textarea[class*="text-"],
+  [data-theme="light"] [role="dialog"] select[class*="text-"],
+  [data-theme="light"] .modal input[class*="text-"],
+  [data-theme="light"] .modal textarea[class*="text-"],
+  [data-theme="light"] .modal select[class*="text-"],
+  [data-theme="light"] .popup input[class*="text-"],
+  [data-theme="light"] .popup textarea[class*="text-"],
+  [data-theme="light"] .popup select[class*="text-"] {
+    color: var(--modal-input-text) !important;
+  }
+
+  /* Modal içindeki inline style background renklerini override et */
+  [data-theme="light"] [role="dialog"] input[style*="background"],
+  [data-theme="light"] [role="dialog"] textarea[style*="background"],
+  [data-theme="light"] [role="dialog"] select[style*="background"],
+  [data-theme="light"] .modal input[style*="background"],
+  [data-theme="light"] .modal textarea[style*="background"],
+  [data-theme="light"] .modal select[style*="background"],
+  [data-theme="light"] .popup input[style*="background"],
+  [data-theme="light"] .popup textarea[style*="background"],
+  [data-theme="light"] .popup select[style*="background"] {
+    background-color: var(--modal-input-bg) !important;
+  }
+
+  /* Modal içindeki inline style color renklerini override et */
+  [data-theme="light"] [role="dialog"] input[style*="color"],
+  [data-theme="light"] [role="dialog"] textarea[style*="color"],
+  [data-theme="light"] [role="dialog"] select[style*="color"],
+  [data-theme="light"] .modal input[style*="color"],
+  [data-theme="light"] .modal textarea[style*="color"],
+  [data-theme="light"] .modal select[style*="color"],
+  [data-theme="light"] .popup input[style*="color"],
+  [data-theme="light"] .popup textarea[style*="color"],
+  [data-theme="light"] .popup select[style*="color"] {
+    color: var(--modal-input-text) !important;
+  }
+
+  /* ========== LIGHT MODE TYPOGRAPHY ========== */
+  
+  /* Primary Text (Headings H1-H3) - #282828 */
+  [data-theme="light"] h1,
+  [data-theme="light"] h2,
+  [data-theme="light"] h3 {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+    text-shadow: none !important;
+  }
+
+  /* Secondary Text (Body, Labels) - #4A4A4A */
+  [data-theme="light"] p,
+  [data-theme="light"] span:not(h1 span):not(h2 span):not(h3 span),
+  [data-theme="light"] div:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6),
+  [data-theme="light"] label {
+    color: var(--text-secondary) !important;
+    text-shadow: none !important;
+  }
+
+  /* Tertiary/Helper Text - #8585B8 */
+  [data-theme="light"] .text-muted,
+  [data-theme="light"] .text-tertiary,
+  [data-theme="light"] [class*="helper"],
+  [data-theme="light"] [class*="description"] {
+    color: var(--text-tertiary) !important;
+  }
+
+  /* Links */
+  [data-theme="light"] a:not(.nav-item):not(button a):not(.btn a) {
+    color: var(--link-color) !important;
+    text-shadow: none !important;
+  }
+
+  [data-theme="light"] a:not(.nav-item):not(button a):not(.btn a):hover {
+    color: var(--link-hover) !important;
+  }
+
+  /* ========== LIGHT MODE INPUTS (Forms) ========== */
+  
+  [data-theme="light"] input:not([role="dialog"] input):not(.modal input):not(.popup input),
+  [data-theme="light"] textarea:not([role="dialog"] textarea):not(.modal textarea):not(.popup textarea),
+  [data-theme="light"] select:not([role="dialog"] select):not(.modal select):not(.popup select) {
+    background-color: var(--input-bg) !important;
+    color: var(--input-text) !important;
+    border-color: var(--input-border) !important;
+  }
+
+  [data-theme="light"] input:not([role="dialog"] input):not(.modal input):not(.popup input):focus,
+  [data-theme="light"] textarea:not([role="dialog"] textarea):not(.modal textarea):not(.popup textarea):focus,
+  [data-theme="light"] select:not([role="dialog"] select):not(.modal select):not(.popup select):focus {
+    border-color: var(--input-border-focus) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(22, 150, 240, 0.1) !important;
+  }
+
+  [data-theme="light"] input::placeholder,
+  [data-theme="light"] textarea::placeholder {
+    color: var(--input-placeholder) !important;
+  }
+
+  [data-theme="light"] label:not([role="dialog"] label):not(.modal label):not(.popup label) {
+    color: var(--input-label) !important;
+  }
+
+  [data-theme="light"] input:disabled,
+  [data-theme="light"] textarea:disabled,
+  [data-theme="light"] select:disabled {
+    background-color: var(--input-disabled-bg) !important;
+    color: var(--disabled-text) !important;
+  }
+
+  /* ========== LIGHT MODE CARDS ========== */
+  
   [data-theme="light"] .card,
-  [data-theme="light"] [class*="card"] {
-    padding: 1.5rem !important;
-    border-radius: var(--card-radius) !important;
-  }
-
-  /* Light mode Calendar & Dashboard Widgets - Modern kartlar */
-  [data-theme="light"] .widget,
-  [data-theme="light"] [class*="widget"] {
-    background: var(--bg-surface) !important;
-    border: none !important;
+  [data-theme="light"] [class*="card"],
+  [data-theme="light"] [class*="Card"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-color) !important;
     box-shadow: var(--card-shadow) !important;
-    border-radius: var(--card-radius) !important;
-    padding: 1.5rem !important;
   }
 
-  /* Light mode Grafikler - Sadeleştirilmiş */
-  [data-theme="light"] svg,
-  [data-theme="light"] canvas {
-    border-radius: 0.75rem !important;
+  [data-theme="light"] .card h1,
+  [data-theme="light"] .card h2,
+  [data-theme="light"] .card h3,
+  [data-theme="light"] [class*="card"] h1,
+  [data-theme="light"] [class*="card"] h2,
+  [data-theme="light"] [class*="card"] h3 {
+    color: var(--text-primary) !important;
   }
 
-  /* Light mode Content Wrapper / Main Content Area - Açık mor arka plan */
-  [data-theme="light"] main,
-  [data-theme="light"] .main-content,
-  [data-theme="light"] .content-wrapper,
-  [data-theme="light"] .page-content {
-    background-color: var(--background-soft-purple) !important;
+  [data-theme="light"] .card p,
+  [data-theme="light"] .card span,
+  [data-theme="light"] [class*="card"] p,
+  [data-theme="light"] [class*="card"] span {
+    color: var(--text-secondary) !important;
   }
 
-  /* Layout.js'deki main content area için özel stil - flex-1 overflow-y-auto */
-  [data-theme="light"] main.flex-1.overflow-y-auto {
-    background-color: var(--background-soft-purple) !important;
+  [data-theme="light"] .card [class*="subtitle"],
+  [data-theme="light"] [class*="card"] [class*="subtitle"] {
+    color: var(--text-tertiary) !important;
   }
 
-  /* Ana content wrapper div'i */
-  [data-theme="light"] .flex-1.flex.flex-col.overflow-hidden {
-    background-color: var(--background-soft-purple) !important;
+  /* ========== LIGHT MODE TABLES ========== */
+  
+  [data-theme="light"] table thead,
+  [data-theme="light"] table thead tr,
+  [data-theme="light"] table thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+
+  [data-theme="light"] table tbody tr {
+    background-color: var(--table-row-bg) !important;
+  }
+
+  [data-theme="light"] table tbody tr:hover {
+    background-color: var(--table-row-hover) !important;
+  }
+
+  [data-theme="light"] table td,
+  [data-theme="light"] table th {
+    border-color: var(--table-border) !important;
+    color: var(--text-secondary) !important;
+  }
+
+  [data-theme="light"] table th {
+    color: var(--table-header-text) !important;
+  }
+
+  /* ========== LIGHT MODE BADGES/TAGS ========== */
+  
+  [data-theme="light"] [class*="badge"],
+  [data-theme="light"] [class*="tag"],
+  [data-theme="light"] [class*="chip"] {
+    background-color: var(--chip-bg) !important;
+    color: var(--chip-text) !important;
+  }
+
+  [data-theme="light"] [class*="badge"][class*="muted"],
+  [data-theme="light"] [class*="tag"][class*="muted"],
+  [data-theme="light"] [class*="chip"][class*="muted"] {
+    background-color: var(--chip-muted-bg) !important;
+    color: var(--chip-muted-text) !important;
+  }
+
+  [data-theme="light"] [class*="badge"][class*="info"],
+  [data-theme="light"] [class*="tag"][class*="info"],
+  [data-theme="light"] [class*="chip"][class*="info"] {
+    background-color: var(--info-bg) !important;
+    color: var(--info) !important;
+  }
+
+  [data-theme="light"] [class*="badge"][class*="success"],
+  [data-theme="light"] [class*="tag"][class*="success"],
+  [data-theme="light"] [class*="chip"][class*="success"] {
+    background-color: var(--success-bg) !important;
+    color: var(--success) !important;
+  }
+
+  /* ========== LIGHT MODE ALERTS ========== */
+  
+  [data-theme="light"] [class*="alert"][class*="info"],
+  [data-theme="light"] [class*="alert-info"] {
+    border-left: 3px solid var(--alert-info-border) !important;
+    background-color: var(--alert-info-bg) !important;
+    color: var(--alert-info-text) !important;
+  }
+
+  [data-theme="light"] [class*="alert"][class*="success"],
+  [data-theme="light"] [class*="alert-success"] {
+    border-left: 3px solid var(--alert-success-border) !important;
+    background-color: var(--alert-success-bg) !important;
+    color: var(--alert-success-text) !important;
+  }
+
+  [data-theme="light"] [class*="alert"][class*="warning"],
+  [data-theme="light"] [class*="alert-warning"] {
+    border-left: 3px solid var(--alert-warning-border) !important;
+    background-color: var(--alert-warning-bg) !important;
+    color: var(--alert-warning-text) !important;
+  }
+
+  /* ========== LIGHT MODE ICONS (Global) ========== */
+  
+  /* Default icon color */
+  [data-theme="light"] svg:not(.sidebar svg):not(header svg):not([role="dialog"] svg):not(.modal svg):not(.popup svg) {
+    color: var(--icon-default) !important;
+    fill: var(--icon-default) !important;
+    stroke: var(--icon-default) !important;
+  }
+
+  /* Icon hover */
+  [data-theme="light"] svg:not(.sidebar svg):not(header svg):not([role="dialog"] svg):not(.modal svg):not(.popup svg):hover,
+  [data-theme="light"] button:hover svg:not(.sidebar svg):not(header svg),
+  [data-theme="light"] a:hover svg:not(.sidebar svg):not(header svg) {
+    color: var(--icon-hover) !important;
+    fill: var(--icon-hover) !important;
+    stroke: var(--icon-hover) !important;
+  }
+
+  /* Hardcoded ikon renklerini override et */
+  [data-theme="light"] svg[fill="#3EA6FF"],
+  [data-theme="light"] svg[stroke="#3EA6FF"],
+  [data-theme="light"] svg[fill="#5cbdb9"],
+  [data-theme="light"] svg[stroke="#5cbdb9"],
+  [data-theme="light"] svg[fill="#0D6F73"],
+  [data-theme="light"] svg[stroke="#0D6F73"] {
+    fill: var(--icon-primary) !important;
+    stroke: var(--icon-primary) !important;
+  }
+
+  [data-theme="light"] svg[fill="#A5A5A5"],
+  [data-theme="light"] svg[stroke="#A5A5A5"],
+  [data-theme="light"] svg[fill="#84BABF"],
+  [data-theme="light"] svg[stroke="#84BABF"] {
+    fill: var(--icon-muted) !important;
+    stroke: var(--icon-muted) !important;
   }
 }
