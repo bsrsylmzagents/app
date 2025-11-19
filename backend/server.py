@@ -97,8 +97,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
-    allow_headers=["*"]
-    expose_headers=["*"],  # Bu satırı ekleyin
+    allow_headers=["*"],
+    expose_headers=["*"]  # Bu satırı ekleyin
 )
 
 # -------------------- ROUTERS --------------------
