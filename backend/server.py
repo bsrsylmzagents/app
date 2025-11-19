@@ -21,10 +21,13 @@ from urllib.parse import urlparse
 import base64
 import shutil
 
+# -------------------- ENV & ROOT --------------------
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# Logger setup - EN BAŞTA TANIMLA
+# -------------------- LOGGER --------------------
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -32,13 +35,10 @@ logging.basicConfig(
 logger = logging.getLogger("server")
 logger.setLevel(logging.INFO)
 
-# MongoDB connection
+# -------------------- MONGODB --------------------
 
-MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017").strip('"').strip("'")
 DB_NAME = os.environ.get("DB_NAME", "travel_system_online")
-
-# MongoDB URL'den tırnak işaretlerini temizle (eğer varsa)
-MONGO_URL = MONGO_URL.strip('"').strip("'")
 
 # MongoDB bağlantısı - timeout ve retry ile
 try:
@@ -50,36 +50,272 @@ try:
     logger.info(f"MongoDB bağlantısı oluşturuldu: {MONGO_URL}")
 except Exception as e:
     logger.error(f"MongoDB bağlantı hatası: {str(e)}")
-    raise
+    # Render'da startup'ta raise etme, sadece log'la
+    logger.warning("MongoDB bağlantısı başarısız, ancak uygulama başlatılıyor...")
 
-# Eğer URL içinde DB adı varsa otomatik al
 try:
-    # URL'i parse et ve database adını kontrol et
-    # mongodb://host:port/dbname formatı veya mongodb+srv://user:pass@host/dbname
     parsed_url = urlparse(MONGO_URL)
-    # Path'ten database adını çıkar (başındaki / işaretini kaldır)
     db_name_from_url = parsed_url.path.strip('/').split('/')[0] if parsed_url.path else None
-    
-    if db_name_from_url:
-        # URL'de database adı varsa onu kullan
-        db = client[db_name_from_url]
-    else:
-        # URL'de database adı yoksa DB_NAME kullan
-        db = client[DB_NAME]
+    db = client[db_name_from_url] if db_name_from_url else client[DB_NAME]
 except Exception:
-    # Hata durumunda varsayılan olarak DB_NAME kullan
     db = client[DB_NAME]
 
+# -------------------- SECURITY --------------------
 
-# Security
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 
-# Create the main app
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+# -------------------- FASTAPI APP --------------------
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+# -------------------- CORS --------------------
+
+cors_origins_str = os.environ.get('CORS_ORIGINS', '').strip().strip('"').strip("'")
+if cors_origins_str:
+    CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
+else:
+    CORS_ORIGINS = [
+        "https://app-one-lake-13.vercel.app",  # Production frontend
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ]
+    logger.warning("⚠️ CORS_ORIGINS not set in environment, using default origins")
+
+logger.info(f"CORS_ORIGINS={CORS_ORIGINS}")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=CORS_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"]  # Bu satırı ekleyin
+)
+
+# -------------------- ROUTERS --------------------
+
+app.include_router(api_router)
+
+MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
+if MODULES_ENABLED:
+    try:
+        from modules.billing.routes import billing_router
+        app.include_router(billing_router)
+        logger.info("Billing module router loaded")
+    except Exception as e:
+        logger.warning(f"Failed to load billing module: {e}")
+
+# -------------------- STARTUP / SHUTDOWN --------------------
+
+@app.on_event("startup")
+async def startup_event():
+    MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
+    if MODULES_ENABLED:
+        try:
+            from modules.scheduler import start_scheduler
+            start_scheduler()
+        except Exception as e:
+            logger.warning(f"Failed to start scheduler: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
+    if MODULES_ENABLED:
+        try:
+            from modules.scheduler import stop_scheduler
+            stop_scheduler()
+        except Exception as e:
+            logger.warning(f"Failed to stop scheduler: {e}")
+    client.close()
+
+# -------------------- AUTH HELPERS --------------------
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=30)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        company_id = payload.get("company_id")
+        
+        if not user_id or not company_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        return {
+            "user_id": user_id,
+            "company_id": company_id,
+            "is_admin": payload.get("is_admin", False)
+        }
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        logger.error(f"Auth error: {str(e)}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
+# -------------------- AUTH ENDPOINTS --------------------
+
+class LoginRequest(BaseModel):
+    company_code: str
+    username: str
+    password: str
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+@api_router.post("/auth/login")
+async def login(data: LoginRequest):
+    company = await db.companies.find_one({"company_code": data.company_code})
+    if not company:
+        raise HTTPException(status_code=401, detail="Invalid company code")
+    
+    user = await db.users.find_one({"company_id": company["id"], "username": data.username})
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    if not verify_password(data.password, user.get("password_hash") or user.get("password")):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    token = create_access_token({
+        "sub": user["id"],
+        "company_id": user["company_id"],
+        "is_admin": user.get("is_admin", False)
+    })
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user["id"],
+            "username": user.get("username"),
+            "full_name": user.get("full_name"),
+            "is_admin": user.get("is_admin", False),
+            "permissions": user.get("permissions", {})
+        },
+        "company": {
+            "id": company["id"],
+            "name": company.get("company_name"),
+            "code": company.get("company_code")
+        }
+    }
+
+@api_router.get("/auth/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"id": current_user["user_id"]}, {"_id": 0, "password": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    company = await db.companies.find_one({"id": current_user["company_id"]}, {"_id": 0})
+    return {"user": user, "company": company}
+
+@api_router.get("/companies/me")
+async def get_my_company(current_user: dict = Depends(get_current_user)):
+    company = await db.companies.find_one({"id": current_user["company_id"]}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return {"company": company}
+
+# ==================== HELPER FUNCTIONS ====================
+
+async def create_activity_log(
+    company_id: str,
+    user_id: str,
+    username: str,
+    full_name: str,
+    action: str,
+    entity_type: str,
+    entity_id: str,
+    description: str,
+    ip_address: str = "unknown"
+):
+    """Activity log oluştur"""
+    try:
+        log_entry = {
+            "id": str(uuid.uuid4()),
+            "company_id": company_id,
+            "user_id": user_id,
+            "username": username,
+            "full_name": full_name,
+            "action": action,
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "description": description,
+            "ip_address": ip_address,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.activity_logs.insert_one(log_entry)
+    except Exception as e:
+        logger.error(f"Failed to create activity log: {str(e)}")
+
+# ==================== COMPANY UPDATE EXAMPLE ====================
+
+async def update_company(data: dict, company_id: str, current_user: dict):
+    """Company ve owner bilgilerini güncelle"""
+    update_data = {}
+    
+    # Company bilgilerini topla
+    company_fields = ["company_name", "address", "contact_email", "contact_phone", "website", "logo_url"]
+    for field in company_fields:
+        if field in data:
+            update_data[field] = data[field]
+    
+    # Owner bilgilerini güncelle
+    if "owner_username" in data or "owner_full_name" in data:
+        owner = await db.users.find_one({"company_id": company_id, "is_owner": True})
+        if owner:
+            owner_update = {}
+            if "owner_username" in data:
+                owner_update["username"] = data["owner_username"]
+            if "owner_full_name" in data:
+                owner_update["full_name"] = data["owner_full_name"]
+            if "reset_password" in data and data["reset_password"]:
+                new_password = data.get("owner_username", owner.get("username"))
+                owner_update["password_hash"] = get_password_hash(new_password)
+            
+            if owner_update:
+                await db.users.update_one({"id": owner["id"]}, {"$set": owner_update})
+    
+    # Company'yi güncelle
+    if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.companies.update_one({"id": company_id}, {"$set": update_data})
+    
+    # Activity log
+    company = await db.companies.find_one({"id": company_id})
+    await create_activity_log(
+        company_id=company_id,
+        user_id=current_user["user_id"],
+        username=current_user.get("username", "admin"),
+        full_name=current_user.get("full_name", "Admin"),
+        action="update",
+        entity_type="company",
+        entity_id=company_id,
+        description=f"Firma güncellendi: {data.get('company_name', company.get('company_name') if company else 'N/A')}",
+        ip_address=current_user.get("ip_address", "unknown")
+    )
+    
+    return {"message": "Company updated successfully"}
+
 
 # ==================== MODELS ====================
 
@@ -12284,47 +12520,3 @@ async def update_admin_customer(company_id: str, data: dict, current_user: dict 
     
     return {"message": "Company updated successfully"}
 
-# Include the router in the main app
-app.include_router(api_router)
-
-# Include modular SaaS routers (behind feature flag)
-MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-if MODULES_ENABLED:
-    try:
-        from modules.billing.routes import billing_router
-        app.include_router(billing_router)
-        logger.info("Billing module router loaded")
-    except Exception as e:
-        logger.warning(f"Failed to load billing module: {e}")
-    
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.on_event("startup")
-async def startup_event():
-    """Startup event - initialize scheduler"""
-    MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-    if MODULES_ENABLED:
-        try:
-            from modules.scheduler import start_scheduler
-            start_scheduler()
-        except Exception as e:
-            logger.warning(f"Failed to start scheduler: {e}")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Shutdown event - cleanup"""
-    MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-    if MODULES_ENABLED:
-        try:
-            from modules.scheduler import stop_scheduler
-            stop_scheduler()
-        except Exception as e:
-            logger.warning(f"Failed to stop scheduler: {e}")
-    client.close()
