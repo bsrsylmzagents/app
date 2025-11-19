@@ -81,6 +81,65 @@ ALGORITHM = "HS256"
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+    --- CORS middleware en başta ---
+
+cors_origins_str = os.environ.get('CORS_ORIGINS', '').strip().strip('"').strip("'")
+if cors_origins_str:
+CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
+else:
+CORS_ORIGINS = [
+"https://app-one-lake-13.vercel.app",
+"http://localhost:3000",
+"http://localhost:5173",
+"http://127.0.0.1:3000",
+"http://127.0.0.1:5173"
+]
+logger.warning("CORS_ORIGINS not set in environment, using default origins")
+
+logger.info(f"CORS_ORIGINS={CORS_ORIGINS}")
+
+app.add_middleware(
+CORSMiddleware,
+allow_credentials=True,
+allow_origins=CORS_ORIGINS,
+allow_methods=[""],
+allow_headers=[""],
+)
+
+--- Router'ları CORS middleware’den sonra ekle ---
+
+app.include_router(api_router)
+
+MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
+if MODULES_ENABLED:
+try:
+from modules.billing.routes import billing_router
+app.include_router(billing_router)
+logger.info("Billing module router loaded")
+except Exception as e:
+logger.warning(f"Failed to load billing module: {e}")
+
+--- Startup ve Shutdown event'leri ---
+
+@app.on_event("startup")
+async def startup_event():
+if MODULES_ENABLED:
+try:
+from modules.scheduler import start_scheduler
+start_scheduler()
+except Exception as e:
+logger.warning(f"Failed to start scheduler: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+if MODULES_ENABLED:
+try:
+from modules.scheduler import stop_scheduler
+stop_scheduler()
+except Exception as e:
+logger.warning(f"Failed to stop scheduler: {e}")
+client.close()
+
 # ==================== MODELS ====================
 
 class Company(BaseModel):
@@ -12284,65 +12343,3 @@ async def update_admin_customer(company_id: str, data: dict, current_user: dict 
     
     return {"message": "Company updated successfully"}
 
-# Include the router in the main app
-app.include_router(api_router)
-
-# Include modular SaaS routers (behind feature flag)
-MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-if MODULES_ENABLED:
-    try:
-        from modules.billing.routes import billing_router
-        app.include_router(billing_router)
-        logger.info("Billing module router loaded")
-    except Exception as e:
-        logger.warning(f"Failed to load billing module: {e}")
-    
-
-# CORS Configuration
-cors_origins_str = os.environ.get('CORS_ORIGINS', '').strip().strip('"').strip("'")
-if cors_origins_str:
-    CORS_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
-else:
-    CORS_ORIGINS = [
-        "https://app-one-lake-13.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173"
-    ]
-    logger.warning("CORS_ORIGINS not set in environment, using default origins")
-
-logger.info(f"CORS_ORIGINS={CORS_ORIGINS}")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=CORS_ORIGINS,  # artık liste doğru şekilde geliyor
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Startup event - initialize scheduler"""
-    MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-    if MODULES_ENABLED:
-        try:
-            from modules.scheduler import start_scheduler
-            start_scheduler()
-        except Exception as e:
-            logger.warning(f"Failed to start scheduler: {e}")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Shutdown event - cleanup"""
-    MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-    if MODULES_ENABLED:
-        try:
-            from modules.scheduler import stop_scheduler
-            stop_scheduler()
-        except Exception as e:
-            logger.warning(f"Failed to stop scheduler: {e}")
-    client.close()
