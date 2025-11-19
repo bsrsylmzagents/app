@@ -1,0 +1,38 @@
+RECHARTS PAKETİ YÜKLEME TALİMATLARI
+====================================
+
+Sorun: recharts paketi node_modules klasöründe yok.
+
+ÇÖZÜM 1: CMD (Command Prompt) kullanın (ÖNERİLEN)
+--------------------------------------------------
+1. Windows tuşuna basın, "cmd" yazın ve Enter'a basın
+2. Şu komutları sırayla çalıştırın:
+
+   cd "C:\Users\bsr2\Desktop\Yeni klasör\app\app\frontend"
+   npm install recharts
+
+3. Yükleme tamamlandıktan sonra React uygulamasını yeniden başlatın
+
+ÇÖZÜM 2: PowerShell Execution Policy ayarı
+---------------------------------------------
+1. PowerShell'i YÖNETİCİ OLARAK açın
+2. Şu komutu çalıştırın:
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+3. Sonra frontend klasörüne gidip:
+   cd "C:\Users\bsr2\Desktop\Yeni klasör\app\app\frontend"
+   npm install recharts
+
+ÇÖZÜM 3: Tüm paketleri yeniden yükle
+-------------------------------------
+Frontend klasöründe:
+   npm install
+
+veya
+
+   yarn install
+
+NOT: Yükleme tamamlandıktan sonra React development server'ı 
+     durdurup tekrar başlatmanız gerekebilir (Ctrl+C sonra npm start)
+
+
+

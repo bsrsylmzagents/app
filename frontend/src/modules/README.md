@@ -46,3 +46,4 @@ Add to header:
 - `/hotels/:id` - Hotel detail (requires hotel module)
 
 
+

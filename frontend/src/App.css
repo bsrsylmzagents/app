@@ -1,18 +1,21 @@
 .App {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #0a0e1a, #0f1419);
+  background: var(--bg-primary);
+  transition: background-color 0.3s ease;
 }
 
 .header-gradient {
-  background: linear-gradient(135deg, rgba(20, 184, 220, 0.1), rgba(16, 110, 190, 0.05));
+  background: var(--bg-surface);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(20, 184, 220, 0.2);
+  border-bottom: var(--border-width) solid var(--border);
+  transition: background-color 0.3s ease, border-color 0.3s ease, border-width 0.3s ease;
 }
 
 .sidebar {
-  background: linear-gradient(180deg, rgba(15, 20, 30, 0.95), rgba(10, 14, 26, 0.98));
+  background: var(--sidebar-bg);
   backdrop-filter: blur(12px);
-  border-right: 1px solid rgba(20, 184, 220, 0.15);
+  border-right: var(--border-width) solid var(--border);
+  transition: background-color 0.3s ease, border-color 0.3s ease, border-width 0.3s ease;
 }
 
 .card-hover {
@@ -21,7 +24,7 @@
 
 .card-hover:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(20, 184, 220, 0.25);
+  box-shadow: var(--card-shadow);
 }
 
 .timeline-dot {
@@ -36,7 +39,7 @@
   transform: translate(-50%, -50%);
   width: 120%;
   height: 120%;
-  background: rgba(20, 184, 220, 0.3);
+  background: rgba(0, 120, 255, 0.3);
   border-radius: 50%;
   animation: pulse 2s infinite;
 }
@@ -53,44 +56,305 @@
 }
 
 .stat-card {
-  background: linear-gradient(135deg, rgba(20, 184, 220, 0.08), rgba(16, 110, 190, 0.05));
-  border: 1px solid rgba(20, 184, 220, 0.2);
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--border);
   backdrop-filter: blur(10px);
+  box-shadow: var(--card-shadow);
+  transition: background-color 0.3s ease, border-color 0.3s ease, border-width 0.3s ease;
 }
 
 .currency-input {
-  background: rgba(20, 184, 220, 0.05);
-  border: 1px solid rgba(20, 184, 220, 0.2);
+  background: var(--input-bg);
+  border: var(--border-width) solid var(--border);
+  color: var(--text-primary);
   transition: all 0.3s ease;
 }
 
 .currency-input:focus {
-  border-color: rgba(20, 184, 220, 0.5);
-  box-shadow: 0 0 0 3px rgba(20, 184, 220, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 120, 255, 0.1);
+}
+
+.currency-input::placeholder {
+  color: var(--placeholder);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #14b8dc, #106ebe);
+  background: var(--accent);
+  color: var(--text-primary);
   transition: all 0.3s ease;
 }
 
 .btn-primary:hover {
+  background: var(--accent-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(20, 184, 220, 0.4);
+  box-shadow: var(--card-shadow);
 }
 
 .nav-item {
   transition: all 0.3s ease;
+  color: var(--text-secondary);
 }
 
 .nav-item:hover {
-  background: rgba(20, 184, 220, 0.1);
-  border-left: 3px solid #14b8dc;
+  background: var(--sidebar-hover);
+  border-left: 3px solid var(--accent);
   padding-left: 1.25rem;
+  transition: background-color 0.3s ease;
+  color: var(--text-primary);
 }
 
 .nav-item.active {
-  background: rgba(20, 184, 220, 0.15);
-  border-left: 3px solid #14b8dc;
+  background: rgba(0, 120, 255, 0.15);
+  border-left: 3px solid var(--accent);
   padding-left: 1.25rem;
+  color: var(--text-primary);
+}
+
+/* ============================================
+   LIGHT MODE İYİLEŞTİRMELERİ - SADECE LIGHT MODE
+   ============================================ */
+
+/* Light mode için genel renk override'ları - Tailwind arbitrary values için */
+[data-theme="light"] [class*="bg-[#1E1E1E]"] {
+  background-color: var(--bg-primary) !important;
+}
+
+[data-theme="light"] [class*="bg-[#25272A]"] {
+  background-color: var(--bg-elevated) !important;
+  border: var(--border-width) solid var(--border) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] [class*="bg-[#2D2F33]"] {
+  background-color: var(--chip-bg) !important;
+}
+
+[data-theme="light"] [class*="border-[#2D2F33]"] {
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] [class*="text-[#3EA6FF]"] {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] [class*="text-[#A5A5A5]"] {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] [class*="text-white"]:not([class*="bg-"]) {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] [class*="hover:bg-[#2D2F33]"]:hover {
+  background-color: var(--hover-surface) !important;
+}
+
+[data-theme="light"] [class*="bg-[#3EA6FF]/20"] {
+  background-color: rgba(0, 120, 255, 0.2) !important;
+}
+
+[data-theme="light"] [class*="bg-[#3EA6FF]/5"] {
+  background-color: rgba(0, 120, 255, 0.05) !important;
+}
+
+[data-theme="light"] [class*="divide-[#2D2F33]"] > * {
+  border-color: var(--divider) !important;
+}
+
+/* ============================================
+   KARTLAR VE PANELLER - LIGHT MODE
+   ============================================ */
+
+/* Tüm kart komponentleri için light mode */
+[data-theme="light"] .bg-card,
+[data-theme="light"] [class*="rounded-lg"][class*="bg-"],
+[data-theme="light"] [class*="rounded-xl"][class*="bg-"] {
+  background: var(--bg-surface) !important;
+  border: var(--border-width) solid var(--border) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+/* Panel ve widget kutuları */
+[data-theme="light"] .bg-panel,
+[data-theme="light"] [class*="backdrop-blur"][class*="bg-"] {
+  background: var(--bg-elevated) !important;
+  box-shadow: var(--soft-shadow) !important;
+  border: var(--border-width) solid var(--border) !important;
+}
+
+/* Stat card'lar */
+[data-theme="light"] .stat-card {
+  background: var(--bg-surface) !important;
+  border: var(--border-width) solid var(--border) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+/* ============================================
+   TABLO VE LİSTELER - LIGHT MODE
+   ============================================ */
+
+/* Tablo header */
+[data-theme="light"] thead,
+[data-theme="light"] [class*="table-header"],
+[data-theme="light"] th {
+  background: var(--table-header) !important;
+  border-bottom: var(--border-width) solid var(--border) !important;
+}
+
+/* Tablo satırları */
+[data-theme="light"] tbody tr,
+[data-theme="light"] [class*="divide-y"] > * {
+  border-bottom: var(--border-width) solid var(--divider) !important;
+}
+
+/* Tablo satır hover */
+[data-theme="light"] tbody tr:hover,
+[data-theme="light"] [class*="hover:bg-"]:hover {
+  background: var(--hover-surface) !important;
+}
+
+/* Liste elemanları */
+[data-theme="light"] li,
+[data-theme="light"] [class*="list-item"],
+[data-theme="light"] [class*="space-y"] > * {
+  background: var(--bg-surface) !important;
+  box-shadow: var(--soft-shadow) !important;
+  border: var(--border-width) solid var(--border) !important;
+}
+
+/* ============================================
+   INPUT ALANLARI - LIGHT MODE
+   ============================================ */
+
+/* Input ve form kutuları */
+[data-theme="light"] input[type="text"],
+[data-theme="light"] input[type="number"],
+[data-theme="light"] input[type="email"],
+[data-theme="light"] input[type="password"],
+[data-theme="light"] input[type="date"],
+[data-theme="light"] input[type="time"],
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: var(--input-bg) !important;
+  border: var(--border-width) solid var(--input-border) !important;
+  box-shadow: var(--soft-shadow) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Input focus state */
+[data-theme="light"] input:focus,
+[data-theme="light"] textarea:focus,
+[data-theme="light"] select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--input-focus) !important;
+  outline: none !important;
+}
+
+/* Input placeholder */
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: var(--placeholder) !important;
+}
+
+/* ============================================
+   TIMELINE & DASHBOARD - LIGHT MODE
+   ============================================ */
+
+/* Timeline hücreleri */
+[data-theme="light"] [class*="timeline"],
+[data-theme="light"] [class*="calendar-day"],
+[data-theme="light"] [class*="day-cell"] {
+  background: var(--timeline-bg) !important;
+  border: var(--border-width) solid var(--border) !important;
+}
+
+/* Dashboard küçük kutular */
+[data-theme="light"] [class*="dashboard"],
+[data-theme="light"] [class*="widget"],
+[data-theme="light"] [class*="stat-box"] {
+  background: var(--bg-elevated) !important;
+  border: var(--border-width) solid var(--border) !important;
+  box-shadow: var(--soft-shadow) !important;
+}
+
+/* ============================================
+   GENEL İYİLEŞTİRMELER - LIGHT MODE
+   ============================================ */
+
+/* Tüm border'ları daha belirgin yap ve kalınlığı artır */
+[data-theme="light"] [class*="border"] {
+  border-color: var(--border) !important;
+  border-width: var(--border-width) !important;
+}
+
+/* Tüm divider'ları daha belirgin yap */
+[data-theme="light"] [class*="divide"] > * {
+  border-color: var(--divider) !important;
+  border-width: var(--border-width) !important;
+}
+
+/* Hover efektlerini iyileştir */
+[data-theme="light"] [class*="hover:"]:hover {
+  background: var(--hover-surface) !important;
+}
+
+/* Gölgeleri iyileştir */
+[data-theme="light"] [class*="shadow"] {
+  box-shadow: var(--card-shadow) !important;
+}
+
+/* Modal ve popup arka planları */
+[data-theme="light"] [class*="modal"],
+[data-theme="light"] [class*="dialog"],
+[data-theme="light"] [class*="popup"] {
+  background: var(--popup-bg) !important;
+  border: var(--border-width) solid var(--border) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+/* ============================================
+   GENEL HARD-CODED RENK OVERRIDE'LARI
+   ============================================ */
+
+/* Tüm bg-[#...] class'larını tema değişkenlerine dönüştür */
+[data-theme="light"] [class*="bg-[#1E1E1E]"],
+[data-theme="light"] [class*="bg-[#25272A]"],
+[data-theme="light"] [class*="bg-[#2D2F33]"] {
+  background: var(--bg-elevated) !important;
+  border: var(--border-width) solid var(--border) !important;
+}
+
+/* Tüm text-[#...] class'larını tema değişkenlerine dönüştür */
+[data-theme="light"] [class*="text-[#A5A5A5]"],
+[data-theme="light"] [class*="text-[#FFFFFF]"] {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] [class*="text-[#3EA6FF]"] {
+  color: var(--accent) !important;
+}
+
+/* Tüm border-[#...] class'larını tema değişkenlerine dönüştür */
+[data-theme="light"] [class*="border-[#2D2F33]"],
+[data-theme="light"] [class*="border-[#25272A]"],
+[data-theme="light"] [class*="border-[#14b8dc]"] {
+  border-color: var(--border) !important;
+  border-width: var(--border-width) !important;
+}
+
+/* Hover efektleri */
+[data-theme="light"] [class*="hover:bg-[#2D2F33]"]:hover {
+  background: var(--hover-surface) !important;
+}
+
+/* Placeholder renkleri */
+[data-theme="light"] [class*="placeholder-[#A5A5A5]"]::placeholder {
+  color: var(--placeholder) !important;
+}
+
+/* Focus border renkleri */
+[data-theme="light"] [class*="focus:border-[#3EA6FF]"]:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--input-focus) !important;
 }

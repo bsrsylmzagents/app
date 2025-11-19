@@ -52,6 +52,13 @@ module.exports = {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
+  			},
+  			// VSCode/Cursor benzeri tema renkleri
+  			theme: {
+  				sidebar: 'hsl(var(--sidebar-bg))',
+  				panel: 'hsl(var(--panel-bg))',
+  				'text-primary': 'hsl(var(--text-primary))',
+  				'text-secondary': 'hsl(var(--text-secondary))'
   			}
   		},
   		keyframes: {
