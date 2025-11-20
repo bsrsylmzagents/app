@@ -14,6 +14,8 @@ const AdminNewCustomer = () => {
     package_start_date: '',
     package_end_date: '',
     owner_username: '',
+    admin_full_name: '',
+    admin_password: '',
     address: '',
     tax_office: '',
     tax_number: '',
@@ -28,8 +30,14 @@ const AdminNewCustomer = () => {
     e.preventDefault();
     setLoading(true);
 
+    const submissionData = {
+      ...formData,
+      admin_username: formData.owner_username,
+      contact_phone: formData.phone,
+    };
+
     try {
-      const response = await axios.post(`${API}/admin/customers`, formData);
+      const response = await axios.post(`${API}/auth/register`, submissionData);
       setCreatedCustomer(response.data);
       toast.success('Müşteri başarıyla oluşturuldu!');
       
@@ -97,11 +105,11 @@ const AdminNewCustomer = () => {
               <div className="border-t border-[#2D2F33] pt-3 mt-3">
                 <div>
                   <Label className="text-gray-400">Kullanıcı Adı:</Label>
-                  <p className="text-white">{createdCustomer.owner.username}</p>
+                  <p className="text-white">{formData.owner_username}</p>
                 </div>
                 <div className="mt-2">
                   <Label className="text-gray-400">Şifre:</Label>
-                  <p className="text-white font-mono bg-[#0a0e1a] p-2 rounded">{createdCustomer.owner.password}</p>
+                  <p className="text-white font-mono bg-[#0a0e1a] p-2 rounded">{formData.admin_password}</p>
                   <p className="text-xs text-gray-500 mt-1">Bu şifreyi müşteriye iletiniz</p>
                 </div>
               </div>
@@ -119,6 +127,8 @@ const AdminNewCustomer = () => {
                     package_start_date: '',
                     package_end_date: '',
                     owner_username: '',
+                    admin_full_name: '',
+                    admin_password: '',
                     address: '',
                     tax_office: '',
                     tax_number: '',
@@ -207,8 +217,35 @@ const AdminNewCustomer = () => {
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                Şifre otomatik olarak kullanıcı adı ile aynı olacaktır
+                Bu kullanıcı adı, yeni firmanın sahibi (admin) olacaktır.
               </p>
+            </div>
+            <div>
+              <Label htmlFor="admin_full_name" className="text-gray-300">
+                Ad Soyad *
+              </Label>
+              <Input
+                id="admin_full_name"
+                value={formData.admin_full_name}
+                onChange={(e) => setFormData({ ...formData, admin_full_name: e.target.value })}
+                className="bg-[#2D2F33] border-[#2D2F33] text-white focus:border-[#3EA6FF]"
+                placeholder="Sahip kullanıcının adı ve soyadı"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="admin_password" className="text-gray-300">
+                Şifre *
+              </Label>
+              <Input
+                id="admin_password"
+                type="password"
+                value={formData.admin_password}
+                onChange={(e) => setFormData({ ...formData, admin_password: e.target.value })}
+                className="bg-[#2D2F33] border-[#2D2F33] text-white focus:border-[#3EA6FF]"
+                placeholder="Güçlü bir şifre belirleyin"
+                required
+              />
             </div>
 
             <div className="border-t border-[#14b8dc]/20 pt-4 mt-4">

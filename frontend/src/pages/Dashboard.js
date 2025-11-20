@@ -558,7 +558,7 @@ const Dashboard = () => {
         }
       }, 300);
     }
-  }, [selectedDate, dashboardData, currentTime]);
+  }, [selectedDate, dashboardData]);
 
   if (loading && !dashboardData) {
     return (
@@ -729,7 +729,7 @@ const Dashboard = () => {
                       style={{
                         left: `${((currentTime.getHours() + currentTime.getMinutes() / 60) / 24) * 100}%`,
                         top: '0',
-                        bottom: '50px', // Saat kutusu alanının üstüne kadar (scroll bar'ın üstü)
+                        bottom: '25px', // Adjusted to be within the hour box
                         boxShadow: '0 0 10px rgba(62, 166, 255, 0.8)'
                       }}
                     >

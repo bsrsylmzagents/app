@@ -328,6 +328,10 @@ class Company(BaseModel):
     contact_phone: Optional[str] = None  # İletişim telefonu
     website: Optional[str] = None  # Web sitesi
     address: Optional[str] = None  # Adres
+    tax_office: Optional[str] = None
+    tax_number: Optional[str] = None
+    package_start_date: str
+    package_end_date: str
     # MODULAR SAAS: Module access control
     modules_enabled: Dict[str, bool] = Field(default_factory=lambda: {"tour": True})  # Default: tour enabled
     billing: Optional[Dict[str, Any]] = None  # { stripe_customer_id, subscriptions: [...] }
@@ -821,6 +825,12 @@ class CompanyCreate(BaseModel):
     admin_password: str
     admin_full_name: str
     admin_email: Optional[EmailStr] = None
+    contact_phone: str
+    address: str
+    tax_office: str
+    tax_number: str
+    package_start_date: str
+    package_end_date: str
 
 class LoginRequest(BaseModel):
     company_code: str
@@ -1122,7 +1132,16 @@ async def register_company(data: CompanyCreate):
         company_code = generate_company_code()
     
     # Create company
-    company = Company(company_code=company_code, company_name=data.company_name)
+    company = Company(
+        company_code=company_code,
+        company_name=data.company_name,
+        contact_phone=data.contact_phone,
+        address=data.address,
+        tax_office=data.tax_office,
+        tax_number=data.tax_number,
+        package_start_date=data.package_start_date,
+        package_end_date=data.package_end_date,
+    )
     company_doc = company.model_dump()
     company_doc['created_at'] = company_doc['created_at'].isoformat()
     await db.companies.insert_one(company_doc)
@@ -12465,6 +12484,14 @@ async def update_admin_customer(company_id: str, data: dict, current_user: dict 
         update_data["tax_office"] = data["tax_office"]
     if "tax_number" in data:
         update_data["tax_number"] = data["tax_number"]
+    if "contact_phone" in data:
+        update_data["contact_phone"] = data["contact_phone"]
+    if "address" in data:
+        update_data["address"] = data["address"]
+    if "tax_office" in data:
+        update_data["tax_office"] = data["tax_office"]
+    if "tax_number" in data:
+        update_data["tax_number"] = data["tax_number"]
     if "phone" in data:
         update_data["phone"] = data["phone"]
     if "email" in data:
@@ -12492,8 +12519,9 @@ async def update_admin_customer(company_id: str, data: dict, current_user: dict 
             if "owner_full_name" in data:
                 owner_update["full_name"] = data["owner_full_name"]
             if "reset_password" in data and data["reset_password"]:
-                # Şifreyi kullanıcı adı ile sıfırla
                 new_password = data.get("owner_username", owner.get("username"))
+                if new_password == data.get("owner_username"):
+                    raise HTTPException(status_code=400, detail="Password cannot be the same as the username.")
                 owner_update["password_hash"] = get_password_hash(new_password)
             
             if owner_update:

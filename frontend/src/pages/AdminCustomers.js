@@ -13,6 +13,8 @@ const AdminCustomers = () => {
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,12 +22,12 @@ const AdminCustomers = () => {
   }, []);
 
   useEffect(() => {
+    let filtered = customers;
+
     // Arama filtresi
-    if (searchQuery.trim() === '') {
-      setFilteredCustomers(customers);
-    } else {
+    if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
-      const filtered = customers.filter(customer => {
+      filtered = filtered.filter(customer => {
         const companyName = (customer.company_name || '').toLowerCase();
         const companyCode = (customer.company_code || '').toLowerCase();
         const email = (customer.email || '').toLowerCase();
@@ -36,9 +38,18 @@ const AdminCustomers = () => {
                email.includes(query) ||
                ownerUsername.includes(query);
       });
-      setFilteredCustomers(filtered);
     }
-  }, [searchQuery, customers]);
+
+    // Tarih filtresi
+    if (dateFrom) {
+      filtered = filtered.filter(customer => customer.package_start_date && customer.package_start_date >= dateFrom);
+    }
+    if (dateTo) {
+      filtered = filtered.filter(customer => customer.package_start_date && customer.package_start_date <= dateTo);
+    }
+
+    setFilteredCustomers(filtered);
+  }, [searchQuery, customers, dateFrom, dateTo]);
 
   const handleViewCompany = async (customer) => {
     try {
@@ -164,8 +175,8 @@ const AdminCustomers = () => {
         </CardHeader>
         <CardContent>
           {/* Arama Alanı */}
-          <div className="mb-4">
-            <div className="relative">
+          <div className="mb-4 flex gap-4">
+            <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#A5A5A5] size-4" />
               <input
                 type="text"
@@ -175,6 +186,18 @@ const AdminCustomers = () => {
                 className="w-full pl-10 pr-4 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white placeholder-[#A5A5A5] focus:outline-none focus:border-[#3EA6FF]"
               />
             </div>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white"
+            />
           </div>
           <Table>
               <TableHeader>
