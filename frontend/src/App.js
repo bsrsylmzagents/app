@@ -153,6 +153,7 @@ axios.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+    console.error("Axios error:", error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
