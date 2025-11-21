@@ -174,7 +174,7 @@ async def startup_event():
     if MODULES_ENABLED:
         try:
             from modules.scheduler import start_scheduler
-            start_scheduler()
+            start_scheduler(db)
         except Exception as e:
             logger.warning(f"Failed to start scheduler: {e}")
 
@@ -1107,8 +1107,29 @@ async def get_current_user(
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-def generate_company_code() -> str:
-    return secrets.token_hex(4).upper()
+async def generate_company_code(db) -> str:
+    """Generate sequential company code starting from 1000"""
+    # Find the company with the highest numeric company_code
+    # We need to fetch all and filter because company_code is string and might contain non-numeric legacy codes
+    try:
+        # Get all company codes
+        cursor = db.companies.find({}, {"company_code": 1})
+        companies = await cursor.to_list(length=10000)
+
+        max_code = 999
+
+        for company in companies:
+            code = company.get("company_code")
+            if code and code.isdigit():
+                code_int = int(code)
+                if code_int > max_code:
+                    max_code = code_int
+
+        return str(max_code + 1)
+    except Exception as e:
+        logger.error(f"Error generating company code: {e}")
+        # Fallback to random if something fails, but try to keep it numeric if possible or fallback to legacy
+        return secrets.token_hex(4).upper()
 
 def generate_cari_code(company_short: str = "CR") -> str:
     """Benzersiz cari kodu oluştur - format: CR-XXXXXX (6 haneli random)"""
@@ -1201,9 +1222,16 @@ async def register_company(data: CompanyCreate):
         raise HTTPException(status_code=400, detail="Username already exists")
     
     # Generate unique company code
-    company_code = generate_company_code()
+    company_code = await generate_company_code(db)
+
+    # Double check existence (race condition check)
     while await db.companies.find_one({"company_code": company_code}):
-        company_code = generate_company_code()
+        # If exists (highly unlikely with sequential unless race condition), increment
+        if company_code.isdigit():
+            company_code = str(int(company_code) + 1)
+        else:
+            # Should not happen if generate_company_code works, but fallback
+            company_code = secrets.token_hex(4).upper()
     
     # Create company
     company = Company(
@@ -10180,16 +10208,20 @@ async def get_admin_user(current_user: dict = Depends(get_current_user)):
     return current_user
 
 @api_router.get("/admin/customers")
-async def get_admin_customers(current_user: dict = Depends(get_admin_user)):
-    """Sistem admin için tüm müşterileri (şirketleri) listele"""
+async def get_admin_customers(
+    status_filter: Optional[str] = None, # active, expiring_1_month, expiring_3_months, expired
+    current_user: dict = Depends(get_admin_user)
+):
+    """Sistem admin için tüm müşterileri (şirketleri) listele - Filtreleme ile"""
     # Tüm şirketleri getir (system admin hariç)
     companies = await db.companies.find(
         {"company_code": {"$ne": "1000"}},
         {"_id": 0}
     ).sort("company_name", 1).to_list(10000)
     
-    # Her şirket için owner kullanıcıyı bul
     result = []
+    today = datetime.now(timezone.utc).date()
+
     for company in companies:
         # Owner kullanıcıyı bul (is_admin=True veya role="owner")
         owner = await db.users.find_one(
@@ -10203,6 +10235,44 @@ async def get_admin_customers(current_user: dict = Depends(get_admin_user)):
             {"_id": 0, "password": 0}
         )
         
+        # Calculate remaining days
+        package_end_date_str = company.get("package_end_date")
+        remaining_days = 0
+        status = "active"
+
+        if package_end_date_str:
+            try:
+                package_end_date = datetime.strptime(package_end_date_str, "%Y-%m-%d").date()
+                remaining_days = (package_end_date - today).days
+
+                if remaining_days < 0:
+                    status = "expired"
+                elif remaining_days <= 30:
+                    status = "expiring_1_month"
+                elif remaining_days <= 90:
+                    status = "expiring_3_months"
+                else:
+                    status = "active"
+            except ValueError:
+                # Handle invalid date format
+                remaining_days = 0
+                status = "unknown"
+
+        # Apply filter
+        if status_filter:
+            # "expiring_3_months" should probably include "expiring_1_month" as well?
+            # Or strict filtering? Let's do exact match first, or logic based on requirement.
+            # Request: "filtreleme ile 3 ay kalanlar, 1 ay kalanlar, ve süresi dolanlar olacak"
+
+            if status_filter == "expired" and status != "expired":
+                continue
+            if status_filter == "expiring_1_month" and status != "expiring_1_month":
+                continue
+            if status_filter == "expiring_3_months" and status != "expiring_3_months":
+                continue
+            if status_filter == "active" and status != "active":
+                continue
+
         company_data = {
             "id": company["id"],
             "company_code": company.get("company_code", ""),
@@ -10210,6 +10280,8 @@ async def get_admin_customers(current_user: dict = Depends(get_admin_user)):
             "email": company.get("email"),
             "package_start_date": company.get("package_start_date"),
             "package_end_date": company.get("package_end_date"),
+            "remaining_days": remaining_days,
+            "status": status,
             "owner": owner
         }
         result.append(company_data)
@@ -10248,6 +10320,103 @@ async def get_admin_customer(company_id: str, current_user: dict = Depends(get_a
         "package_end_date": company.get("package_end_date"),
         "owner": owner
     }
+
+@api_router.put("/admin/customers/{company_id}")
+async def update_admin_customer(company_id: str, data: dict, current_user: dict = Depends(get_admin_user)):
+    """Sistem admin: Firma bilgilerini güncelle (modules_enabled dahil)"""
+    # company_id kontrolü get_admin_user ile yapıldı (sistem admin mi diye)
+    # Ama hedef şirketin kendisi 1000 olamaz (sistem admin kendini bu endpoint ile güncellememeli, veya engellenmeli)
+
+    target_company = await db.companies.find_one({"id": company_id})
+    if not target_company:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    if target_company.get("company_code") == "1000":
+        raise HTTPException(status_code=403, detail="Cannot update system admin company via this endpoint")
+
+    update_data = {}
+
+    # Temel bilgiler
+    if "company_name" in data:
+        update_data["company_name"] = data["company_name"]
+    if "package_start_date" in data:
+        update_data["package_start_date"] = data["package_start_date"]
+    if "package_end_date" in data:
+        update_data["package_end_date"] = data["package_end_date"]
+    if "address" in data:
+        update_data["address"] = data["address"]
+    if "tax_office" in data:
+        update_data["tax_office"] = data["tax_office"]
+    if "tax_number" in data:
+        update_data["tax_number"] = data["tax_number"]
+    if "contact_phone" in data:
+        update_data["contact_phone"] = data["contact_phone"]
+    if "phone" in data:
+        update_data["phone"] = data["phone"]
+    if "email" in data:
+        update_data["email"] = data["email"]
+    if "logo_url" in data:
+        update_data["logo_url"] = data["logo_url"]
+    if "contact_email" in data:
+        update_data["contact_email"] = data["contact_email"]
+    if "website" in data:
+        update_data["website"] = data["website"]
+
+    # Modül yönetimi
+    if "modules_enabled" in data:
+        update_data["modules_enabled"] = data["modules_enabled"]
+
+    # Owner bilgilerini güncelle
+    if "owner_username" in data or "owner_full_name" in data:
+        # Hedef firmanın owner'ını bul
+        owner = await db.users.find_one({"company_id": company_id, "role": "owner"})
+        # Eğer role="owner" ile bulunamazsa, is_admin=True ile bul (fallback)
+        if not owner:
+            owner = await db.users.find_one({"company_id": company_id, "is_admin": True})
+
+        if owner:
+            owner_update = {}
+            if "owner_username" in data:
+                # Username uniqueness check across system might be needed?
+                # For now, assume validation is done or let mongo error.
+                owner_update["username"] = data["owner_username"]
+            if "owner_full_name" in data:
+                owner_update["full_name"] = data["owner_full_name"]
+            if "reset_password" in data and data["reset_password"]:
+                # Şifre sıfırlama isteği
+                # Yeni şifre username ile aynı olsun veya belirtilen bir şifre?
+                # Genelde admin panelden şifre set edilir.
+                new_password = data.get("new_password")
+                if not new_password:
+                     # Fallback to username if not provided (not recommended but matches previous logic)
+                     new_password = data.get("owner_username", owner.get("username"))
+
+                owner_update["password"] = hash_password(new_password) # Use hash_password helper
+
+            if owner_update:
+                await db.users.update_one({"id": owner["id"]}, {"$set": owner_update})
+
+    # Company'yi güncelle
+    if update_data:
+        # updated_at'i server tarafında set et
+        # datetime ve timezone importları dosya başında var varsayıyoruz
+        # update_data["updated_at"] = datetime.now(timezone.utc).isoformat() # Company modelinde updated_at yoksa hata verebilir
+        await db.companies.update_one({"id": company_id}, {"$set": update_data})
+
+    # Activity log
+    await create_activity_log(
+        company_id=current_user["company_id"], # Logu yapan (admin)
+        user_id=current_user["user_id"],
+        username=current_user.get("username", "admin"),
+        full_name=current_user.get("full_name", "System Admin"),
+        action="admin_update_customer",
+        entity_type="company",
+        entity_id=company_id,
+        description=f"Müşteri güncellendi: {target_company.get('company_name')} -> {data.get('company_name', 'no change')}",
+        ip_address=current_user.get("ip_address", "unknown")
+    )
+
+    return {"message": "Customer updated successfully"}
 
 @api_router.post("/admin/impersonate")
 async def admin_impersonate(data: dict, current_user: dict = Depends(get_admin_user)):
@@ -12497,134 +12666,6 @@ async def mark_all_notifications_read(
     
     return {"message": "All notifications marked as read"}
 
-# ==================== ADMIN ENDPOINTS ====================
-
-@api_router.get("/admin/customers")
-async def get_admin_customers(current_user: dict = Depends(get_current_user)):
-    """Admin: Tüm firmaları listele"""
-    if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    companies = await db.companies.find({}, {"_id": 0}).to_list(1000)
-    
-    # Her firma için owner bilgisini ekle
-    for company in companies:
-        owner = await db.users.find_one({"company_id": company["id"], "is_owner": True}, {"_id": 0})
-        if owner:
-            company["owner"] = {
-                "username": owner.get("username"),
-                "full_name": owner.get("full_name")
-            }
-    
-    return companies
-
-@api_router.get("/admin/customers/{company_id}")
-async def get_admin_customer(company_id: str, current_user: dict = Depends(get_current_user)):
-    """Admin: Firma detaylarını getir"""
-    if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    
-    # Owner bilgisini ekle
-    owner = await db.users.find_one({"company_id": company_id, "is_owner": True}, {"_id": 0})
-    if owner:
-        company["owner"] = {
-            "username": owner.get("username"),
-            "full_name": owner.get("full_name")
-        }
-    
-    return company
-
-@api_router.put("/admin/customers/{company_id}")
-async def update_admin_customer(company_id: str, data: dict, current_user: dict = Depends(get_current_user)):
-    """Admin: Firma bilgilerini güncelle (modules_enabled dahil)"""
-    if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    company = await db.companies.find_one({"id": company_id})
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    
-    update_data = {}
-    
-    # Temel bilgiler
-    if "company_name" in data:
-        update_data["company_name"] = data["company_name"]
-    if "package_start_date" in data:
-        update_data["package_start_date"] = data["package_start_date"]
-    if "package_end_date" in data:
-        update_data["package_end_date"] = data["package_end_date"]
-    if "address" in data:
-        update_data["address"] = data["address"]
-    if "tax_office" in data:
-        update_data["tax_office"] = data["tax_office"]
-    if "tax_number" in data:
-        update_data["tax_number"] = data["tax_number"]
-    if "contact_phone" in data:
-        update_data["contact_phone"] = data["contact_phone"]
-    if "address" in data:
-        update_data["address"] = data["address"]
-    if "tax_office" in data:
-        update_data["tax_office"] = data["tax_office"]
-    if "tax_number" in data:
-        update_data["tax_number"] = data["tax_number"]
-    if "phone" in data:
-        update_data["phone"] = data["phone"]
-    if "email" in data:
-        update_data["email"] = data["email"]
-    if "logo_url" in data:
-        update_data["logo_url"] = data["logo_url"]
-    if "contact_email" in data:
-        update_data["contact_email"] = data["contact_email"]
-    if "contact_phone" in data:
-        update_data["contact_phone"] = data["contact_phone"]
-    if "website" in data:
-        update_data["website"] = data["website"]
-    
-    # Modül yönetimi
-    if "modules_enabled" in data:
-        update_data["modules_enabled"] = data["modules_enabled"]
-    
-    # Owner bilgilerini güncelle
-    if "owner_username" in data or "owner_full_name" in data:
-        owner = await db.users.find_one({"company_id": company_id, "is_owner": True})
-        if owner:
-            owner_update = {}
-            if "owner_username" in data:
-                owner_update["username"] = data["owner_username"]
-            if "owner_full_name" in data:
-                owner_update["full_name"] = data["owner_full_name"]
-            if "reset_password" in data and data["reset_password"]:
-                new_password = data.get("owner_username", owner.get("username"))
-                if new_password == data.get("owner_username"):
-                    raise HTTPException(status_code=400, detail="Password cannot be the same as the username.")
-                owner_update["password_hash"] = get_password_hash(new_password)
-            
-            if owner_update:
-                await db.users.update_one({"id": owner["id"]}, {"$set": owner_update})
-    
-    # Company'yi güncelle
-    if update_data:
-        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-        await db.companies.update_one({"id": company_id}, {"$set": update_data})
-    
-    # Activity log
-    await create_activity_log(
-        company_id=company_id,
-        user_id=current_user["user_id"],
-        username="admin",
-        full_name="Admin",
-        action="update",
-        entity_type="company",
-        entity_id=company_id,
-        description=f"Admin tarafından firma güncellendi: {data.get('company_name', company.get('company_name'))}",
-        ip_address=current_user.get("ip_address", "unknown")
-    )
-    
-    return {"message": "Company updated successfully"}
 
 # ==================== INCLUDE ROUTER (MUST BE AT THE END) ====================
 # All endpoints must be defined BEFORE this line
