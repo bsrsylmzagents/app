@@ -35,6 +35,10 @@ logging.basicConfig(
 logger = logging.getLogger("server")
 logger.setLevel(logging.INFO)
 
+# -------------------- GLOBAL VARIABLES --------------------
+
+SERVER_PUBLIC_IP = "unknown"
+
 # -------------------- MONGODB --------------------
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017").strip('"').strip("'")
@@ -117,6 +121,55 @@ if MODULES_ENABLED:
 
 @app.on_event("startup")
 async def startup_event():
+    # Activity Logs için TTL index oluştur (30 gün = 2592000 saniye)
+    try:
+        # created_at alanı üzerinde 30 gün sonra silinecek şekilde index oluştur
+        await db.activity_logs.create_index("created_at", expireAfterSeconds=2592000)
+        logger.info("Activity logs TTL index verified/created (30 days retention)")
+    except Exception as e:
+        logger.warning(f"Failed to create TTL index for activity logs: {e}")
+        # Try to drop and recreate if it failed (e.g. due to different options)
+        try:
+            logger.info("Attempting to drop and recreate TTL index...")
+            await db.activity_logs.drop_index("created_at_1")
+            await db.activity_logs.create_index("created_at", expireAfterSeconds=2592000)
+            logger.info("Activity logs TTL index recreated successfully")
+        except Exception as inner_e:
+            logger.error(f"Could not recreate TTL index: {inner_e}")
+
+    # Get Server Public IP
+    try:
+        global SERVER_PUBLIC_IP
+        SERVER_PUBLIC_IP = await get_server_public_ip()
+        logger.info(f"Server Public IP: {SERVER_PUBLIC_IP}")
+    except Exception as e:
+        logger.warning(f"Failed to get server public IP: {e}")
+
+    # Migrate string dates to Date objects for TTL
+    try:
+        # Find logs with string created_at
+        # Note: $type 2 is String
+        logs_to_update = await db.activity_logs.find({"created_at": {"$type": 2}}).to_list(10000)
+        if logs_to_update:
+            logger.info(f"Migrating {len(logs_to_update)} activity logs from String to Date...")
+            from datetime import datetime
+            for log in logs_to_update:
+                try:
+                    if isinstance(log["created_at"], str):
+                        # Parse ISO format
+                        # Z'yi +00:00 ile değiştir
+                        date_str = log["created_at"].replace('Z', '+00:00')
+                        new_date = datetime.fromisoformat(date_str)
+                        await db.activity_logs.update_one(
+                            {"id": log["id"]},
+                            {"$set": {"created_at": new_date}}
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to migrate log {log.get('id')}: {e}")
+            logger.info("Migration complete.")
+    except Exception as e:
+        logger.warning(f"Migration failed: {e}")
+
     MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
     if MODULES_ENABLED:
         try:
@@ -236,35 +289,6 @@ async def get_my_company(current_user: dict = Depends(get_current_user)):
 
 # ==================== HELPER FUNCTIONS ====================
 
-async def create_activity_log(
-    company_id: str,
-    user_id: str,
-    username: str,
-    full_name: str,
-    action: str,
-    entity_type: str,
-    entity_id: str,
-    description: str,
-    ip_address: str = "unknown"
-):
-    """Activity log oluştur"""
-    try:
-        log_entry = {
-            "id": str(uuid.uuid4()),
-            "company_id": company_id,
-            "user_id": user_id,
-            "username": username,
-            "full_name": full_name,
-            "action": action,
-            "entity_type": entity_type,
-            "entity_id": entity_id,
-            "description": description,
-            "ip_address": ip_address,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        await db.activity_logs.insert_one(log_entry)
-    except Exception as e:
-        logger.error(f"Failed to create activity log: {str(e)}")
 
 # ==================== COMPANY UPDATE EXAMPLE ====================
 
@@ -817,6 +841,57 @@ class ActivityLog(BaseModel):
     ip_address: Optional[str] = None  # IP adresi (güvenlik ve takip için)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+async def create_activity_log(
+    company_id: str,
+    user_id: str,
+    username: str,
+    full_name: str,
+    action: str,
+    entity_type: str,
+    entity_id: str,
+    entity_name: Optional[str] = None,
+    description: str = "",
+    changes: Optional[Dict[str, Any]] = None,
+    ip_address: Optional[str] = None,
+    current_user: Optional[dict] = None  # Opsiyonel: current_user varsa IP adresini otomatik al
+):
+    """Activity log kaydı oluştur
+
+    Args:
+        current_user: Eğer verilirse, IP adresini otomatik olarak current_user'dan alır
+        ip_address: Manuel IP adresi (current_user yoksa kullanılır)
+    """
+    try:
+        # Eğer current_user verilmişse ve ip_address yoksa, current_user'dan al
+        if current_user and not ip_address:
+            ip_address = current_user.get("ip_address")
+
+        # Eğer hala IP adresi yoksa, sunucu IP adresini kullan
+        if not ip_address:
+            ip_address = SERVER_PUBLIC_IP
+
+        log = ActivityLog(
+            company_id=company_id,
+            user_id=user_id,
+            username=username,
+            full_name=full_name,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            entity_name=entity_name,
+            description=description,
+            changes=changes,
+            ip_address=ip_address
+        )
+        log_doc = log.model_dump()
+        # MongoDB'de datetime objesi olarak sakla (string değil)
+        # created_at zaten datetime objesi, sadece model_dump() ile dict'e çevir
+        # MongoDB datetime objesi olarak saklayacak
+        await db.activity_logs.insert_one(log_doc)
+    except Exception as e:
+        # Log hatası sistemin çalışmasını engellememeli
+        logging.error(f"Activity log oluşturulamadı: {e}")
+
 # ==================== INPUT MODELS ====================
 
 class CompanyCreate(BaseModel):
@@ -940,8 +1015,42 @@ async def get_current_cari(
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+async def get_server_public_ip() -> str:
+    """Sunucunun dış IP adresini al (API ile)"""
+    try:
+        # Ücretsiz ve güvenilir IP API'leri
+        apis = [
+            "https://api.ipify.org?format=json",
+            "https://api.my-ip.io/ip.json",
+            "https://ifconfig.me/all.json"
+        ]
+
+        for api in apis:
+            try:
+                response = requests.get(api, timeout=5)
+                if response.status_code == 200:
+                    if "json" in api:
+                        data = response.json()
+                        return data.get("ip") or data.get("ip_addr")
+                    else:
+                        return response.text.strip()
+            except:
+                continue
+
+        return "unknown"
+    except Exception as e:
+        logger.warning(f"IP lookup failed: {e}")
+        return "unknown"
+
 def get_client_ip(request: Request) -> str:
-    """Client IP adresini al - Proxy arkasında da çalışır"""
+    """Client IP adresini al - Proxy arkasında da çalışır
+    Checks standard headers for IP address consistency.
+    """
+    # Cloudflare
+    cf_connecting_ip = request.headers.get("CF-Connecting-IP")
+    if cf_connecting_ip:
+        return cf_connecting_ip.strip()
+
     # X-Forwarded-For header'ını kontrol et (proxy/load balancer arkasında)
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
@@ -954,6 +1063,16 @@ def get_client_ip(request: Request) -> str:
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         return real_ip.strip()
+
+    # Fastly
+    fastly_client_ip = request.headers.get("Fastly-Client-IP")
+    if fastly_client_ip:
+        return fastly_client_ip.strip()
+
+    # True-Client-IP (Cloudflare Enterprise)
+    true_client_ip = request.headers.get("True-Client-IP")
+    if true_client_ip:
+        return true_client_ip.strip()
     
     # Direkt client IP
     if request.client:
@@ -1070,52 +1189,6 @@ def generate_b2b_voucher_code() -> str:
     """B2B (Cari panel) rezervasyonları için voucher kodu oluştur"""
     return generate_voucher_code("B2B")
 
-async def create_activity_log(
-    company_id: str,
-    user_id: str,
-    username: str,
-    full_name: str,
-    action: str,
-    entity_type: str,
-    entity_id: str,
-    entity_name: Optional[str] = None,
-    description: str = "",
-    changes: Optional[Dict[str, Any]] = None,
-    ip_address: Optional[str] = None,
-    current_user: Optional[dict] = None  # Opsiyonel: current_user varsa IP adresini otomatik al
-):
-    """Activity log kaydı oluştur
-    
-    Args:
-        current_user: Eğer verilirse, IP adresini otomatik olarak current_user'dan alır
-        ip_address: Manuel IP adresi (current_user yoksa kullanılır)
-    """
-    try:
-        # Eğer current_user verilmişse ve ip_address yoksa, current_user'dan al
-        if current_user and not ip_address:
-            ip_address = current_user.get("ip_address")
-        
-        log = ActivityLog(
-            company_id=company_id,
-            user_id=user_id,
-            username=username,
-            full_name=full_name,
-            action=action,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            entity_name=entity_name,
-            description=description,
-            changes=changes,
-            ip_address=ip_address
-        )
-        log_doc = log.model_dump()
-        # MongoDB'de datetime objesi olarak sakla (string değil)
-        # created_at zaten datetime objesi, sadece model_dump() ile dict'e çevir
-        # MongoDB datetime objesi olarak saklayacak
-        await db.activity_logs.insert_one(log_doc)
-    except Exception as e:
-        # Log hatası sistemin çalışmasını engellememeli
-        logging.error(f"Activity log oluşturulamadı: {e}")
 
 # ==================== AUTH ENDPOINTS ====================
 
@@ -7663,9 +7736,14 @@ async def get_activity_logs(
     entity_type: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Activity log kayıtlarını getir"""
+    """Activity log kayıtlarını getir. Varsayılan olarak son 30 günü getirir."""
     query = {"company_id": current_user["company_id"]}
     
+    # Eğer tarih filtresi yoksa son 30 günü getir
+    if not date_from and not date_to:
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        query["created_at"] = {"$gte": thirty_days_ago}
+
     # Tarih filtresi
     if date_from or date_to:
         date_query = {}
