@@ -700,6 +700,7 @@ class SeasonalPrice(BaseModel):
     start_date: str
     end_date: str
     currency: str = "TRY"
+    price_per_atv: Optional[float] = None  # Genel sezonluk fiyat
     tour_type_ids: List[str] = Field(default_factory=list)  # Birden fazla tur tipi
     cari_prices: Dict[str, float] = Field(default_factory=dict)  # Cari ID -> Fiyat mapping
     apply_to_new_caris: bool = False
