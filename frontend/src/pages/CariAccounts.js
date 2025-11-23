@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, ExternalLink, Search, RefreshCw, Copy, Check } from
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import Loading from '../components/Loading';
 
 const CariAccounts = () => {
   const [cariAccounts, setCariAccounts] = useState([]);
@@ -14,6 +15,7 @@ const CariAccounts = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCari, setEditingCari] = useState(null);
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     authorized_person: '',
@@ -53,6 +55,7 @@ const CariAccounts = () => {
 
   const fetchCariAccounts = async () => {
     try {
+      setLoading(true);
       const response = await axios.get(`${API}/cari-accounts`);
       console.log('Cari hesaplar response:', response.data); // Debug için
       const data = response.data || [];
@@ -64,6 +67,8 @@ const CariAccounts = () => {
       toast.error(error.response?.data?.detail || 'Cari hesaplar yüklenemedi');
       setCariAccounts([]);
       setFilteredCariAccounts([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -169,6 +174,10 @@ const CariAccounts = () => {
     if (!cariCode) return null;
     return `${window.location.origin}/r/${cariCode}`;
   };
+
+  if (loading) {
+    return <Loading />;
+  }
 
   return (
     <div className="space-y-6" data-testid="cari-accounts-page">

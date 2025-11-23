@@ -56,7 +56,7 @@ const Login = ({ setAuth }) => {
           <div className="inline-block p-4 rounded-2xl mb-4" style={{ background: 'var(--accent)' }}>
             <LogIn size={40} style={{ color: 'var(--text-primary)' }} />
           </div>
-          <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--text-primary)' }} data-testid="login-title">TravelSystem Online</h1>
+          <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--text-primary)' }} data-testid="login-title">TourCast</h1>
           <p style={{ color: 'var(--text-secondary)' }}>ATV Tur Yönetim Sistemi</p>
         </div>
 

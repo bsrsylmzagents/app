@@ -25,7 +25,7 @@ cd "C:\Users\bsr2\Desktop\Yeni klasör\app\app\backend"
 # .env dosyasını oluştur veya güncelle
 @"
 MONGO_URL=mongodb://localhost:27017
-DB_NAME=travel_agency_db
+DB_NAME=tourcast
 JWT_SECRET_KEY=
 CORS_ORIGINS=http://localhost:3000
 "@ | Out-File -FilePath .env -Encoding utf8
@@ -91,7 +91,7 @@ ENABLE_HEALTH_CHECK=false
 # Backend .env
 @"
 MONGO_URL=mongodb://localhost:27017
-DB_NAME=travel_agency_db
+DB_NAME=tourcast
 JWT_SECRET_KEY=
 CORS_ORIGINS=http://localhost:3000
 "@ | Out-File -FilePath "backend\.env" -Encoding utf8

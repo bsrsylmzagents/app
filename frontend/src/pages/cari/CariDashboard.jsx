@@ -85,7 +85,11 @@ const CariDashboard = () => {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#14b8dc] mx-auto"></div>
+          <div className="loader" style={{ width: '3.5em', height: '3.5em', margin: '0 auto' }}>
+            <div className="outer"></div>
+            <div className="middle"></div>
+            <div className="inner"></div>
+          </div>
           <p className="mt-4" style={{ color: 'var(--text-secondary)' }}>Yükleniyor...</p>
         </div>
       </div>

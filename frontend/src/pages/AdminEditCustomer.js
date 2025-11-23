@@ -22,10 +22,6 @@ const AdminEditCustomer = () => {
     tax_number: '',
     phone: '',
     email: '',
-    modules_enabled: {
-      tour: true,
-      hotel: false
-    }
   });
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -53,7 +49,6 @@ const AdminEditCustomer = () => {
         tax_number: customer.tax_number || '',
         phone: customer.phone || '',
         email: customer.email || '',
-        modules_enabled: customer.modules_enabled || { tour: true, hotel: false }
       });
     } catch (error) {
       console.error('Fetch customer error:', error);
@@ -82,7 +77,6 @@ const AdminEditCustomer = () => {
         email: formData.email,
         owner_username: formData.owner_username,
         owner_full_name: formData.owner_full_name,
-        modules_enabled: formData.modules_enabled
       };
 
       if (resetPassword) {
@@ -279,43 +273,6 @@ const AdminEditCustomer = () => {
               </div>
             </div>
 
-            <div className="border-t border-[#14b8dc]/20 pt-6 mt-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Modül Yönetimi</h3>
-              
-              <div className="space-y-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.modules_enabled.tour || false}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      modules_enabled: {
-                        ...formData.modules_enabled,
-                        tour: e.target.checked
-                      }
-                    })}
-                    className="w-4 h-4 text-[#14b8dc] bg-[#1a1f2e] border-[#14b8dc]/30 rounded focus:ring-[#14b8dc]"
-                  />
-                  <span className="text-gray-300">Tur Yönetimi Modülü</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.modules_enabled.hotel || false}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      modules_enabled: {
-                        ...formData.modules_enabled,
-                        hotel: e.target.checked
-                      }
-                    })}
-                    className="w-4 h-4 text-[#14b8dc] bg-[#1a1f2e] border-[#14b8dc]/30 rounded focus:ring-[#14b8dc]"
-                  />
-                  <span className="text-gray-300">Otel Yönetimi Modülü</span>
-                </label>
-              </div>
-            </div>
 
             <div className="flex gap-2 pt-4">
               <Button type="submit" disabled={loading} className="btn-primary">

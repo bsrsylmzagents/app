@@ -12,6 +12,7 @@ import { tr } from 'date-fns/locale';
 import { downloadVoucherPdf, printVoucherPdf } from '../utils/voucherPdf';
 import { formatDateStringDDMMYYYY } from '../utils/dateFormatter';
 import useConfirmDialog from '../hooks/useConfirmDialog';
+import Loading from '../components/Loading';
 
 const CariDetail = () => {
   const { id } = useParams();
@@ -414,11 +415,7 @@ const CariDetail = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3EA6FF]"></div>
-      </div>
-    );
+    return <Loading />;
   }
 
   if (!cari) {

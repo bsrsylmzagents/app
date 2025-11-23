@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 load_dotenv(ROOT_DIR / '.env')
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
-DB_NAME = os.environ.get("DB_NAME", "travel_system_online")
+DB_NAME = os.environ.get("DB_NAME", "tourcast")
 
 async def migrate_reservations():
     """Mevcut rezervasyonlara yeni alanları ekle"""

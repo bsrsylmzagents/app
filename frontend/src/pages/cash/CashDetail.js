@@ -8,12 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { formatDateStringDDMMYYYY } from '../../utils/dateFormatter';
+import Loading from '../../components/Loading';
 
 const CashDetail = () => {
   const navigate = useNavigate();
   const [cashDetail, setCashDetail] = useState(null);
   const [rates, setRates] = useState({ EUR: 1.0, USD: 35.0, TRY: 1.0 });
   const [statistics, setStatistics] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [exchangeHistory, setExchangeHistory] = useState([]);
   const [cashAccounts, setCashAccounts] = useState([]);
   const [valorPending, setValorPending] = useState([]);
@@ -155,11 +157,14 @@ const CashDetail = () => {
 
   const fetchCashData = async () => {
     try {
+      setLoading(true);
       const response = await axios.get(`${API}/cash/detail`);
       setCashDetail(response.data);
       setCashAccounts(response.data?.cash_accounts || []);
     } catch (error) {
       console.error('Kasa verisi yüklenemedi:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -576,6 +581,10 @@ const CashDetail = () => {
         return <Euro size={24} className="text-white" />;
     }
   };
+
+  if (loading && !cashDetail) {
+    return <Loading />;
+  }
 
   return (
     <div className="space-y-6" data-testid="cash-detail-page">

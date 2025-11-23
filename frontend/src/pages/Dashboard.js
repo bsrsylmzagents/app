@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { createNewPdf, createTitle, savePdf, createTable, safeText } from '../utils/pdfTemplate';
 import { formatDateStringDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
+import Loading from '../components/Loading';
 
 const Dashboard = () => {
   const timelineRef = useRef(null);
@@ -561,11 +562,7 @@ const Dashboard = () => {
   }, [selectedDate, dashboardData]);
 
   if (loading && !dashboardData) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3EA6FF]"></div>
-      </div>
-    );
+    return <Loading />;
   }
 
   if (!dashboardData) {
@@ -704,10 +701,10 @@ const Dashboard = () => {
           <div 
             className="relative overflow-visible"
             style={{
-              minHeight: '120px',
+              minHeight: '180px',
               height: (() => {
                 const maxRow = reservationBars.length > 0 ? Math.max(...reservationBars.map(b => b.rowIndex), 0) : 0;
-                return `${40 + (maxRow + 1) * 35 + 50}px`; // 40px header + (rows * 35px) + 50px bottom area (saat kutusu için)
+                return `${40 + (maxRow + 1) * 70 + 50}px`; // 40px header + (rows * 70px) + 50px bottom area (saat kutusu için)
               })()
             }}
           >
@@ -723,24 +720,23 @@ const Dashboard = () => {
                 {/* Current time indicator line - bayrak direği gibi */}
                 {selectedDate === format(new Date(), 'yyyy-MM-dd') && (
                   <>
-                    {/* Dikey çizgi - bayrak direği gibi, saat kutusunun üstüne kadar */}
+                    {/* Dikey çizgi - saat başlıkları alanının altından başlayıp saat kutusunun hemen altına kadar */}
                     <div
                       className="absolute w-0.5 bg-[#3EA6FF] z-20 pointer-events-none transition-all duration-1000"
                       style={{
                         left: `${((currentTime.getHours() + currentTime.getMinutes() / 60) / 24) * 100}%`,
-                        top: '0',
-                        bottom: '25px', // Adjusted to be within the hour box
+                        top: '40px', // Saat başlıkları alanının altından başlıyor
+                        bottom: '43px', // Saat kutusunun hemen altına kadar
                         boxShadow: '0 0 10px rgba(62, 166, 255, 0.8)'
                       }}
                     >
-                      <div className="absolute -top-2 -left-2 w-4 h-4 bg-[#3EA6FF] rounded-full border-2 border-[#1E1E1E] animate-pulse"></div>
                     </div>
                     {/* Saat Kutusu - Scroll bar'ın hemen üstünde, en altta */}
                     <div
                       className="absolute z-20 pointer-events-none transition-all duration-1000"
                       style={{
                         left: `${((currentTime.getHours() + currentTime.getMinutes() / 60) / 24) * 100}%`,
-                        bottom: '8px', // Scroll bar'ın hemen üstü
+                        bottom: '2px', // Scroll bar'a daha yakın
                         transform: 'translateX(-50%)'
                       }}
                     >
@@ -803,7 +799,7 @@ const Dashboard = () => {
                   const reservation = bar.reservation;
                   const barColor = reservation.tour_type_color || '#3EA6FF';
                   const textColor = getContrastColor(barColor);
-                  const topPosition = 40 + (bar.rowIndex * 35); // 40px header + (rowIndex * 35px)
+                  const topPosition = 40 + (bar.rowIndex * 70); // 40px header + (rowIndex * 70px)
                   
                   return (
                     <div
@@ -813,7 +809,7 @@ const Dashboard = () => {
                         left: `${bar.start}px`,
                         top: `${topPosition}px`,
                         width: `${bar.width}px`,
-                        height: '30px',
+                        height: '60px',
                         backgroundColor: barColor,
                         color: textColor,
                         minWidth: '60px'

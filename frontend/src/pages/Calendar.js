@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API } from '../App';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Edit, Trash2, Search, CheckSquare, Square, Receipt, Printer, Download, Filter, Grid3x3, List, CalendarDays, Copy, FileSpreadsheet, FileText, Clock, TrendingUp, Users, DollarSign, AlertCircle, X, CheckCircle, MoreVertical, Calendar as CalendarIcon2, BarChart3, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Edit, Trash2, Search, CheckSquare, Square, Receipt, Printer, Download, Filter, Grid3x3, List, CalendarDays, Copy, FileSpreadsheet, FileText, Clock, TrendingUp, Users, DollarSign, AlertCircle, X, CheckCircle, MoreVertical, Calendar as CalendarIcon2, BarChart3, RefreshCw, User } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isWeekend, addMonths, subMonths, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, isSameDay, parseISO, startOfToday, isAfter, isBefore, addWeeks, subWeeks, startOfYear, endOfYear } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { downloadVoucherPdf, printVoucherPdf } from '../utils/voucherPdf';
+import CustomerDetailDialog from '../components/CustomerDetailDialog';
 
 const Calendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -29,6 +30,8 @@ const Calendar = () => {
     time: '',
     tour_type_id: '',
     customer_name: '',
+    customer_contact: '',
+    customer_details: null,
     person_count: 1,
     atv_count: 1,
     pickup_location: '',
@@ -38,6 +41,7 @@ const Calendar = () => {
     exchange_rate: 1.0,
     notes: ''
   });
+  const [customerDetailDialogOpen, setCustomerDetailDialogOpen] = useState(false);
   const [basePricePerAtv, setBasePricePerAtv] = useState(null); // 1 ATV için dönemsel fiyat
   const [seasonalPriceCurrency, setSeasonalPriceCurrency] = useState(null); // Dönemsel fiyat döviz tipi
   const [newCariData, setNewCariData] = useState({
@@ -422,6 +426,8 @@ const Calendar = () => {
       time: reservation.time || '',
       tour_type_id: reservation.tour_type_id || '',
       customer_name: reservation.customer_name || '',
+      customer_contact: reservation.customer_contact || '',
+      customer_details: reservation.customer_details || null,
       person_count: reservation.person_count || 1,
       atv_count: reservation.atv_count || 1,
       pickup_location: reservation.pickup_location || '',
@@ -439,6 +445,16 @@ const Calendar = () => {
     e.preventDefault();
     try {
       const { status, ...payload } = formData;
+      
+      // Customer details'i sadece dolu alanları gönder
+      if (payload.customer_details) {
+        const details = payload.customer_details;
+        const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
+        if (!hasDetails) {
+          payload.customer_details = null;
+        }
+      }
+      
       await axios.put(`${API}/reservations/${editingReservation.id}`, payload);
       toast.success('Rezervasyon güncellendi');
       setReservationDialogOpen(false);
@@ -473,6 +489,8 @@ const Calendar = () => {
       time: reservation.time || '',
       tour_type_id: reservation.tour_type_id || '',
       customer_name: reservation.customer_name || '',
+      customer_contact: reservation.customer_contact || '',
+      customer_details: reservation.customer_details || null,
       person_count: reservation.person_count || 1,
       atv_count: reservation.atv_count || 1,
       pickup_location: reservation.pickup_location || '',
@@ -628,6 +646,8 @@ const Calendar = () => {
       tour_type_id: '',
       cari_id: '',
       customer_name: '',
+      customer_contact: '',
+      customer_details: null,
       person_count: 1,
       atv_count: 1,
       pickup_location: '',
@@ -648,6 +668,16 @@ const Calendar = () => {
     try {
       // Status'u payload'dan çıkar (backend default "confirmed" kullanacak)
       const { status, ...payload } = formData;
+      
+      // Customer details'i sadece dolu alanları gönder
+      if (payload.customer_details) {
+        const details = payload.customer_details;
+        const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
+        if (!hasDetails) {
+          payload.customer_details = null;
+        }
+      }
+      
       await axios.post(`${API}/reservations`, payload);
       toast.success('Rezervasyon oluşturuldu');
       setReservationDialogOpen(false);
@@ -667,6 +697,8 @@ const Calendar = () => {
       time: '',
       tour_type_id: '',
       customer_name: '',
+      customer_contact: '',
+      customer_details: null,
       person_count: 1,
       atv_count: 1,
       pickup_location: '',
@@ -1501,6 +1533,27 @@ const Calendar = () => {
                     </DialogContent>
                   </Dialog>
                 </div>
+                {/* Münferit seçeneği - Her zaman görünür */}
+                <div className="mt-2">
+                  <div
+                    onClick={() => {
+                      const munferitCari = cariAccounts.find(c => c.is_munferit || c.name === "Münferit");
+                      if (munferitCari) {
+                        handleCariSelect(munferitCari.id);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-lg cursor-pointer text-sm font-semibold transition-colors ${
+                      formData.cari_id && (() => {
+                        const selectedCari = cariAccounts.find(c => c.id === formData.cari_id);
+                        return selectedCari && (selectedCari.is_munferit || selectedCari.name === "Münferit")
+                          ? 'bg-[#3EA6FF] text-white'
+                          : 'bg-[#2D2F33] text-[#3EA6FF] hover:bg-[#3EA6FF]/20'
+                      })()
+                    }`}
+                  >
+                    Münferit
+                  </div>
+                </div>
                 {cariSearch.length >= 2 && (
                   <div className="mt-2 max-h-40 overflow-y-auto bg-[#2D2F33] border border-[#2D2F33] rounded-lg">
                     {filteredCariAccounts.map(cari => (
@@ -1554,13 +1607,29 @@ const Calendar = () => {
 
               <div className="col-span-2">
                 <label className="block text-sm font-medium mb-2">Müşteri Adı</label>
-                <input
-                  type="text"
-                  value={formData.customer_name}
-                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                  required
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.customer_name}
+                    onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (!formData.customer_name.trim()) {
+                        toast.error('Önce müşteri adını girin');
+                        return;
+                      }
+                      setCustomerDetailDialogOpen(true);
+                    }}
+                    className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
+                    title="Müşteri Detay Gir"
+                  >
+                    <User size={18} />
+                  </Button>
+                </div>
               </div>
 
               <div>
@@ -1715,6 +1784,18 @@ const Calendar = () => {
         </DialogContent>
       </Dialog>
       </div>
+      
+      {/* Müşteri Detay Dialog */}
+      <CustomerDetailDialog
+        open={customerDetailDialogOpen}
+        onOpenChange={setCustomerDetailDialogOpen}
+        customerName={formData.customer_name}
+        initialData={formData.customer_details}
+        onSave={(details) => {
+          setFormData({ ...formData, customer_details: details });
+          toast.success('Müşteri detayları kaydedildi');
+        }}
+      />
     </div>
   );
 };

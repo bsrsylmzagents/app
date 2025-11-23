@@ -39,7 +39,7 @@ cd app\backend
 REM .env dosyası oluştur/düzenle
 (
     echo MONGO_URL=mongodb://localhost:27017
-    echo DB_NAME=travel_agency_db
+    echo DB_NAME=tourcast
     echo JWT_SECRET_KEY=
     echo CORS_ORIGINS=http://localhost:3000
 ) > .env

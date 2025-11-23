@@ -18,7 +18,6 @@ const Layout = () => {
   const [companyInfo, setCompanyInfo] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [companyModules, setCompanyModules] = useState({});
   const location = useLocation();
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -67,28 +66,11 @@ const Layout = () => {
     try {
       const response = await axios.get(`${API}/company/profile`);
       setCompanyInfo(response.data);
-      // Also fetch modules
-      const modulesResponse = await axios.get(`${API}/companies/me`);
-      setCompanyModules(modulesResponse.data.company?.modules_enabled || {});
     } catch (error) {
       console.error('Firma bilgileri yüklenemedi:', error);
     }
   };
 
-  // Fetch company modules
-  const fetchCompanyModules = async () => {
-    try {
-      const response = await axios.get(`${API}/companies/me`);
-      setCompanyModules(response.data.company?.modules_enabled || {});
-    } catch (error) {
-      console.error('Company modules fetch error:', error);
-    }
-  };
-
-  // Fetch company modules on mount
-  useEffect(() => {
-    fetchCompanyModules();
-  }, []);
 
   // Kalan paket süresini hesapla
   const getRemainingDays = () => {
@@ -300,6 +282,7 @@ const Layout = () => {
       { path: '/', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard', permission: 'dashboard.view' },
       { path: '/reservations', icon: Briefcase, label: 'Rezervasyonlar', testId: 'nav-reservations', permission: 'reservation.create' },
       { path: '/calendar', icon: Calendar, label: 'Takvim', testId: 'nav-calendar', permission: 'reservation.create' },
+      { path: '/customers', icon: Users, label: 'Müşteriler', testId: 'nav-customers', permission: 'cari.view' },
       { path: '/cari-accounts', icon: Users, label: 'Cari Firmalar', testId: 'nav-cari', permission: 'cari.view' },
       { path: '/seasonal-prices', icon: DollarSign, label: 'Fiyat Yönetimi', testId: 'nav-seasonal-prices', permission: 'reservation.edit_price' },
       { path: '/extra-sales', icon: ShoppingCart, label: 'Açık Satışlar', testId: 'nav-extra-sales', permission: 'finance.view_revenue' },
@@ -350,7 +333,7 @@ const Layout = () => {
           {/* Logo */}
           <div className="flex items-center justify-between px-6 py-6 border-b border-[#2D2F33]">
             <div>
-              <h1 className="text-2xl font-bold text-[#3EA6FF]" data-testid="app-logo">TravelSystem</h1>
+              <h1 className="text-2xl font-bold text-[#3EA6FF]" data-testid="app-logo">TourCast</h1>
               <p className="text-xs text-[#A5A5A5] mt-1">{company.name}</p>
             </div>
             <button 
@@ -399,7 +382,8 @@ const Layout = () => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path || 
                   (item.path === '/settings' && location.pathname.startsWith('/settings')) ||
-                  (item.path === '/cash' && location.pathname.startsWith('/cash'));
+                  (item.path === '/cash' && location.pathname.startsWith('/cash')) ||
+                  (item.path === '/customers' && location.pathname.startsWith('/customers'));
                 
                 // Settings için özel render
                 if (item.path === '/settings') {

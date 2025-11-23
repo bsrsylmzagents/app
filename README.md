@@ -1,4 +1,4 @@
-# Travel Agency Management System (SaaS)
+# TourCast
 
 ATV Tur Yönetim Sistemi - Multi-tenant SaaS uygulaması
 
@@ -25,26 +25,40 @@ app/
 - Node.js 16+
 - Yarn veya npm
 
-## Kurulum ve Çalıştırma
+## 🚀 Hızlı Başlangıç (Localhost)
 
-### 1. MongoDB Kurulumu
+### Windows için Tek Tıkla Kurulum
 
-#### Seçenek 1: Local MongoDB
+Proje kök dizininde `start.bat` dosyasını çalıştırın:
+
+```batch
+start.bat
+```
+
+Bu script otomatik olarak:
+- ✅ Backend ve Frontend için .env dosyalarını oluşturur/kontrol eder
+- ✅ Gerekli bağımlılıkları yükler (venv, node_modules)
+- ✅ Backend'i http://localhost:8000 adresinde başlatır
+- ✅ Frontend'i http://localhost:3000 adresinde başlatır
+
+Her iki sunucu da ayrı pencerelerde çalışacaktır.
+
+Detaylı bilgi için: [README-LOCALHOST.md](README-LOCALHOST.md)
+
+---
+
+## Kurulum ve Çalıştırma (Detaylı)
+
+### 1. MongoDB
+
+**MongoDB Atlas kullanılıyor (zaten aktif)** - Local MongoDB kurulumuna gerek yok.
+
+Eğer local MongoDB kullanmak isterseniz:
 ```bash
 # Windows (Chocolatey)
 choco install mongodb
-
-# veya MongoDB Community Server'ı manuel indirin:
-# https://www.mongodb.com/try/download/community
-
-# MongoDB'yi başlatın
 mongod
 ```
-
-#### Seçenek 2: MongoDB Atlas (Cloud)
-1. https://www.mongodb.com/cloud/atlas adresinden ücretsiz hesap oluşturun
-2. Cluster oluşturun
-3. Connection string'i alın (örnek: `mongodb+srv://user:pass@cluster.mongodb.net/`)
 
 ### 2. Backend Kurulumu
 
@@ -68,21 +82,21 @@ pip install -r requirements.txt
 # Windows (PowerShell):
 @"
 MONGO_URL=mongodb://localhost:27017
-DB_NAME=travel_agency_db
+DB_NAME=tourcast
 JWT_SECRET_KEY=
 CORS_ORIGINS=http://localhost:3000
 "@ | Out-File -FilePath .env -Encoding utf8
 
 # Windows (CMD):
 echo MONGO_URL=mongodb://localhost:27017 > .env
-echo DB_NAME=travel_agency_db >> .env
+echo DB_NAME=tourcast >> .env
 echo JWT_SECRET_KEY= >> .env
 echo CORS_ORIGINS=http://localhost:3000 >> .env
 
 # Linux/Mac:
 cat > .env << EOF
 MONGO_URL=mongodb://localhost:27017
-DB_NAME=travel_agency_db
+DB_NAME=tourcast
 JWT_SECRET_KEY=
 CORS_ORIGINS=http://localhost:3000
 EOF
@@ -140,7 +154,7 @@ Frontend şu adreste çalışacak: http://localhost:3000
 
 ### Backend (.env)
 - `MONGO_URL`: MongoDB bağlantı string'i (zorunlu)
-- `DB_NAME`: Veritabanı adı (varsayılan: travel_agency_db)
+- `DB_NAME`: Veritabanı adı (varsayılan: tourcast)
 - `JWT_SECRET_KEY`: JWT şifreleme anahtarı (boş bırakılırsa otomatik oluşturulur)
 - `CORS_ORIGINS`: İzin verilen CORS origin'leri (virgülle ayrılmış)
 

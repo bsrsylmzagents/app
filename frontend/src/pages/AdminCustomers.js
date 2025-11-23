@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const AdminCustomers = () => {
   const [customers, setCustomers] = useState([]);
@@ -15,11 +16,50 @@ const AdminCustomers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const params = {};
+      if (statusFilter && statusFilter !== 'all') {
+        params.status_filter = statusFilter;
+      }
+      const response = await axios.get(`${API}/admin/customers`, { params });
+      console.log('Customers response:', response.data);
+      const customersData = response.data || [];
+      setCustomers(customersData);
+      setFilteredCustomers(customersData);
+      if (customersData.length === 0) {
+        console.warn('No customers found. Make sure you are logged in as system admin (company_code: 1000)');
+      }
+    } catch (error) {
+      console.error('Fetch customers error:', error);
+      console.error('Error response:', error.response);
+      
+      if (error.response?.status === 403) {
+        toast.error('Bu sayfaya erişim yetkiniz yok. Sistem admin olarak giriş yapmalısınız.');
+        navigate('/');
+      } else if (error.response?.status === 401) {
+        toast.error('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın');
+        navigate('/login');
+      } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+        toast.error('Backend bağlantısı yapılamadı! Backend\'in çalıştığından emin olun.');
+      } else {
+        const errorMessage = error.response?.data?.detail || error.message || 'Müşteriler yüklenemedi';
+        toast.error(errorMessage);
+      }
+      setCustomers([]);
+      setFilteredCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchCustomers();
-  }, []);
+  }, [statusFilter]);
 
   useEffect(() => {
     let filtered = customers;
@@ -110,40 +150,6 @@ const AdminCustomers = () => {
     }
   };
 
-  const fetchCustomers = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${API}/admin/customers`);
-      console.log('Customers response:', response.data);
-      const customersData = response.data || [];
-      setCustomers(customersData);
-      setFilteredCustomers(customersData);
-      if (customersData.length === 0) {
-        console.warn('No customers found. Make sure you are logged in as system admin (company_code: 1000)');
-      }
-    } catch (error) {
-      console.error('Fetch customers error:', error);
-      console.error('Error response:', error.response);
-      
-      if (error.response?.status === 403) {
-        toast.error('Bu sayfaya erişim yetkiniz yok. Sistem admin olarak giriş yapmalısınız.');
-        navigate('/');
-      } else if (error.response?.status === 401) {
-        toast.error('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın');
-        navigate('/login');
-      } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        toast.error('Backend bağlantısı yapılamadı! Backend\'in çalıştığından emin olun.');
-      } else {
-        const errorMessage = error.response?.data?.detail || error.message || 'Müşteriler yüklenemedi';
-        toast.error(errorMessage);
-      }
-      setCustomers([]);
-      setFilteredCustomers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
     return <div className="text-center py-8 text-[#A5A5A5]">Yükleniyor...</div>;
   }
@@ -175,8 +181,8 @@ const AdminCustomers = () => {
         </CardHeader>
         <CardContent>
           {/* Arama Alanı */}
-          <div className="mb-4 flex gap-4">
-            <div className="relative flex-grow">
+          <div className="mb-4 flex gap-4 flex-wrap">
+            <div className="relative flex-grow min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#A5A5A5] size-4" />
               <input
                 type="text"
@@ -186,17 +192,31 @@ const AdminCustomers = () => {
                 className="w-full pl-10 pr-4 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white placeholder-[#A5A5A5] focus:outline-none focus:border-[#3EA6FF]"
               />
             </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[200px] bg-[#2D2F33] border-[#2D2F33] text-white">
+                <SelectValue placeholder="Kalan Süre Filtresi" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#25272A] border-[#2D2F33]">
+                <SelectItem value="all">Tümü</SelectItem>
+                <SelectItem value="active">Aktif (90+ gün)</SelectItem>
+                <SelectItem value="expiring_3_months">3 Ay İçinde Dolacak</SelectItem>
+                <SelectItem value="expiring_1_month">1 Ay İçinde Dolacak</SelectItem>
+                <SelectItem value="expired">Süresi Dolmuş</SelectItem>
+              </SelectContent>
+            </Select>
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white"
+              placeholder="Başlangıç Tarihi"
+              className="bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white px-3 py-2"
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white"
+              placeholder="Bitiş Tarihi"
+              className="bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white px-3 py-2"
             />
           </div>
           <Table>
@@ -206,6 +226,7 @@ const AdminCustomers = () => {
                   <TableHead className="text-gray-300">Firma Adı</TableHead>
                   <TableHead className="text-gray-300">Paket Başlangıç</TableHead>
                   <TableHead className="text-gray-300">Paket Bitiş</TableHead>
+                  <TableHead className="text-gray-300">Kalan Süre</TableHead>
                   <TableHead className="text-gray-300">Owner Kullanıcı</TableHead>
                   <TableHead className="text-gray-300">Email</TableHead>
                   <TableHead className="text-gray-300">İşlemler</TableHead>
@@ -214,51 +235,80 @@ const AdminCustomers = () => {
               <TableBody>
                 {filteredCustomers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-[#A5A5A5] py-8">
+                    <TableCell colSpan={8} className="text-center text-[#A5A5A5] py-8">
                       {customers.length === 0 ? 'Henüz müşteri bulunmuyor' : 'Arama sonucu bulunamadı'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredCustomers.map((customer) => (
-                    <TableRow key={customer.id || customer.company_code}>
-                      <TableCell className="text-white font-mono">{customer.company_code}</TableCell>
-                      <TableCell className="text-white">{customer.company_name}</TableCell>
-                      <TableCell className="text-[#A5A5A5]">
-                        {customer.package_start_date ? new Date(customer.package_start_date).toLocaleDateString('tr-TR') : '-'}
-                      </TableCell>
-                      <TableCell className="text-[#A5A5A5]">
-                        {customer.package_end_date ? new Date(customer.package_end_date).toLocaleDateString('tr-TR') : '-'}
-                      </TableCell>
-                      <TableCell className="text-[#A5A5A5]">
-                        {customer.owner?.username || '-'}
-                      </TableCell>
-                      <TableCell className="text-[#A5A5A5]">
-                        {customer.email || customer.owner?.email || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewCompany(customer)}
-                            className="text-[#3EA6FF] hover:text-[#3EA6FF] hover:bg-[#3EA6FF]/10"
-                            title="Firma hesabını görüntüle"
-                          >
-                            <Eye size={16} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/admin/customers/${customer.id}`)}
-                            className="text-[#14b8dc] hover:text-[#14b8dc]"
-                            title="Düzenle"
-                          >
-                            <Edit size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  filteredCustomers.map((customer) => {
+                    const getRemainingDaysColor = (days, status) => {
+                      if (status === 'expired' || days < 0) return 'text-red-400';
+                      if (status === 'expiring_1_month' || days <= 30) return 'text-yellow-400';
+                      if (status === 'expiring_3_months' || days <= 90) return 'text-orange-400';
+                      return 'text-green-400';
+                    };
+
+                    const remainingDays = customer.remaining_days !== undefined ? customer.remaining_days : 
+                      (customer.package_end_date ? 
+                        Math.ceil((new Date(customer.package_end_date) - new Date()) / (1000 * 60 * 60 * 24)) : 
+                        null);
+                    
+                    const status = customer.status || 
+                      (remainingDays === null ? 'unknown' :
+                       remainingDays < 0 ? 'expired' :
+                       remainingDays <= 30 ? 'expiring_1_month' :
+                       remainingDays <= 90 ? 'expiring_3_months' : 'active');
+
+                    return (
+                      <TableRow key={customer.id || customer.company_code}>
+                        <TableCell className="text-white font-mono">{customer.company_code}</TableCell>
+                        <TableCell className="text-white">{customer.company_name}</TableCell>
+                        <TableCell className="text-[#A5A5A5]">
+                          {customer.package_start_date ? new Date(customer.package_start_date).toLocaleDateString('tr-TR') : '-'}
+                        </TableCell>
+                        <TableCell className="text-[#A5A5A5]">
+                          {customer.package_end_date ? new Date(customer.package_end_date).toLocaleDateString('tr-TR') : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {remainingDays !== null ? (
+                            <span className={`font-semibold ${getRemainingDaysColor(remainingDays, status)}`}>
+                              {remainingDays > 0 ? `${remainingDays} gün` : 'Süresi dolmuş'}
+                            </span>
+                          ) : (
+                            <span className="text-[#A5A5A5]">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-[#A5A5A5]">
+                          {customer.owner?.username || '-'}
+                        </TableCell>
+                        <TableCell className="text-[#A5A5A5]">
+                          {customer.email || customer.owner?.email || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewCompany(customer)}
+                              className="text-[#3EA6FF] hover:text-[#3EA6FF] hover:bg-[#3EA6FF]/10"
+                              title="Firma hesabını görüntüle"
+                            >
+                              <Eye size={16} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/admin/customers/${customer.id}`)}
+                              className="text-[#14b8dc] hover:text-[#14b8dc]"
+                              title="Düzenle"
+                            >
+                              <Edit size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

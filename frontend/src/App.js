@@ -16,6 +16,9 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Reservations from './pages/Reservations';
 import Calendar from './pages/Calendar';
+import Customers from './pages/Customers';
+import MunferitCustomers from './pages/customers/MunferitCustomers';
+import CariCustomers from './pages/customers/CariCustomers';
 import ExtraSales from './pages/ExtraSales';
 import CariAccounts from './pages/CariAccounts';
 import CariDetail from './pages/CariDetail';
@@ -255,7 +258,11 @@ function App() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-[#0a0e1a] to-[#0f1419]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#14b8dc] mx-auto"></div>
+          <div className="loader" style={{ width: '3.5em', height: '3.5em', margin: '0 auto' }}>
+            <div className="outer"></div>
+            <div className="middle"></div>
+            <div className="inner"></div>
+          </div>
           <p className="mt-4 text-gray-400">Yükleniyor...</p>
         </div>
       </div>
@@ -285,6 +292,9 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="reservations" element={<Reservations />} />
             <Route path="calendar" element={<Calendar />} />
+            <Route path="customers" element={<Customers />} />
+            <Route path="customers/munferit" element={<MunferitCustomers />} />
+            <Route path="customers/cari" element={<CariCustomers />} />
             <Route path="extra-sales" element={<ExtraSales />} />
             <Route path="cari-accounts" element={<CariAccounts />} />
             <Route path="cari-accounts/:id" element={<CariDetail />} />

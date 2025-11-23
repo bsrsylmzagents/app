@@ -1,5 +1,5 @@
 """
-Background scheduler for modular features
+Background scheduler for cleanup jobs
 """
 import logging
 import os
@@ -64,11 +64,6 @@ async def cleanup_expired_companies(db):
 
 def start_scheduler(db=None):
     """Start background scheduler"""
-    MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-    if not MODULES_ENABLED:
-        logger.info("Modules disabled - scheduler not started")
-        return
-    
     # Add scheduled jobs
     if db:
         # Run cleanup daily at 3 AM

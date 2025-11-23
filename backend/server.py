@@ -42,7 +42,7 @@ SERVER_PUBLIC_IP = "unknown"
 # -------------------- MONGODB --------------------
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017").strip('"').strip("'")
-DB_NAME = os.environ.get("DB_NAME", "travel_system_online")
+DB_NAME = os.environ.get("DB_NAME", "tourcast")
 
 # MongoDB bağlantısı - timeout ve retry ile
 try:
@@ -108,14 +108,6 @@ app.add_middleware(
 # -------------------- ROUTERS --------------------
 # Router will be included at the END of the file, after all endpoints are defined
 
-MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-if MODULES_ENABLED:
-    try:
-        from modules.billing.routes import billing_router
-        app.include_router(billing_router)
-        logger.info("Billing module router loaded")
-    except Exception as e:
-        logger.warning(f"Failed to load billing module: {e}")
 
 # -------------------- STARTUP / SHUTDOWN --------------------
 
@@ -170,23 +162,21 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Migration failed: {e}")
 
-    MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-    if MODULES_ENABLED:
-        try:
-            from modules.scheduler import start_scheduler
-            start_scheduler(db)
-        except Exception as e:
-            logger.warning(f"Failed to start scheduler: {e}")
+    # Start background scheduler for cleanup jobs
+    try:
+        from modules.scheduler import start_scheduler
+        start_scheduler(db)
+    except Exception as e:
+        logger.warning(f"Failed to start scheduler: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    MODULES_ENABLED = os.environ.get("MODULES_ENABLED", "false").lower() == "true"
-    if MODULES_ENABLED:
-        try:
-            from modules.scheduler import stop_scheduler
-            stop_scheduler()
-        except Exception as e:
-            logger.warning(f"Failed to stop scheduler: {e}")
+    # Stop background scheduler
+    try:
+        from modules.scheduler import stop_scheduler
+        stop_scheduler()
+    except Exception as e:
+        logger.warning(f"Failed to stop scheduler: {e}")
     client.close()
 
 # -------------------- AUTH HELPERS --------------------
@@ -356,9 +346,6 @@ class Company(BaseModel):
     tax_number: Optional[str] = None
     package_start_date: str
     package_end_date: str
-    # MODULAR SAAS: Module access control
-    modules_enabled: Dict[str, bool] = Field(default_factory=lambda: {"tour": True})  # Default: tour enabled
-    billing: Optional[Dict[str, Any]] = None  # { stripe_customer_id, subscriptions: [...] }
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class StaffRole(BaseModel):
@@ -492,6 +479,57 @@ class Cari(BaseModel):
     display_name: str  # Cari adı (okunabilir)
     is_active: bool = True
 
+class CustomerDetail(BaseModel):
+    """Müşteri detay bilgileri"""
+    model_config = ConfigDict(extra="ignore")
+    phone: Optional[str] = None  # Telefon
+    email: Optional[str] = None  # Email
+    nationality: Optional[str] = None  # Uyruk
+    id_number: Optional[str] = None  # TC/Pasaport No
+    birth_date: Optional[str] = None  # Doğum tarihi (YYYY-MM-DD)
+
+class CariCustomer(BaseModel):
+    """Cari firma müşterisi"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    cari_id: str  # Hangi cari firmaya ait
+    customer_name: str
+    customer_contact: Optional[str] = None  # Eski alan (backward compatibility)
+    phone: Optional[str] = None  # Telefon
+    email: Optional[str] = None  # Email
+    nationality: Optional[str] = None  # Uyruk
+    id_number: Optional[str] = None  # TC/Pasaport No
+    birth_date: Optional[str] = None  # Doğum tarihi
+    # Rezervasyon takibi
+    first_reservation_date: Optional[str] = None  # İlk rezervasyon tarihi
+    last_reservation_date: Optional[str] = None  # Son rezervasyon tarihi
+    total_reservations: int = 0
+    # Satış takibi
+    first_sale_date: Optional[str] = None  # İlk satış tarihi
+    last_sale_date: Optional[str] = None  # Son satış tarihi
+    total_sales: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MunferitCustomer(BaseModel):
+    """Münferit müşteri"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    customer_name: str
+    customer_contact: Optional[str] = None  # Eski alan (backward compatibility)
+    phone: Optional[str] = None  # Telefon
+    email: Optional[str] = None  # Email
+    nationality: Optional[str] = None  # Uyruk
+    id_number: Optional[str] = None  # TC/Pasaport No
+    birth_date: Optional[str] = None  # Doğum tarihi
+    first_sale_date: Optional[str] = None  # İlk satış tarihi
+    last_sale_date: Optional[str] = None  # Son satış tarihi
+    total_sales: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Reservation(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -504,6 +542,7 @@ class Reservation(BaseModel):
     tour_type_name: Optional[str] = None
     customer_name: str
     customer_contact: Optional[str] = None
+    customer_details: Optional[CustomerDetail] = None  # Müşteri detay bilgileri
     person_count: int
     atv_count: int
     pickup_location: Optional[str] = None
@@ -658,6 +697,7 @@ class ExtraSale(BaseModel):
     customer_name: str
     person_count: Optional[int] = None  # Pax sayısı
     customer_contact: Optional[str] = None  # Telefon numarası
+    customer_details: Optional[CustomerDetail] = None  # Müşteri detay bilgileri
     pickup_location: Optional[str] = None
     date: str
     time: str
@@ -927,6 +967,8 @@ class ReservationCreate(BaseModel):
     time: str
     tour_type_id: Optional[str] = None
     customer_name: str
+    customer_contact: Optional[str] = None
+    customer_details: Optional[Dict[str, Any]] = None  # Müşteri detay bilgileri
     person_count: int
     atv_count: int
     pickup_location: Optional[str] = None
@@ -1319,7 +1361,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/companies/me")
 async def get_my_company(current_user: dict = Depends(get_current_user)):
-    """Get current user's company with modules_enabled"""
+    """Get current user's company"""
     company = await db.companies.find_one({"id": current_user["company_id"]}, {"_id": 0})
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -2296,6 +2338,130 @@ async def delete_cari_account(cari_id: str, current_user: dict = Depends(get_cur
         raise HTTPException(status_code=404, detail="Cari account not found")
     return {"message": "Cari account deleted"}
 
+# ==================== CARI CUSTOMERS ====================
+
+@api_router.get("/cari-customers")
+async def get_cari_customers(
+    cari_id: Optional[str] = None,
+    search: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Cari firma müşterilerini listele"""
+    query = {"company_id": current_user["company_id"]}
+    
+    if cari_id:
+        query["cari_id"] = cari_id
+    
+    if search:
+        query["customer_name"] = {"$regex": search, "$options": "i"}
+    
+    customers = await db.cari_customers.find(query, {"_id": 0}).sort("last_reservation_date", -1).to_list(1000)
+    return customers
+
+@api_router.get("/cari-customers/{customer_id}")
+async def get_cari_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
+    """Cari müşteri detayını getir"""
+    customer = await db.cari_customers.find_one({
+        "id": customer_id,
+        "company_id": current_user["company_id"]
+    }, {"_id": 0})
+    
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    return customer
+
+@api_router.put("/cari-customers/{customer_id}")
+async def update_cari_customer(customer_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Cari müşteriyi güncelle"""
+    customer = await db.cari_customers.find_one({
+        "id": customer_id,
+        "company_id": current_user["company_id"]
+    })
+    
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    # Sadece izin verilen alanları güncelle
+    update_data = {
+        "phone": data.get("phone"),
+        "email": data.get("email"),
+        "nationality": data.get("nationality"),
+        "id_number": data.get("id_number"),
+        "birth_date": data.get("birth_date"),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # None değerleri temizle
+    update_data = {k: v for k, v in update_data.items() if v is not None}
+    
+    await db.cari_customers.update_one(
+        {"id": customer_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Customer updated"}
+
+# ==================== MUNFERIT CUSTOMERS ====================
+
+@api_router.get("/munferit-customers")
+async def get_munferit_customers(
+    search: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Münferit müşterileri listele"""
+    query = {"company_id": current_user["company_id"]}
+    
+    if search:
+        query["customer_name"] = {"$regex": search, "$options": "i"}
+    
+    customers = await db.munferit_customers.find(query, {"_id": 0}).sort("last_sale_date", -1).to_list(1000)
+    return customers
+
+@api_router.get("/munferit-customers/{customer_id}")
+async def get_munferit_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
+    """Münferit müşteri detayını getir"""
+    customer = await db.munferit_customers.find_one({
+        "id": customer_id,
+        "company_id": current_user["company_id"]
+    }, {"_id": 0})
+    
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    return customer
+
+@api_router.put("/munferit-customers/{customer_id}")
+async def update_munferit_customer(customer_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Münferit müşteriyi güncelle"""
+    customer = await db.munferit_customers.find_one({
+        "id": customer_id,
+        "company_id": current_user["company_id"]
+    })
+    
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    # Sadece izin verilen alanları güncelle
+    update_data = {
+        "phone": data.get("phone"),
+        "email": data.get("email"),
+        "nationality": data.get("nationality"),
+        "id_number": data.get("id_number"),
+        "birth_date": data.get("birth_date"),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # None değerleri temizle
+    update_data = {k: v for k, v in update_data.items() if v is not None}
+    
+    await db.munferit_customers.update_one(
+        {"id": customer_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Customer updated"}
+
 @api_router.post("/cari-accounts/{cari_id}/recalculate-balance")
 async def recalculate_cari_balance(cari_id: str, current_user: dict = Depends(get_current_user)):
     """Cari hesap bakiyesini transaction'lardan yeniden hesapla"""
@@ -2525,6 +2691,24 @@ async def get_reservations(
             query["date"] = {"$lte": date_to}
     
     reservations = await db.reservations.find(query, {"_id": 0}).sort("date", -1).to_list(1000)
+    
+    # Münferit rezervasyonlar için ödeme kontrolü
+    for reservation in reservations:
+        # Cari'nin münferit olup olmadığını kontrol et
+        cari = await db.cari_accounts.find_one({"id": reservation.get("cari_id")})
+        if cari and (cari.get("is_munferit") or cari.get("name") == "Münferit"):
+            # Bu rezervasyon için ödeme transaction'ı var mı kontrol et
+            payment_transaction = await db.transactions.find_one({
+                "company_id": current_user["company_id"],
+                "reference_id": reservation.get("id"),
+                "reference_type": "reservation",
+                "transaction_type": "payment"
+            })
+            reservation["has_payment"] = payment_transaction is not None
+        else:
+            # Cari firma için ödeme kontrolü gerekmez (tutar direkt cari hesabına yansıyor)
+            reservation["has_payment"] = True
+    
     return reservations
 
 @api_router.post("/reservations")
@@ -2553,6 +2737,11 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
           await db.extra_sales.find_one({"voucher_code": voucher_code}):
         voucher_code = generate_voucher_code()
     
+    # Customer details'i parse et
+    customer_details_obj = None
+    if data.customer_details:
+        customer_details_obj = CustomerDetail(**data.customer_details)
+    
     # Create reservation
     reservation = Reservation(
         company_id=current_user["company_id"],
@@ -2563,6 +2752,8 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
         tour_type_id=data.tour_type_id,
         tour_type_name=tour_type_name,
         customer_name=data.customer_name,
+        customer_contact=data.customer_contact,
+        customer_details=customer_details_obj,
         person_count=data.person_count,
         atv_count=data.atv_count,
         pickup_location=data.pickup_location or cari.get("pickup_location"),
@@ -2579,7 +2770,103 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
     reservation_doc = reservation.model_dump()
     reservation_doc['created_at'] = reservation_doc['created_at'].isoformat()
     reservation_doc['updated_at'] = reservation_doc['updated_at'].isoformat()
+    # Customer details'i dict olarak kaydet
+    if reservation_doc.get('customer_details'):
+        reservation_doc['customer_details'] = reservation_doc['customer_details'].model_dump() if hasattr(reservation_doc['customer_details'], 'model_dump') else reservation_doc['customer_details']
     await db.reservations.insert_one(reservation_doc)
+    
+    # Müşteriyi kaydet (Cari veya Münferit)
+    is_munferit = cari.get("is_munferit", False)
+    if is_munferit:
+        # Münferit müşteri kaydet/güncelle
+        existing_customer = await db.munferit_customers.find_one({
+            "company_id": current_user["company_id"],
+            "customer_name": data.customer_name
+        })
+        
+        if existing_customer:
+            # Güncelle
+            await db.munferit_customers.update_one(
+                {"id": existing_customer["id"]},
+                {
+                    "$set": {
+                        "customer_contact": data.customer_contact or existing_customer.get("customer_contact"),
+                        "phone": customer_details_obj.phone if customer_details_obj else existing_customer.get("phone"),
+                        "email": customer_details_obj.email if customer_details_obj else existing_customer.get("email"),
+                        "nationality": customer_details_obj.nationality if customer_details_obj else existing_customer.get("nationality"),
+                        "id_number": customer_details_obj.id_number if customer_details_obj else existing_customer.get("id_number"),
+                        "birth_date": customer_details_obj.birth_date if customer_details_obj else existing_customer.get("birth_date"),
+                        "last_sale_date": data.date,
+                        "total_sales": existing_customer.get("total_sales", 0) + 1,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            )
+        else:
+            # Yeni müşteri oluştur
+            munferit_customer = MunferitCustomer(
+                company_id=current_user["company_id"],
+                customer_name=data.customer_name,
+                customer_contact=data.customer_contact,
+                phone=customer_details_obj.phone if customer_details_obj else None,
+                email=customer_details_obj.email if customer_details_obj else None,
+                nationality=customer_details_obj.nationality if customer_details_obj else None,
+                id_number=customer_details_obj.id_number if customer_details_obj else None,
+                birth_date=customer_details_obj.birth_date if customer_details_obj else None,
+                first_sale_date=data.date,
+                last_sale_date=data.date,
+                total_sales=1
+            )
+            customer_doc = munferit_customer.model_dump()
+            customer_doc['created_at'] = customer_doc['created_at'].isoformat()
+            customer_doc['updated_at'] = customer_doc['updated_at'].isoformat()
+            await db.munferit_customers.insert_one(customer_doc)
+    else:
+        # Cari müşteri kaydet/güncelle
+        existing_customer = await db.cari_customers.find_one({
+            "company_id": current_user["company_id"],
+            "cari_id": data.cari_id,
+            "customer_name": data.customer_name
+        })
+        
+        if existing_customer:
+            # Güncelle
+            await db.cari_customers.update_one(
+                {"id": existing_customer["id"]},
+                {
+                    "$set": {
+                        "customer_contact": data.customer_contact or existing_customer.get("customer_contact"),
+                        "phone": customer_details_obj.phone if customer_details_obj else existing_customer.get("phone"),
+                        "email": customer_details_obj.email if customer_details_obj else existing_customer.get("email"),
+                        "nationality": customer_details_obj.nationality if customer_details_obj else existing_customer.get("nationality"),
+                        "id_number": customer_details_obj.id_number if customer_details_obj else existing_customer.get("id_number"),
+                        "birth_date": customer_details_obj.birth_date if customer_details_obj else existing_customer.get("birth_date"),
+                        "last_reservation_date": data.date,
+                        "total_reservations": existing_customer.get("total_reservations", 0) + 1,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            )
+        else:
+            # Yeni müşteri oluştur
+            cari_customer = CariCustomer(
+                company_id=current_user["company_id"],
+                cari_id=data.cari_id,
+                customer_name=data.customer_name,
+                customer_contact=data.customer_contact,
+                phone=customer_details_obj.phone if customer_details_obj else None,
+                email=customer_details_obj.email if customer_details_obj else None,
+                nationality=customer_details_obj.nationality if customer_details_obj else None,
+                id_number=customer_details_obj.id_number if customer_details_obj else None,
+                birth_date=customer_details_obj.birth_date if customer_details_obj else None,
+                first_reservation_date=data.date,
+                last_reservation_date=data.date,
+                total_reservations=1
+            )
+            customer_doc = cari_customer.model_dump()
+            customer_doc['created_at'] = customer_doc['created_at'].isoformat()
+            customer_doc['updated_at'] = customer_doc['updated_at'].isoformat()
+            await db.cari_customers.insert_one(customer_doc)
     
     # Create activity log
     await create_activity_log(
@@ -2594,31 +2881,36 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
         description=f"Rezervasyon oluşturuldu: {data.customer_name}, {data.date} {data.time}, {data.price} {data.currency}"
     )
     
-    # Create transaction (debit - borç)
-    transaction = Transaction(
-        company_id=current_user["company_id"],
-        cari_id=data.cari_id,
-        transaction_type="debit",
-        amount=data.price,
-        currency=data.currency,
-        exchange_rate=data.exchange_rate,
-        description=f"Rezervasyon - {data.customer_name} - {data.date} {data.time}",
-        reference_id=reservation.id,
-        reference_type="reservation",
-        date=data.date,
-        created_by=current_user["user_id"]
-    )
-    
-    transaction_doc = transaction.model_dump()
-    transaction_doc['created_at'] = transaction_doc['created_at'].isoformat()
-    await db.transactions.insert_one(transaction_doc)
-    
-    # Update cari balance
-    balance_field = f"balance_{data.currency.lower()}"
-    await db.cari_accounts.update_one(
-        {"id": data.cari_id},
-        {"$inc": {balance_field: data.price}}
-    )
+    # Münferit cari için transaction oluşturma (tahsilat eklenene kadar beklemeli)
+    # Cari firma için transaction oluştur (debit - borç)
+    is_munferit = cari.get("is_munferit", False) or cari.get("name") == "Münferit"
+    if not is_munferit:
+        # Create transaction (debit - borç) - Sadece cari firmalar için
+        transaction = Transaction(
+            company_id=current_user["company_id"],
+            cari_id=data.cari_id,
+            transaction_type="debit",
+            amount=data.price,
+            currency=data.currency,
+            exchange_rate=data.exchange_rate,
+            description=f"Rezervasyon - {data.customer_name} - {data.date} {data.time}",
+            reference_id=reservation.id,
+            reference_type="reservation",
+            date=data.date,
+            created_by=current_user["user_id"]
+        )
+        
+        transaction_doc = transaction.model_dump()
+        transaction_doc['created_at'] = transaction_doc['created_at'].isoformat()
+        await db.transactions.insert_one(transaction_doc)
+        
+        # Update cari balance
+        balance_field = f"balance_{data.currency.lower()}"
+        await db.cari_accounts.update_one(
+            {"id": data.cari_id},
+            {"$inc": {balance_field: data.price}}
+        )
+    # Münferit için transaction oluşturulmaz, tahsilat eklenene kadar bekler
     
     return reservation
 
@@ -3973,10 +4265,111 @@ async def create_extra_sale(data: dict, current_user: dict = Depends(get_current
         if supplier:
             data["supplier_name"] = supplier["name"]
     
+    # Customer details'i parse et
+    customer_details_obj = None
+    if data.get("customer_details"):
+        customer_details_obj = CustomerDetail(**data["customer_details"])
+        data["customer_details"] = customer_details_obj
+    
     extra_sale = ExtraSale(company_id=current_user["company_id"], created_by=current_user["user_id"], **data)
     extra_sale_doc = extra_sale.model_dump()
     extra_sale_doc['created_at'] = extra_sale_doc['created_at'].isoformat()
+    # Customer details'i dict olarak kaydet
+    if extra_sale_doc.get('customer_details'):
+        extra_sale_doc['customer_details'] = extra_sale_doc['customer_details'].model_dump() if hasattr(extra_sale_doc['customer_details'], 'model_dump') else extra_sale_doc['customer_details']
     await db.extra_sales.insert_one(extra_sale_doc)
+    
+    # Müşteriyi kaydet (Cari veya Münferit)
+    if is_munferit:
+        # Münferit müşteri kaydet/güncelle
+        existing_customer = await db.munferit_customers.find_one({
+            "company_id": current_user["company_id"],
+            "customer_name": data.get("customer_name")
+        })
+        
+        if existing_customer:
+            # Güncelle
+            await db.munferit_customers.update_one(
+                {"id": existing_customer["id"]},
+                {
+                    "$set": {
+                        "customer_contact": data.get("customer_contact") or existing_customer.get("customer_contact"),
+                        "phone": customer_details_obj.phone if customer_details_obj else existing_customer.get("phone"),
+                        "email": customer_details_obj.email if customer_details_obj else existing_customer.get("email"),
+                        "nationality": customer_details_obj.nationality if customer_details_obj else existing_customer.get("nationality"),
+                        "id_number": customer_details_obj.id_number if customer_details_obj else existing_customer.get("id_number"),
+                        "birth_date": customer_details_obj.birth_date if customer_details_obj else existing_customer.get("birth_date"),
+                        "last_sale_date": data.get("date"),
+                        "total_sales": existing_customer.get("total_sales", 0) + 1,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            )
+        else:
+            # Yeni müşteri oluştur
+            munferit_customer = MunferitCustomer(
+                company_id=current_user["company_id"],
+                customer_name=data.get("customer_name"),
+                customer_contact=data.get("customer_contact"),
+                phone=customer_details_obj.phone if customer_details_obj else None,
+                email=customer_details_obj.email if customer_details_obj else None,
+                nationality=customer_details_obj.nationality if customer_details_obj else None,
+                id_number=customer_details_obj.id_number if customer_details_obj else None,
+                birth_date=customer_details_obj.birth_date if customer_details_obj else None,
+                first_sale_date=data.get("date"),
+                last_sale_date=data.get("date"),
+                total_sales=1
+            )
+            customer_doc = munferit_customer.model_dump()
+            customer_doc['created_at'] = customer_doc['created_at'].isoformat()
+            customer_doc['updated_at'] = customer_doc['updated_at'].isoformat()
+            await db.munferit_customers.insert_one(customer_doc)
+    else:
+        # Cari müşteri kaydet/güncelle
+        existing_customer = await db.cari_customers.find_one({
+            "company_id": current_user["company_id"],
+            "cari_id": data["cari_id"],
+            "customer_name": data.get("customer_name")
+        })
+        
+        if existing_customer:
+            # Güncelle - satış alanlarını kullan
+            await db.cari_customers.update_one(
+                {"id": existing_customer["id"]},
+                {
+                    "$set": {
+                        "customer_contact": data.get("customer_contact") or existing_customer.get("customer_contact"),
+                        "phone": customer_details_obj.phone if customer_details_obj else existing_customer.get("phone"),
+                        "email": customer_details_obj.email if customer_details_obj else existing_customer.get("email"),
+                        "nationality": customer_details_obj.nationality if customer_details_obj else existing_customer.get("nationality"),
+                        "id_number": customer_details_obj.id_number if customer_details_obj else existing_customer.get("id_number"),
+                        "birth_date": customer_details_obj.birth_date if customer_details_obj else existing_customer.get("birth_date"),
+                        "last_sale_date": data.get("date"),
+                        "total_sales": existing_customer.get("total_sales", 0) + 1,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            )
+        else:
+            # Yeni müşteri oluştur - satış alanlarını kullan
+            cari_customer = CariCustomer(
+                company_id=current_user["company_id"],
+                cari_id=data["cari_id"],
+                customer_name=data.get("customer_name"),
+                customer_contact=data.get("customer_contact"),
+                phone=customer_details_obj.phone if customer_details_obj else None,
+                email=customer_details_obj.email if customer_details_obj else None,
+                nationality=customer_details_obj.nationality if customer_details_obj else None,
+                id_number=customer_details_obj.id_number if customer_details_obj else None,
+                birth_date=customer_details_obj.birth_date if customer_details_obj else None,
+                first_sale_date=data.get("date"),
+                last_sale_date=data.get("date"),
+                total_sales=1
+            )
+            customer_doc = cari_customer.model_dump()
+            customer_doc['created_at'] = customer_doc['created_at'].isoformat()
+            customer_doc['updated_at'] = customer_doc['updated_at'].isoformat()
+            await db.cari_customers.insert_one(customer_doc)
     
     # Create activity log
     await create_activity_log(
@@ -5649,12 +6042,30 @@ async def update_transaction(
         raise HTTPException(status_code=404, detail="Transaction bulunamadı")
     
     # Referans tipi kontrolü - rezervasyon, hizmet al vb. kaynaklı transaction'lar düzenlenemez
+    # Ancak reference_type null ise veya "manual" ise güncellemeye izin ver
+    # Ayrıca sadece reference_id ve reference_type ekleniyorsa (rezervasyon ile ilişkilendirme) izin ver
     reference_type = existing.get("reference_type")
+    new_reference_type = data.get("reference_type")
+    
+    # Eğer mevcut reference_type null veya "manual" ise ve yeni reference_type "reservation" ise
+    # (rezervasyon ile ilişkilendirme durumu) izin ver
     if reference_type and reference_type not in ["manual", "outgoing_payment"]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Bu transaction bir {reference_type} kaynağından oluşturulmuş. Kaynak işlem üzerinden düzenlenmelidir."
-        )
+        # Sadece reference_id ve reference_type ekleniyorsa (rezervasyon ile ilişkilendirme) izin ver
+        if new_reference_type == "reservation" and "reference_id" in data:
+            # Sadece reference_id ve reference_type güncelleniyorsa izin ver
+            allowed_fields = {"reference_id", "reference_type", "description"}
+            if set(data.keys()).issubset(allowed_fields):
+                pass  # İzin ver - rezervasyon ile ilişkilendirme
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Bu transaction bir {reference_type} kaynağından oluşturulmuş. Kaynak işlem üzerinden düzenlenmelidir."
+                )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Bu transaction bir {reference_type} kaynağından oluşturulmuş. Kaynak işlem üzerinden düzenlenmelidir."
+            )
     
     cari_id = existing.get("cari_id")
     if not cari_id:
@@ -10323,7 +10734,7 @@ async def get_admin_customer(company_id: str, current_user: dict = Depends(get_a
 
 @api_router.put("/admin/customers/{company_id}")
 async def update_admin_customer(company_id: str, data: dict, current_user: dict = Depends(get_admin_user)):
-    """Sistem admin: Firma bilgilerini güncelle (modules_enabled dahil)"""
+    """Sistem admin: Firma bilgilerini güncelle"""
     # company_id kontrolü get_admin_user ile yapıldı (sistem admin mi diye)
     # Ama hedef şirketin kendisi 1000 olamaz (sistem admin kendini bu endpoint ile güncellememeli, veya engellenmeli)
 
@@ -10362,9 +10773,6 @@ async def update_admin_customer(company_id: str, data: dict, current_user: dict 
     if "website" in data:
         update_data["website"] = data["website"]
 
-    # Modül yönetimi
-    if "modules_enabled" in data:
-        update_data["modules_enabled"] = data["modules_enabled"]
 
     # Owner bilgilerini güncelle
     if "owner_username" in data or "owner_full_name" in data:

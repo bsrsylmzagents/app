@@ -1,0 +1,537 @@
+[
+  {
+    "id": "TC001",
+    "title": "Company Registration with Auto-generated Company Code",
+    "description": "Verify that a user can successfully register a new company and receive an auto-generated unique company code.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the company registration page."
+      },
+      {
+        "type": "action",
+        "description": "Fill in all required company registration fields with valid data."
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the registration completes successfully."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that a unique company code is auto-generated and linked to the new company."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the company data is isolated from other companies (multi-tenant data isolation)."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Authentication with JWT",
+    "description": "Check that admin and staff users can login using correct credentials and receive JWT token with proper role assigned.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page."
+      },
+      {
+        "type": "action",
+        "description": "Input valid username/email and password for an admin user."
+      },
+      {
+        "type": "action",
+        "description": "Click login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login is successful."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify JWT token is issued with correct claims including user role and company association."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that subsequent API calls use the token and access is granted according to role-based permissions."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Failed User Authentication with Invalid Credentials",
+    "description": "Verify the system denies access and does not issue JWT token when invalid credentials are provided.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page."
+      },
+      {
+        "type": "action",
+        "description": "Input incorrect username/email or password."
+      },
+      {
+        "type": "action",
+        "description": "Click login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login fails with an appropriate error message."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no JWT token is issued."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Reservation CRUD Operations with Calendar View Integration",
+    "description": "Verify that users can create, read, update, and delete reservations and the calendar view reflects the changes in real-time.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Authenticate as staff user and navigate to reservation module."
+      },
+      {
+        "type": "action",
+        "description": "Create a new reservation with valid customer, dates, and transport arrangements."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify reservation is created and visible in the reservation list."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new reservation appears correctly in the calendar view."
+      },
+      {
+        "type": "action",
+        "description": "Update reservation details including status and transport info."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updates are persisted and calendar view updates accordingly."
+      },
+      {
+        "type": "action",
+        "description": "Delete the reservation."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify reservation is removed from the system and calendar view."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Customer Account Management and Password Control",
+    "description": "Check that customer accounts can be created, updated, have transaction histories, and support password changes with security checks.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a new customer account with all required profile details."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify customer is created with accurate profile data."
+      },
+      {
+        "type": "action",
+        "description": "Update customer profile information."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updates are saved successfully."
+      },
+      {
+        "type": "action",
+        "description": "Log customer transactions and payments."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify transaction histories are accurate and accessible."
+      },
+      {
+        "type": "action",
+        "description": "Initiate customer password change with correct current password."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify password update is successful and hashed with bcrypt."
+      },
+      {
+        "type": "action",
+        "description": "Attempt password change with invalid current password."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify password change is denied with an error."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Financial Management with Multi-currency and Debt/Credit Tracking",
+    "description": "Validate cash flow tracking, payment type configuration, and debt/credit management work correctly for multiple currencies, including automatic currency rate updates.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Configure payment types (cash, credit card, transfer) in the system."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify payment types are stored and retrievable."
+      },
+      {
+        "type": "action",
+        "description": "Log income and expense transactions in EUR, USD, and TRY currencies."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify transactions are persisted with correct currency codes."
+      },
+      {
+        "type": "action",
+        "description": "Validate debt and credit balances are calculated correctly per customer and currency."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify multi-currency balances reflect real-time conversion rates."
+      },
+      {
+        "type": "action",
+        "description": "Trigger automatic currency rate update job."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify currency rates are updated and financial reports reflect new rates."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Stripe Integration for Module Purchase and Payment Processing",
+    "description": "Test purchasing modules via Stripe Checkout, successful payment completion, and webhook event handling for module activation.",
+    "category": "integration",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to store module listing page."
+      },
+      {
+        "type": "action",
+        "description": "Select a module (e.g., hotel module) and proceed to checkout."
+      },
+      {
+        "type": "action",
+        "description": "Complete the checkout process with Stripe test payment."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify payment success page is displayed."
+      },
+      {
+        "type": "action",
+        "description": "Simulate Stripe webhook event delivery for successful payment."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the module is activated in the user's account."
+      },
+      {
+        "type": "action",
+        "description": "Simulate failed payment and invalid webhook events."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify system handles failure gracefully and no unauthorized module activation occurs."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Hotel Module CRUD, ICS Calendar Sync, and Push Reservation Functionality",
+    "description": "Verify that hotel CRUD operations work, ICS calendar synchronization pulls events correctly, and reservation pushes to hotel using adapters with retry on failure.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a new hotel and add room types."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify hotel and room types are persisted correctly."
+      },
+      {
+        "type": "action",
+        "description": "Add hotel reservations and verify they appear in hotel reservation list."
+      },
+      {
+        "type": "action",
+        "description": "Trigger ICS calendar sync pull from external sources."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify external calendar events are imported and stored."
+      },
+      {
+        "type": "action",
+        "description": "Push reservation updates to hotels via ICS, JSON, and Email adapters."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify successful pushes update hotel systems."
+      },
+      {
+        "type": "action",
+        "description": "Simulate failure in push adapters and verify retry queue is populated."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify background scheduler processes retry queue and re-attempts pushes."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Reporting Modules Generate Accurate Reports",
+    "description": "Verify that income, expense, cash flow, customer analysis, performance, reservation, profit/loss, and creditor/debtor reports generate with accurate and up-to-date data.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Populate system with transactions, reservations, customer data, and financial movements."
+      },
+      {
+        "type": "action",
+        "description": "Access each reporting module."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify reports generate successfully without errors."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report data matches source data, totals are calculated correctly, and filters work as expected."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify reports reflect real-time updates after CRUD operations."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Role-Based Access Control Enforcement",
+    "description": "Validate that access to API endpoints and frontend routes is restricted based on user roles (admin, staff, customer) using JWT authentication and middleware.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Authenticate as admin user and attempt to access all protected routes."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify admin has full access."
+      },
+      {
+        "type": "action",
+        "description": "Authenticate as staff user and attempt to access admin-only pages."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied with appropriate error or redirect."
+      },
+      {
+        "type": "action",
+        "description": "Authenticate as customer user and attempt to access restricted staff/admin resources."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied."
+      },
+      {
+        "type": "action",
+        "description": "Test access to API endpoints without JWT token."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all protected endpoints reject unauthorized requests."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Middleware Module Access Control Testing",
+    "description": "Ensure that module feature flags prevent unauthorized usage of modules like tour and hotel unless purchased and activated.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate user without hotel module purchase attempting to access hotel module APIs and frontend."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied due to module feature flags."
+      },
+      {
+        "type": "action",
+        "description": "Simulate user with active module purchase accessing the hotel module."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is granted and all hotel features are available."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Background Jobs Execution for Scheduled Tasks",
+    "description": "Validate that APScheduler runs scheduled background jobs such as currency rate updates, ICS calendar synchronization, and hotel reservation push queue processing.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Schedule currency rate update and trigger its execution."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify currency rates update successfully."
+      },
+      {
+        "type": "action",
+        "description": "Schedule ICS calendar sync jobs and trigger execution."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify ICS sync completes successfully and updates hotel calendar data."
+      },
+      {
+        "type": "action",
+        "description": "Schedule hotel reservation push queue job and trigger execution."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify retry queue entries are processed and reservations pushed accordingly."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "API and Frontend Routing with Protected Routes and Error Handling",
+    "description": "Ensure frontend routes using React Router are protected according to user roles, and frontend handles API errors smoothly with notifications.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as a staff user and navigate through various protected routes."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify staff user access only allowed pages."
+      },
+      {
+        "type": "action",
+        "description": "Try to access admin-only pages as staff user."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is redirected or shown 'Access Denied'."
+      },
+      {
+        "type": "action",
+        "description": "Simulate API failure (e.g., 500 Internal Server Error) when fetching reservation data."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI shows a user-friendly error notification using toast notifications."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Password Hashing Security Using bcrypt",
+    "description": "Test that password hashing for user accounts uses bcrypt to secure stored passwords, and no plaintext passwords exist in the database.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Register a new user with a plaintext password."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify password is stored hashed with bcrypt, not plaintext."
+      },
+      {
+        "type": "action",
+        "description": "Attempt direct password retrieval from database."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no plaintext password data is found."
+      },
+      {
+        "type": "action",
+        "description": "Verify login process validates bcrypt hashes correctly."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify users can login successfully using their password."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Automated Backend Tests for Core Modules",
+    "description": "Run and verify automated pytest backend tests covering access control, billing webhook handling, hotel push queue, and ICS sync operations.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Run pytest suite in backend/modules/tests/."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify test_module_access.py completes with all tests passing."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify test_billing_webhook.py completes without errors."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify test_hotel_push_queue.py passes all suite tests."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify test_ics_sync.py runs successfully with expected coverage."
+      }
+    ]
+  }
+]

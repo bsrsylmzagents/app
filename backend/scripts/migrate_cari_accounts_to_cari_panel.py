@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 load_dotenv(ROOT_DIR / '.env')
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
-DB_NAME = os.environ.get("DB_NAME", "travel_system_online")
+DB_NAME = os.environ.get("DB_NAME", "tourcast")
 
 # Passlib context - bcrypt yoksa pbkdf2_sha256 kullan
 try:

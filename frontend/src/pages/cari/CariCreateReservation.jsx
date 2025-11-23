@@ -3,13 +3,16 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { API } from '../../App';
 import { toast } from 'sonner';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import CustomerDetailDialog from '../../components/CustomerDetailDialog';
 
 const CariCreateReservation = () => {
   const [formData, setFormData] = useState({
     customer_name: '',
     customer_contact: '',
+    customer_details: null,
     date: '',
     time: '',
     tour_id: '',
@@ -17,6 +20,7 @@ const CariCreateReservation = () => {
     atv_count: 1,
     notes: ''
   });
+  const [customerDetailDialogOpen, setCustomerDetailDialogOpen] = useState(false);
   const [tourTypes, setTourTypes] = useState([]);
   const [calculatedPrice, setCalculatedPrice] = useState(null);
   const [calculatedCurrency, setCalculatedCurrency] = useState('EUR');
@@ -107,11 +111,22 @@ const CariCreateReservation = () => {
       });
       console.log('📤 Token exists:', !!token);
 
+      // Customer details'i sadece dolu alanları gönder
+      let customer_details = null;
+      if (formData.customer_details) {
+        const details = formData.customer_details;
+        const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
+        if (hasDetails) {
+          customer_details = details;
+        }
+      }
+      
       const response = await axios.post(
         apiUrl,
         {
           customer_name: formData.customer_name,
           customer_contact: formData.customer_contact || null,
+          customer_details: customer_details,
           date: formData.date,
           time: formData.time,
           tour_id: formData.tour_id,
@@ -206,18 +221,34 @@ const CariCreateReservation = () => {
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                 Müşteri Adı <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={formData.customer_name}
-                onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
-                style={{
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-primary)'
-                }}
-                required
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.customer_name}
+                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                  className="flex-1 px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                  required
+                />
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (!formData.customer_name.trim()) {
+                      toast.error('Önce müşteri adını girin');
+                      return;
+                    }
+                    setCustomerDetailDialogOpen(true);
+                  }}
+                  className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
+                  title="Müşteri Detay Gir"
+                >
+                  <User size={18} />
+                </Button>
+              </div>
             </div>
 
             {/* Customer Contact */}
@@ -401,6 +432,18 @@ const CariCreateReservation = () => {
           </form>
         </div>
       </div>
+      
+      {/* Müşteri Detay Dialog */}
+      <CustomerDetailDialog
+        open={customerDetailDialogOpen}
+        onOpenChange={setCustomerDetailDialogOpen}
+        customerName={formData.customer_name}
+        initialData={formData.customer_details}
+        onSave={(details) => {
+          setFormData({ ...formData, customer_details: details });
+          toast.success('Müşteri detayları kaydedildi');
+        }}
+      />
     </div>
   );
 };

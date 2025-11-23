@@ -2,11 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { API } from '../App';
 import { toast } from 'sonner';
-import { Plus, Trash2, Receipt, Printer, Download, Search, XCircle } from 'lucide-react';
+import { Plus, Trash2, Receipt, Printer, Download, Search, XCircle, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { downloadVoucherPdf, printVoucherPdf } from '../utils/voucherPdf';
 import { formatDateStringDDMMYYYY } from '../utils/dateFormatter';
+import CustomerDetailDialog from '../components/CustomerDetailDialog';
+import Loading from '../components/Loading';
 
 const ExtraSales = () => {
   const [sales, setSales] = useState([]);
@@ -15,6 +17,7 @@ const ExtraSales = () => {
   const [bankAccounts, setBankAccounts] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'cancelled'
+  const [loading, setLoading] = useState(true);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedSaleForCancel, setSelectedSaleForCancel] = useState(null);
   const [cancelFormData, setCancelFormData] = useState({
@@ -32,6 +35,7 @@ const ExtraSales = () => {
     customer_name: '',
     person_count: '',
     customer_contact: '',
+    customer_details: null,
     pickup_location: '',
     date: '',
     time: '',
@@ -44,6 +48,7 @@ const ExtraSales = () => {
     payment_type_id: '',
     bank_account_id: ''
   });
+  const [customerDetailDialogOpen, setCustomerDetailDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchSales();
@@ -55,6 +60,7 @@ const ExtraSales = () => {
 
   const fetchSales = async (status = null) => {
     try {
+      setLoading(true);
       const params = {};
       if (status || statusFilter !== 'all') {
         params.status = status || statusFilter;
@@ -63,6 +69,8 @@ const ExtraSales = () => {
       setSales(response.data);
     } catch (error) {
       toast.error('Satışlar yüklenemedi');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -127,6 +135,16 @@ const ExtraSales = () => {
         sale_price: parseFloat(formData.sale_price),
         purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : 0
       };
+      
+      // Customer details'i sadece dolu alanları gönder
+      if (submitData.customer_details) {
+        const details = submitData.customer_details;
+        const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
+        if (!hasDetails) {
+          submitData.customer_details = null;
+        }
+      }
+      
       await axios.post(`${API}/extra-sales`, submitData);
       toast.success('Satış oluşturuldu');
       setDialogOpen(false);
@@ -267,6 +285,7 @@ const ExtraSales = () => {
       customer_name: '',
       person_count: '',
       customer_contact: '',
+      customer_details: null,
       pickup_location: '',
       date: '',
       time: '',
@@ -399,7 +418,10 @@ const ExtraSales = () => {
       <div className="px-6 py-4 border-b border-[#2D2F33]">
         <h2 className="text-lg font-semibold text-white">{title}</h2>
       </div>
-      <table className="w-full">
+      {loading ? (
+        <Loading className="py-20" />
+      ) : (
+        <table className="w-full">
         <thead className="bg-[#2D2F33] border-b border-[#2D2F33]">
           <tr>
             <th className="px-6 py-4 text-left text-sm font-semibold text-white">Tarih</th>
@@ -527,7 +549,8 @@ const ExtraSales = () => {
           })}
         </tbody>
       </table>
-      {salesList.length === 0 && (
+      )}
+      {!loading && salesList.length === 0 && (
         <div className="text-center py-12">
           <p className="text-[#A5A5A5]">Henüz satış bulunmamaktadır</p>
         </div>
@@ -589,16 +612,36 @@ const ExtraSales = () => {
                 required
               >
                 <option value="">Cari Firma Seçin</option>
-                {cariAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <option value={cariAccounts.find(c => c.is_munferit || c.name === "Münferit")?.id || ''}>
+                  Münferit
+                </option>
+                {cariAccounts.filter(c => !c.is_munferit && c.name !== "Münferit").map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <input
-                type="text"
-                placeholder="Müşteri Adı *"
-                value={formData.customer_name}
-                onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                required
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Müşteri Adı *"
+                  value={formData.customer_name}
+                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                  className="flex-1 px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                  required
+                />
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (!formData.customer_name.trim()) {
+                      toast.error('Önce müşteri adını girin');
+                      return;
+                    }
+                    setCustomerDetailDialogOpen(true);
+                  }}
+                  className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
+                  title="Müşteri Detay Gir"
+                >
+                  <User size={18} />
+                </Button>
+              </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <input
                   type="number"
@@ -828,6 +871,18 @@ const ExtraSales = () => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Müşteri Detay Dialog */}
+      <CustomerDetailDialog
+        open={customerDetailDialogOpen}
+        onOpenChange={setCustomerDetailDialogOpen}
+        customerName={formData.customer_name}
+        initialData={formData.customer_details}
+        onSave={(details) => {
+          setFormData({ ...formData, customer_details: details });
+          toast.success('Müşteri detayları kaydedildi');
+        }}
+      />
     </div>
   );
 };
