@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, AlertCircle, Building2, Globe, Share2, CreditCard, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Save, AlertCircle, Building2, Globe, Share2, CreditCard, Upload, X, Image as ImageIcon, Link2, Copy, Check, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert.jsx';
 
 const CompanyProfile = () => {
@@ -17,6 +17,7 @@ const CompanyProfile = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   const [logoPreview, setLogoPreview] = useState(null);
+  const [copiedLink, setCopiedLink] = useState(null);
 
   // Form data - sadece değiştirilebilir alanlar
   const [formData, setFormData] = useState({
@@ -162,6 +163,22 @@ const CompanyProfile = () => {
     }
   };
 
+  const copyToClipboard = async (text, linkType) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedLink(linkType);
+      toast.success('Link panoya kopyalandı!');
+      setTimeout(() => setCopiedLink(null), 2000);
+    } catch (error) {
+      console.error('Copy failed:', error);
+      toast.error('Link kopyalanamadı');
+    }
+  };
+
+  const getFullUrl = (path) => {
+    return `${window.location.origin}${path}`;
+  };
+
   if (loading) {
     return <div className="text-center py-8 text-gray-400">Yükleniyor...</div>;
   }
@@ -197,7 +214,7 @@ const CompanyProfile = () => {
       </Alert>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-[#1a1f2e]">
+        <TabsList className="grid w-full grid-cols-5 bg-[#1a1f2e]">
           <TabsTrigger value="general" className="data-[state=active]:bg-[#14b8dc]/20">
             <Building2 size={16} className="mr-2" />
             Genel Bilgiler
@@ -213,6 +230,10 @@ const CompanyProfile = () => {
           <TabsTrigger value="website" className="data-[state=active]:bg-[#14b8dc]/20">
             <Globe size={16} className="mr-2" />
             Web Sitesi
+          </TabsTrigger>
+          <TabsTrigger value="links" className="data-[state=active]:bg-[#14b8dc]/20">
+            <Link2 size={16} className="mr-2" />
+            Portal & Bağlantılar
           </TabsTrigger>
         </TabsList>
 
@@ -459,6 +480,172 @@ const CompanyProfile = () => {
                   {saving ? 'Kaydediliyor...' : 'Kaydet'}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="links" className="mt-6">
+          <Card className="bg-[#25272A] border-[#2D2F33]">
+            <CardHeader>
+              <CardTitle className="text-white">Portal & Bağlantılar</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Firma Kodu */}
+                <div>
+                  <Label className="text-gray-300 mb-2 block">Firma Kodu (Agency Slug)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={company.company_code || '-'}
+                      disabled
+                      className="bg-[#1a1f2e]/50 border-[#14b8dc]/10 text-gray-400 cursor-not-allowed font-mono"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(company.company_code, 'code')}
+                      className="border-[#2D2F33] hover:bg-[#2D2F33]"
+                    >
+                      {copiedLink === 'code' ? (
+                        <Check size={16} className="text-green-500" />
+                      ) : (
+                        <Copy size={16} />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-[#A5A5A5] mt-1">
+                    Bu kod portal ve rezervasyon linklerinde kullanılır
+                  </p>
+                </div>
+
+                {/* Portal Login Link */}
+                <div>
+                  <Label className="text-gray-300 mb-2 block flex items-center gap-2">
+                    <Link2 size={16} />
+                    B2B Paneli Giriş Linki
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={company.company_code ? getFullUrl(`/portal/${company.company_code}/login`) : '-'}
+                      readOnly
+                      className="bg-[#2D2F33] border-[#2D2F33] text-white font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(getFullUrl(`/portal/${company.company_code}/login`), 'portal-login')}
+                      className="border-[#2D2F33] hover:bg-[#2D2F33]"
+                      disabled={!company.company_code}
+                    >
+                      {copiedLink === 'portal-login' ? (
+                        <Check size={16} className="text-green-500" />
+                      ) : (
+                        <Copy size={16} />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/portal/${company.company_code}/login`, '_blank')}
+                      className="border-[#2D2F33] hover:bg-[#2D2F33]"
+                      disabled={!company.company_code}
+                    >
+                      <ExternalLink size={16} />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-[#A5A5A5] mt-1">
+                    Kurumsal müşterileriniz (B2B) bu link ile giriş yapabilir
+                  </p>
+                </div>
+
+                {/* Portal Dashboard Link */}
+                <div>
+                  <Label className="text-gray-300 mb-2 block flex items-center gap-2">
+                    <Link2 size={16} />
+                    B2B Paneli Dashboard Linki
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={company.company_code ? getFullUrl(`/portal/${company.company_code}/dashboard`) : '-'}
+                      readOnly
+                      className="bg-[#2D2F33] border-[#2D2F33] text-white font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(getFullUrl(`/portal/${company.company_code}/dashboard`), 'portal-dashboard')}
+                      className="border-[#2D2F33] hover:bg-[#2D2F33]"
+                      disabled={!company.company_code}
+                    >
+                      {copiedLink === 'portal-dashboard' ? (
+                        <Check size={16} className="text-green-500" />
+                      ) : (
+                        <Copy size={16} />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/portal/${company.company_code}/dashboard`, '_blank')}
+                      className="border-[#2D2F33] hover:bg-[#2D2F33]"
+                      disabled={!company.company_code}
+                    >
+                      <ExternalLink size={16} />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-[#A5A5A5] mt-1">
+                    B2B müşterilerin giriş yaptıktan sonra yönlendirileceği sayfa
+                  </p>
+                </div>
+
+                {/* Public Booking Link */}
+                <div>
+                  <Label className="text-gray-300 mb-2 block flex items-center gap-2">
+                    <Link2 size={16} />
+                    B2C Rezervasyon Linki
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={company.company_code ? getFullUrl(`/booking/${company.company_code}`) : '-'}
+                      readOnly
+                      className="bg-[#2D2F33] border-[#2D2F33] text-white font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(getFullUrl(`/booking/${company.company_code}`), 'public-booking')}
+                      className="border-[#2D2F33] hover:bg-[#2D2F33]"
+                      disabled={!company.company_code}
+                    >
+                      {copiedLink === 'public-booking' ? (
+                        <Check size={16} className="text-green-500" />
+                      ) : (
+                        <Copy size={16} />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/booking/${company.company_code}`, '_blank')}
+                      className="border-[#2D2F33] hover:bg-[#2D2F33]"
+                      disabled={!company.company_code}
+                    >
+                      <ExternalLink size={16} />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-[#A5A5A5] mt-1">
+                    Turistlerin (B2C) giriş yapmadan rezervasyon yapabileceği sayfa
+                  </p>
+                </div>
+
+                {/* Info Alert */}
+                <Alert className="bg-blue-500/10 border-blue-500/30">
+                  <AlertCircle className="h-4 w-4 text-blue-500" />
+                  <AlertDescription className="text-blue-200">
+                    Bu linkleri müşterilerinizle paylaşabilirsiniz. B2B Paneli linklerini sadece kurumsal müşterilerinize (B2B) verin.
+                  </AlertDescription>
+                </Alert>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

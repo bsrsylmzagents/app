@@ -1,24 +1,33 @@
 import jsPDF from 'jspdf';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
-// PDF sabitleri - Tüm değerler mm cinsinden (A4: 210x297mm)
+// ============================================================================
+// GLOBAL PDF DESIGN SYSTEM - Warm/Premium UI for Print (A4 Format)
+// ============================================================================
+// Page Size: A4 (210mm x 297mm)
+// Margins: 15mm on all sides
+// Colors: Stone palette (warm/premium)
+// Typography: Roboto/Open Sans (safe for PDF)
+// ============================================================================
+
 const PDF_CONFIG = {
   PAGE_WIDTH: 210,
   PAGE_HEIGHT: 297,
-  MARGIN_TOP: 20,
-  MARGIN_BOTTOM: 25,
-  MARGIN_LEFT: 20,
-  MARGIN_RIGHT: 20,
-  HEADER_HEIGHT: 30,
-  FOOTER_HEIGHT: 20,
-  CONTENT_WIDTH: 170, // PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
-  HEADER_BG: '#F4F4F4',
-  HEADER_TEXT: '#000000',
-  FOOTER_BG: '#F4F4F4',
-  FOOTER_TEXT: '#666666',
-  TABLE_HEADER_BG: '#333333',
-  TABLE_HEADER_TEXT: '#FFFFFF',
-  TABLE_ROW_ALT: '#FAFAFA',
-  TABLE_BORDER: '#E0E0E0'
+  MARGIN: 15, // Consistent 15mm padding on all sides
+  HEADER_HEIGHT: 35,
+  FOOTER_HEIGHT: 25,
+  CONTENT_WIDTH: 180, // PAGE_WIDTH - (MARGIN * 2)
+  
+  // Warm/Premium Stone Color Palette
+  COLORS: {
+    TEXT_PRIMARY: [28, 25, 23],      // #1C1917 (Stone-900) - High contrast reading
+    TEXT_SECONDARY: [120, 113, 108],  // #78716C (Stone-500) - Labels
+    BORDER: [231, 229, 228],         // #E7E5E4 (Stone-200) - Thin, crisp lines
+    BACKGROUND: [255, 255, 255],     // #FFFFFF - Pure white (no gray backgrounds)
+    HEADER_BG: [245, 245, 244],      // #F5F5F4 (Stone-100) - Very light gray for headers
+    TEXT_STONE_400: [168, 162, 158], // #A8A29E (Stone-400) - Document titles
+  }
 };
 
 // Firma bilgilerini localStorage'dan al
@@ -68,9 +77,10 @@ export const safeText = (text) => {
 };
 
 /**
- * Yeni PDF dokümanı oluştur
+ * Yeni PDF dokümanı oluştur (Global Design System)
+ * Backward compatible - can be called with or without parameters
  */
-export const createNewPdf = () => {
+export const createNewPdf = (documentTitle = '', documentId = '', options = {}) => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -79,81 +89,122 @@ export const createNewPdf = () => {
   });
   
   // İlk sayfa header'ı
-  createHeader(doc);
+  if (documentTitle || documentId) {
+    createDocumentHeader(doc, documentTitle, documentId);
+  } else {
+    // Legacy mode for reports
+    createHeader(doc);
+  }
   
   return doc;
 };
 
 /**
- * PDF Header oluştur (80px = ~30mm yükseklik)
+ * Document Header - Global Design System
+ * Left: Agency Logo (High Res)
+ * Right: Document Title (e.g., "VOUCHER", "COLLECTION RECEIPT") in stone-400, uppercase, tracking-widest
+ * Sub-header: Document ID & Generation Date (Small, stone-500)
+ */
+export const createDocumentHeader = (doc, documentTitle = '', documentId = '') => {
+  const company = getCompanyInfo();
+  const now = new Date();
+  const dateStr = format(now, 'dd.MM.yyyy HH:mm', { locale: tr });
+  
+  // Logo alanı (sol üst)
+  const logoSize = 20;
+  const logoX = PDF_CONFIG.MARGIN;
+  const logoY = PDF_CONFIG.MARGIN;
+  
+  if (company.logo) {
+    try {
+      const logoData = company.logo;
+      if (logoData.startsWith('data:image/')) {
+        const matches = logoData.match(/data:image\/(\w+);base64,(.+)/);
+        if (matches && matches.length === 3) {
+          const format = matches[1].toUpperCase();
+          doc.addImage(logoData, format, logoX, logoY, logoSize, logoSize);
+        } else {
+          doc.addImage(logoData, 'PNG', logoX, logoY, logoSize, logoSize);
+        }
+      } else {
+        doc.addImage(logoData, 'PNG', logoX, logoY, logoSize, logoSize);
+      }
+    } catch (e) {
+      console.warn('Logo eklenemedi:', e);
+      // Placeholder - very subtle
+      doc.setFillColor(...PDF_CONFIG.COLORS.BORDER);
+      doc.rect(logoX, logoY, logoSize, logoSize, 'F');
+    }
+  }
+  
+  // Document Title (sağ üst) - Stone-400, Uppercase, Tracking-widest
+  if (documentTitle) {
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_STONE_400);
+    const titleText = safeText(documentTitle.toUpperCase());
+    doc.text(titleText, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, logoY + 8, { align: 'right' });
+  }
+  
+  // Sub-header: Document ID & Generation Date (Stone-500)
+  let subHeaderY = logoY + logoSize - 5;
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+  
+  if (documentId) {
+    doc.text(`ID: ${safeText(documentId)}`, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, subHeaderY, { align: 'right' });
+    subHeaderY += 4;
+  }
+  doc.text(format(now, 'dd.MM.yyyy', { locale: tr }), PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, subHeaderY, { align: 'right' });
+  
+  // Header alt çizgisi - Thin stone-200 border
+  const headerBottomY = PDF_CONFIG.MARGIN + logoSize + 5;
+  doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+  doc.setLineWidth(0.3);
+  doc.line(PDF_CONFIG.MARGIN, headerBottomY, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, headerBottomY);
+  
+  return headerBottomY + 8; // Başlangıç Y pozisyonu
+};
+
+/**
+ * Legacy Header (for backward compatibility with reports)
+ * Uses the old header style but with new design system colors
  */
 export const createHeader = (doc) => {
   const company = getCompanyInfo();
   const now = new Date();
-  const dateStr = now.toLocaleDateString('tr-TR', { 
-    day: '2-digit', 
-    month: '2-digit', 
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  const dateStr = format(now, 'dd.MM.yyyy HH:mm', { locale: tr });
   
-  // Header arka plan kutusu
-  doc.setFillColor(240, 240, 240); // #F4F4F4
-  doc.rect(0, 0, PDF_CONFIG.PAGE_WIDTH, PDF_CONFIG.HEADER_HEIGHT, 'F');
-  
-  // Logo alanı (sol üst, 40x40px = ~15x15mm)
+  // Logo alanı (sol üst)
   const logoSize = 15;
-  const logoX = PDF_CONFIG.MARGIN_LEFT;
-  const logoY = (PDF_CONFIG.HEADER_HEIGHT - logoSize) / 2;
+  const logoX = PDF_CONFIG.MARGIN;
+  const logoY = PDF_CONFIG.MARGIN;
   
   if (company.logo) {
     try {
-      // Logo base64 data URL formatında geliyor (data:image/png;base64,...)
-      // jsPDF'de logo ekleme
       const logoData = company.logo;
       if (logoData.startsWith('data:image/')) {
-        // Data URL'den format ve base64 verisini çıkar
         const matches = logoData.match(/data:image\/(\w+);base64,(.+)/);
         if (matches && matches.length === 3) {
           const format = matches[1].toUpperCase();
-          const base64Data = matches[2];
-          
-          // jsPDF'de addImage kullan (format: PNG, JPEG, etc.)
           doc.addImage(logoData, format, logoX, logoY, logoSize, logoSize);
         } else {
-          // Eğer parse edilemezse direkt eklemeyi dene
           doc.addImage(logoData, 'PNG', logoX, logoY, logoSize, logoSize);
         }
       } else {
-        // Direkt base64 veya URL ise
         doc.addImage(logoData, 'PNG', logoX, logoY, logoSize, logoSize);
       }
     } catch (e) {
-      console.warn('Logo eklenemedi, placeholder gösteriliyor:', e);
-      // Logo eklenemezse placeholder göster
-      doc.setFillColor(220, 220, 220);
-      doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-      doc.setFillColor(180, 180, 180);
-      doc.setFontSize(8);
-      doc.setTextColor(180, 180, 180);
-      doc.text('[LOGO]', logoX + logoSize / 2, logoY + logoSize / 2 + 2, { align: 'center' });
+      console.warn('Logo eklenemedi:', e);
     }
-  } else {
-    // Logo placeholder - açık gri kutu
-    doc.setFillColor(220, 220, 220);
-    doc.rect(logoX, logoY, logoSize, logoSize, 'F');
-    doc.setFillColor(180, 180, 180);
-    doc.setFontSize(8);
-    doc.setTextColor(180, 180, 180);
-    doc.text('[LOGO]', logoX + logoSize / 2, logoY + logoSize / 2 + 2, { align: 'center' });
   }
   
   // Firma bilgileri (logonun sağında)
   const infoX = logoX + logoSize + 5;
-  let infoY = 8;
+  let infoY = PDF_CONFIG.MARGIN + 5;
   
-  doc.setTextColor(0, 0, 0);
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
   doc.setFontSize(12);
   doc.setFont(undefined, 'bold');
   doc.text(safeText(company.name), infoX, infoY);
@@ -161,15 +212,16 @@ export const createHeader = (doc) => {
   
   doc.setFontSize(9);
   doc.setFont(undefined, 'normal');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
   if (company.phone) {
     doc.text(`Tel: ${company.phone}`, infoX, infoY);
     infoY += 5;
   }
   
   if (company.address) {
-    const addressLines = doc.splitTextToSize(safeText(company.address), PDF_CONFIG.CONTENT_WIDTH - (infoX - PDF_CONFIG.MARGIN_LEFT));
+    const addressLines = doc.splitTextToSize(safeText(company.address), PDF_CONFIG.CONTENT_WIDTH - (infoX - PDF_CONFIG.MARGIN));
     addressLines.forEach((line, idx) => {
-      if (infoY < PDF_CONFIG.HEADER_HEIGHT - 3) {
+      if (infoY < PDF_CONFIG.MARGIN + logoSize - 2) {
         doc.text(line, infoX, infoY);
         infoY += 4;
       }
@@ -178,26 +230,26 @@ export const createHeader = (doc) => {
   
   // Oluşturulma tarihi (sağ üst)
   doc.setFontSize(8);
-  doc.setTextColor(100, 100, 100);
-  const dateText = safeText(`Olusturulma: ${dateStr}`);
-  doc.text(dateText, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN_RIGHT, 8, { align: 'right' });
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+  doc.text(safeText(`Olusturulma: ${dateStr}`), PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, PDF_CONFIG.MARGIN + 5, { align: 'right' });
   
-  // Header alt çizgisi
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.5);
-  doc.line(0, PDF_CONFIG.HEADER_HEIGHT, PDF_CONFIG.PAGE_WIDTH, PDF_CONFIG.HEADER_HEIGHT);
+  // Header alt çizgisi - Thin stone-200 border
+  const headerBottomY = PDF_CONFIG.MARGIN + logoSize + 5;
+  doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+  doc.setLineWidth(0.3);
+  doc.line(PDF_CONFIG.MARGIN, headerBottomY, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, headerBottomY);
   
-  return PDF_CONFIG.HEADER_HEIGHT + 5; // Başlangıç Y pozisyonu
+  return headerBottomY + 8;
 };
 
 /**
- * Rapor başlığı ekle
+ * Rapor başlığı ekle (Updated with new design system)
  */
 export const createTitle = (doc, reportName, filters = {}) => {
-  let yPos = PDF_CONFIG.HEADER_HEIGHT + 10;
+  let yPos = PDF_CONFIG.MARGIN + 30; // After header
   
-  // Ana başlık
-  doc.setTextColor(0, 0, 0);
+  // Ana başlık - Stone-900, Bold
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
   doc.setFontSize(16);
   doc.setFont(undefined, 'bold');
   const titleLines = doc.splitTextToSize(safeText(reportName), PDF_CONFIG.CONTENT_WIDTH);
@@ -206,10 +258,10 @@ export const createTitle = (doc, reportName, filters = {}) => {
     yPos += 7;
   });
   
-  // Filtre bilgileri
+  // Filtre bilgileri - Stone-500
   doc.setFontSize(10);
   doc.setFont(undefined, 'normal');
-  doc.setTextColor(100, 100, 100);
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
   yPos += 3;
   
   if (filters.date_from && filters.date_to) {
@@ -238,33 +290,36 @@ export const createTitle = (doc, reportName, filters = {}) => {
     yPos += 5;
   }
   
-  // Başlık alt çizgisi
-  doc.setDrawColor(220, 220, 220);
+  // Başlık alt çizgisi - Thin stone-200 border
+  doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
   doc.setLineWidth(0.3);
-  doc.line(PDF_CONFIG.MARGIN_LEFT, yPos + 3, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN_RIGHT, yPos + 3);
+  doc.line(PDF_CONFIG.MARGIN, yPos + 3, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, yPos + 3);
   
   return yPos + 10; // İçerik başlangıç Y pozisyonu
 };
 
 /**
- * Stilize tablo oluştur (autoTable benzeri ama manuel)
+ * Stilize tablo oluştur (Updated with new design system)
+ * Header: bg-stone-100 (Very light gray), Bold text
+ * Rows: Clean white with bottom borders (no gray backgrounds)
+ * Borders: Thin stone-200 lines
  */
 export const createTable = (doc, tableData, columns, startY) => {
   let yPos = startY;
   const colWidths = columns.map(col => col.width || (PDF_CONFIG.CONTENT_WIDTH / columns.length));
   const colPositions = [];
-  let currentX = PDF_CONFIG.MARGIN_LEFT;
+  let currentX = PDF_CONFIG.MARGIN;
   
   columns.forEach((col, idx) => {
     colPositions.push(currentX);
     currentX += colWidths[idx];
   });
   
-  // Tablo başlıkları
-  doc.setFillColor(51, 51, 51); // #333
-  doc.rect(PDF_CONFIG.MARGIN_LEFT, yPos - 6, PDF_CONFIG.CONTENT_WIDTH, 8, 'F');
+  // Tablo başlıkları - Stone-100 background, Bold text
+  doc.setFillColor(...PDF_CONFIG.COLORS.HEADER_BG);
+  doc.rect(PDF_CONFIG.MARGIN, yPos - 6, PDF_CONFIG.CONTENT_WIDTH, 8, 'F');
   
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
   doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
   
@@ -285,17 +340,17 @@ export const createTable = (doc, tableData, columns, startY) => {
   doc.setFont(undefined, 'normal');
   
   tableData.forEach((row, rowIdx) => {
-    // Sayfa taşması kontrolü
-    const maxY = PDF_CONFIG.PAGE_HEIGHT - PDF_CONFIG.FOOTER_HEIGHT - PDF_CONFIG.MARGIN_BOTTOM;
+    // Sayfa taşması kontrolü - page-break-inside: avoid
+    const maxY = PDF_CONFIG.PAGE_HEIGHT - PDF_CONFIG.FOOTER_HEIGHT - PDF_CONFIG.MARGIN;
     if (yPos > maxY) {
       doc.addPage();
-      createHeader(doc);
-      yPos = PDF_CONFIG.HEADER_HEIGHT + 10;
+      createDocumentHeader(doc, '', '');
+      yPos = PDF_CONFIG.MARGIN + 30;
       
       // Yeni sayfada başlıkları tekrar yaz
-      doc.setFillColor(51, 51, 51);
-      doc.rect(PDF_CONFIG.MARGIN_LEFT, yPos - 6, PDF_CONFIG.CONTENT_WIDTH, 8, 'F');
-      doc.setTextColor(255, 255, 255);
+      doc.setFillColor(...PDF_CONFIG.COLORS.HEADER_BG);
+      doc.rect(PDF_CONFIG.MARGIN, yPos - 6, PDF_CONFIG.CONTENT_WIDTH, 8, 'F');
+      doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
       doc.setFontSize(10);
       doc.setFont(undefined, 'bold');
       columns.forEach((col, idx) => {
@@ -311,19 +366,14 @@ export const createTable = (doc, tableData, columns, startY) => {
       yPos += 4;
     }
     
-    // Alternatif satır rengi
-    if (rowIdx % 2 === 0) {
-      doc.setFillColor(250, 250, 250); // #FAFAFA
-      doc.rect(PDF_CONFIG.MARGIN_LEFT, yPos - 5, PDF_CONFIG.CONTENT_WIDTH, 7, 'F');
-    }
-    
-    // Satır çizgileri
-    doc.setDrawColor(224, 224, 224); // #E0E0E0
+    // NO gray backgrounds - use borders only
+    // Satır alt çizgisi - Thin stone-200 border
+    doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
     doc.setLineWidth(0.2);
-    doc.line(PDF_CONFIG.MARGIN_LEFT, yPos - 5, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN_RIGHT, yPos - 5);
+    doc.line(PDF_CONFIG.MARGIN, yPos - 5, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, yPos - 5);
     
-    // Hücre verileri
-    doc.setTextColor(0, 0, 0);
+    // Hücre verileri - Stone-900 text
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
     columns.forEach((col, idx) => {
       const value = row[col.key] || '-';
       let text = typeof value === 'string' ? safeText(value) : String(value);
@@ -355,53 +405,75 @@ export const createTable = (doc, tableData, columns, startY) => {
     yPos += 7;
   });
   
-  // Tablo alt çizgisi
-  doc.setDrawColor(224, 224, 224);
-  doc.setLineWidth(0.5);
-  doc.line(PDF_CONFIG.MARGIN_LEFT, yPos - 5, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN_RIGHT, yPos - 5);
+  // Tablo alt çizgisi - Thin stone-200 border
+  doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+  doc.setLineWidth(0.3);
+  doc.line(PDF_CONFIG.MARGIN, yPos - 5, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, yPos - 5);
   
   return yPos;
 };
 
 /**
- * PDF Footer oluştur
+ * PDF Footer - Global Design System
+ * Center: Agency Contact Info (Address, Phone)
+ * Right: Page Numbers ("Page 1 of 3")
+ * Style: Separated by thin stone-200 border
  */
 export const createFooter = (doc, reportName = '', totalPages = null, currentPage = null) => {
   if (totalPages === null) totalPages = doc.internal.getNumberOfPages();
   if (currentPage === null) currentPage = doc.internal.pageNumber || 1;
   
+  const company = getCompanyInfo();
   const footerY = PDF_CONFIG.PAGE_HEIGHT - PDF_CONFIG.FOOTER_HEIGHT;
   
-  // Footer üst çizgisi
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.5);
-  doc.line(PDF_CONFIG.MARGIN_LEFT, footerY, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN_RIGHT, footerY);
+  // Footer üst çizgisi - Thin stone-200 border
+  doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+  doc.setLineWidth(0.3);
+  doc.line(PDF_CONFIG.MARGIN, footerY, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, footerY);
   
-  // Sol altta: Otomatik üretim mesajı
-  doc.setTextColor(100, 100, 100);
   doc.setFontSize(8);
   doc.setFont(undefined, 'normal');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+  
   doc.text(
-    safeText('Bu dokuman sistem tarafindan otomatik uretilmistir.'),
-    PDF_CONFIG.MARGIN_LEFT,
-    footerY + 12
+    safeText('Generated by TourCast'),
+    PDF_CONFIG.MARGIN,
+    footerY + 8
   );
   
-  // Sağ altta: Sayfa numarası
+  // Center: Agency Contact Info
+  let centerText = '';
+  if (company.address) {
+    centerText = safeText(company.address);
+    if (company.phone) {
+      centerText += ` | Tel: ${company.phone}`;
+    }
+  } else if (company.phone) {
+    centerText = `Tel: ${company.phone}`;
+  }
+  
+  if (centerText) {
+    doc.text(
+      centerText,
+      PDF_CONFIG.PAGE_WIDTH / 2,
+      footerY + 8,
+      { align: 'center' }
+    );
+  }
+  
   doc.text(
-    `Sayfa ${currentPage} / ${totalPages}`,
-    PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN_RIGHT,
-    footerY + 12,
+    `Page ${currentPage} of ${totalPages}`,
+    PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN,
+    footerY + 8,
     { align: 'right' }
   );
   
-  // Rapor adı (varsa, ortada)
+  // Rapor adı (varsa, ikinci satırda ortada)
   if (reportName) {
-    const safeReportName = safeText(reportName);
     doc.text(
-      safeReportName,
+      safeText(reportName),
       PDF_CONFIG.PAGE_WIDTH / 2,
-      footerY + 12,
+      footerY + 15,
       { align: 'center' }
     );
   }
@@ -422,3 +494,187 @@ export const savePdf = (doc, filename, reportName = '') => {
   
   doc.save(filename);
 };
+
+// ============================================================================
+// INVOICE / COLLECTION RECEIPT GENERATOR
+// ============================================================================
+
+/**
+ * Create Financial Table for Invoices/Collection Receipts
+ * Header: bg-stone-100, Bold text
+ * Rows: Clean white with bottom borders
+ * Totals: Align to the right, make Final Amount LARGE and BOLD
+ */
+export const createFinancialTable = (doc, items, startY) => {
+  let yPos = startY;
+  
+  // Table columns - Description (flexible), Quantity (fixed), Amount (fixed)
+  const colWidths = [PDF_CONFIG.CONTENT_WIDTH - 60, 30, 60]; // Description, Quantity, Amount
+  const colPositions = [
+    PDF_CONFIG.MARGIN,
+    PDF_CONFIG.MARGIN + colWidths[0],
+    PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN - colWidths[2]
+  ];
+  
+  // Header - Stone-100 background
+  doc.setFillColor(...PDF_CONFIG.COLORS.HEADER_BG);
+  doc.rect(PDF_CONFIG.MARGIN, yPos - 6, PDF_CONFIG.CONTENT_WIDTH, 8, 'F');
+  
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'bold');
+  
+  doc.text('Description', colPositions[0] + 3, yPos - 1);
+  doc.text('Quantity', colPositions[1] + (colWidths[1] / 2), yPos - 1, { align: 'center' });
+  doc.text('Amount', colPositions[2], yPos - 1, { align: 'right' });
+  
+  yPos += 4;
+  
+  // Items
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  
+  let subtotal = 0;
+  
+  items.forEach((item, idx) => {
+    const maxY = PDF_CONFIG.PAGE_HEIGHT - PDF_CONFIG.FOOTER_HEIGHT - PDF_CONFIG.MARGIN;
+    if (yPos > maxY) {
+      doc.addPage();
+      createDocumentHeader(doc, '', '');
+      yPos = PDF_CONFIG.MARGIN + 30;
+    }
+    
+    // Row border
+    doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+    doc.setLineWidth(0.2);
+    doc.line(PDF_CONFIG.MARGIN, yPos - 5, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, yPos - 5);
+    
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+    doc.text(safeText(item.description || '-'), colPositions[0] + 3, yPos);
+    doc.text(String(item.quantity || 0), colPositions[1] + (colWidths[1] / 2), yPos, { align: 'center' });
+    
+    const amount = (item.amount || 0);
+    subtotal += amount;
+    doc.text(amount.toFixed(2), colPositions[2], yPos, { align: 'right' });
+    
+    yPos += 7;
+  });
+  
+  // Totals section
+  yPos += 5;
+  
+  // Subtotal
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+  doc.text('Subtotal:', colPositions[1], yPos, { align: 'right' });
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  doc.text(subtotal.toFixed(2), colPositions[2], yPos, { align: 'right' });
+  yPos += 6;
+  
+  // Tax (if applicable)
+  const tax = items.reduce((sum, item) => sum + (item.tax || 0), 0);
+  if (tax > 0) {
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+    doc.text('Tax:', colPositions[1], yPos, { align: 'right' });
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+    doc.text(tax.toFixed(2), colPositions[2], yPos, { align: 'right' });
+    yPos += 6;
+  }
+  
+  // Final Amount - LARGE and BOLD
+  const total = subtotal + tax;
+  doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+  doc.setLineWidth(0.5);
+  doc.line(colPositions[1], yPos - 2, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, yPos - 2);
+  yPos += 3;
+  
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  doc.text('Total:', colPositions[1], yPos, { align: 'right' });
+  doc.setFontSize(14);
+  doc.text(total.toFixed(2), colPositions[2], yPos, { align: 'right' });
+  
+  return yPos + 10;
+};
+
+/**
+ * Create Signature Area for Invoices/Collection Receipts
+ */
+export const createSignatureArea = (doc, startY) => {
+  let yPos = startY;
+  const signatureWidth = 70;
+  const signatureHeight = 30;
+  const spacing = 20;
+  
+  // Agency Signature (Left)
+  doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+  doc.setLineWidth(0.3);
+  doc.rect(PDF_CONFIG.MARGIN, yPos, signatureWidth, signatureHeight);
+  
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+  doc.text('Agency Signature', PDF_CONFIG.MARGIN + (signatureWidth / 2), yPos + 8, { align: 'center' });
+  
+  // Guest Signature (Right)
+  const rightX = PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN - signatureWidth;
+  doc.rect(rightX, yPos, signatureWidth, signatureHeight);
+  doc.text('Guest Signature', rightX + (signatureWidth / 2), yPos + 8, { align: 'center' });
+  
+  return yPos + signatureHeight + 10;
+};
+
+/**
+ * Generate Invoice/Collection Receipt PDF
+ */
+export const generateInvoicePdf = (invoiceData, company) => {
+  const doc = createNewPdf('COLLECTION RECEIPT', invoiceData.id || invoiceData.invoice_number);
+  
+  let yPos = PDF_CONFIG.MARGIN + 30;
+  
+  // Customer Info Section
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  doc.text('Customer Information', PDF_CONFIG.MARGIN, yPos);
+  yPos += 8;
+  
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  
+  if (invoiceData.customer_name) {
+    doc.text(`Name: ${safeText(invoiceData.customer_name)}`, PDF_CONFIG.MARGIN, yPos);
+    yPos += 5;
+  }
+  if (invoiceData.customer_email) {
+    doc.text(`Email: ${safeText(invoiceData.customer_email)}`, PDF_CONFIG.MARGIN, yPos);
+    yPos += 5;
+  }
+  if (invoiceData.customer_phone) {
+    doc.text(`Phone: ${safeText(invoiceData.customer_phone)}`, PDF_CONFIG.MARGIN, yPos);
+    yPos += 5;
+  }
+  
+  yPos += 5;
+  
+  // Financial Table
+  const items = invoiceData.items || [
+    { description: invoiceData.description || 'Service', quantity: 1, amount: invoiceData.amount || 0 }
+  ];
+  
+  yPos = createFinancialTable(doc, items, yPos);
+  
+  // Signature Area
+  const maxY = PDF_CONFIG.PAGE_HEIGHT - PDF_CONFIG.FOOTER_HEIGHT - PDF_CONFIG.MARGIN;
+  if (yPos < maxY - 50) {
+    yPos = createSignatureArea(doc, yPos);
+  }
+  
+  return { doc, filename: `invoice-${invoiceData.id || 'receipt'}-${format(new Date(), 'yyyyMMdd')}.pdf` };
+};
+
+// Export PDF_CONFIG for use in other files
+export { PDF_CONFIG };

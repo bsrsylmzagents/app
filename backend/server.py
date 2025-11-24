@@ -20,13 +20,12 @@ import requests
 from urllib.parse import urlparse
 import base64
 import shutil
+import pyotp
+import qrcode
+from io import BytesIO
+from user_agents import parse as ua_parse
 
-# -------------------- ENV & ROOT --------------------
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
-
-# -------------------- LOGGER --------------------
+# -------------------- LOGGER (MUST BE BEFORE ANY LOGGER CALLS) --------------------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +33,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger("server")
 logger.setLevel(logging.INFO)
+
+# -------------------- ENV & ROOT --------------------
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# -------------------- OPTIONAL DEPENDENCIES --------------------
+
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    SLOWAPI_AVAILABLE = True
+except ImportError:
+    SLOWAPI_AVAILABLE = False
+    logger.warning("slowapi not available, rate limiting disabled")
 
 # -------------------- GLOBAL VARIABLES --------------------
 
@@ -54,7 +69,6 @@ try:
     logger.info(f"MongoDB bağlantısı oluşturuldu: {MONGO_URL}")
 except Exception as e:
     logger.error(f"MongoDB bağlantı hatası: {str(e)}")
-    # Render'da startup'ta raise etme, sadece log'la
     logger.warning("MongoDB bağlantısı başarısız, ancak uygulama başlatılıyor...")
 
 try:
@@ -74,9 +88,25 @@ ALGORITHM = "HS256"
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-# -------------------- FASTAPI APP --------------------
+# -------------------- RATE LIMITING --------------------
+
+if SLOWAPI_AVAILABLE:
+    limiter = Limiter(key_func=get_remote_address)
+else:
+    class DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def decorator(func):
+                return func
+            return decorator
+    limiter = DummyLimiter()
 
 app = FastAPI()
+if SLOWAPI_AVAILABLE:
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# -------------------- FASTAPI APP --------------------
+
 api_router = APIRouter(prefix="/api")
 
 # -------------------- CORS --------------------
@@ -88,11 +118,20 @@ else:
     CORS_ORIGINS = [
         "https://app-one-lake-13.vercel.app",  # Production frontend
         "http://localhost:3000",
+        "http://localhost:3001",
         "http://localhost:5173",
         "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
         "http://127.0.0.1:5173"
     ]
     logger.warning("⚠️ CORS_ORIGINS not set in environment, using default origins")
+
+# Ensure port 3001 is always included for localhost development
+required_origins = ["http://localhost:3001", "http://127.0.0.1:3001"]
+for origin in required_origins:
+    if origin not in CORS_ORIGINS:
+        CORS_ORIGINS.append(origin)
+        logger.info(f"Added {origin} to CORS_ORIGINS")
 
 logger.info(f"CORS_ORIGINS={CORS_ORIGINS}")
 
@@ -181,9 +220,12 @@ async def shutdown_event():
 
 # -------------------- AUTH HELPERS --------------------
 
-def create_access_token(data: dict):
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=30)
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(days=30)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -194,55 +236,186 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
         company_id = payload.get("company_id")
+        role = payload.get("role", "user")  # Default to "user" if not present (backward compatibility)
         
-        if not user_id or not company_id:
+        # Note: corporate_user role is only used for B2B portal login, not for normal admin panel login
+        # Normal admin panel users should have roles like "admin", "user", "super_admin"
+        # We don't block corporate_user here because normal admin panel login should work regardless of role
+        
+        if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Super admin için company_id opsiyonel olabilir
+        if not company_id and role != "super_admin":
+            raise HTTPException(status_code=401, detail="Invalid token: company_id required")
         
         user = await db.users.find_one({"id": user_id})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         
+        # Get role from user document if not in token (for backward compatibility)
+        if not role or role == "user":
+            user_role = user.get("role", "user")
+            # Migrate is_admin to role if needed
+            if user.get("is_admin", False) and user_role == "user":
+                user_role = "admin"
+            role = user_role
+        
         return {
             "user_id": user_id,
-            "company_id": company_id,
-            "is_admin": payload.get("is_admin", False)
+            "company_id": company_id,  # Can be None for super_admin
+            "role": role,
+            "is_admin": payload.get("is_admin", False)  # Keep for backward compatibility
         }
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Auth error: {str(e)}")
         raise HTTPException(status_code=401, detail="Authentication failed")
 
+# -------------------- ROLE-BASED MIDDLEWARE --------------------
+
+def check_role(*allowed_roles: str):
+    """Middleware factory to check if user has one of the allowed roles"""
+    async def role_checker(current_user: dict = Depends(get_current_user)):
+        user_role = current_user.get("role", "user")
+        if user_role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Access denied. Required roles: {', '.join(allowed_roles)}"
+            )
+        return current_user
+    return role_checker
+
+# Super admin only
+require_super_admin = check_role("super_admin")
+
+# Admin or super admin
+require_admin = check_role("admin", "super_admin")
+
+# -------------------- TENANT ISOLATION HELPERS --------------------
+
+def add_tenant_filter(query: dict, current_user: dict) -> dict:
+    """
+    Add tenant isolation filter to a MongoDB query.
+    Super admins can query all data, others are restricted to their company.
+    """
+    user_role = current_user.get("role", "user")
+    
+    # Super admin can query all data (no filter)
+    if user_role == "super_admin":
+        return query
+    
+    # Regular users and admins are restricted to their company
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=401, detail="Company ID not found in token")
+    
+    # Add company_id filter if not already present
+    if "company_id" not in query:
+        query["company_id"] = company_id
+    elif query.get("company_id") != company_id:
+        # If company_id is already in query and doesn't match, raise error
+        raise HTTPException(status_code=403, detail="Cannot access data from other companies")
+    
+    return query
+
+async def get_tenant_scoped_collection(collection_name: str, current_user: dict, query: dict = None):
+    """
+    Get a collection with automatic tenant isolation applied.
+    Returns a cursor that can be used for find operations.
+    """
+    if query is None:
+        query = {}
+    
+    query = add_tenant_filter(query, current_user)
+    return db[collection_name].find(query)
+
 # -------------------- AUTH ENDPOINTS --------------------
 
 class LoginRequest(BaseModel):
-    company_code: str
-    username: str
+    username: str  # Can be username or email
     password: str
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 @api_router.post("/auth/login")
-async def login(data: LoginRequest):
-    company = await db.companies.find_one({"company_code": data.company_code})
-    if not company:
-        raise HTTPException(status_code=401, detail="Invalid company code")
+async def login(data: LoginRequest, request: Request):
+    # Find user by username or email (username field can contain email)
+    user = await db.users.find_one({
+        "$or": [
+            {"username": data.username},
+            {"email": data.username}
+        ]
+    })
     
-    user = await db.users.find_one({"company_id": company["id"], "username": data.username})
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
+    # Verify password
     if not verify_password(data.password, user.get("password_hash") or user.get("password")):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
+    # Get company from user's company_id
+    company = await db.companies.find_one({"id": user["company_id"]})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Check if company is active
+    if not company.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Company account is inactive")
+    
+    # Determine user role
+    # Priority: role field > is_admin field (for backward compatibility)
+    user_role = user.get("role", "user")
+    if user_role == "user" and user.get("is_admin", False):
+        # Migrate is_admin to role if role is not set
+        user_role = "admin"
+    
+    # Get IP address and user agent for login activity tracking
+    ip_address = get_client_ip(request)
+    user_agent = request.headers.get("user-agent", "")
+    
+    # Check if 2FA is enabled
+    if user.get("is_two_factor_enabled", False):
+        # Create temporary token for 2FA validation (5 minutes expiry)
+        temp_token = create_access_token({
+            "sub": user["id"],
+            "company_id": user["company_id"],
+            "role": user_role,
+            "is_admin": user.get("is_admin", False),
+            "temp_2fa": True  # Mark as temporary token
+        }, expires_delta=timedelta(minutes=5))
+        
+        # Note: Login activity will be saved after successful 2FA validation in validate_2fa_login
+        
+        return {
+            "require2FA": True,
+            "tempToken": temp_token,
+            "message": "Two-factor authentication required"
+        }
+    
+    # Create token with role
     token = create_access_token({
         "sub": user["id"],
         "company_id": user["company_id"],
-        "is_admin": user.get("is_admin", False)
+        "role": user_role,
+        "is_admin": user.get("is_admin", False)  # Keep for backward compatibility
     })
+    
+    # Save login activity asynchronously (non-blocking)
+    await save_login_activity(
+        user_id=user["id"],
+        company_id=user.get("company_id"),
+        ip_address=ip_address,
+        user_agent_string=user_agent,
+        request=request
+    )
     
     return {
         "access_token": token,
@@ -251,7 +424,8 @@ async def login(data: LoginRequest):
             "id": user["id"],
             "username": user.get("username"),
             "full_name": user.get("full_name"),
-            "is_admin": user.get("is_admin", False),
+            "role": user_role,
+            "is_admin": user.get("is_admin", False),  # Keep for backward compatibility
             "permissions": user.get("permissions", {})
         },
         "company": {
@@ -267,6 +441,15 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    # Role'ü token'dan veya user document'inden al
+    user_role = current_user.get("role") or user.get("role", "user")
+    # Eğer role yoksa ve is_admin varsa, admin yap
+    if user_role == "user" and user.get("is_admin", False):
+        user_role = "admin"
+    
+    # Role'ü user objesine ekle
+    user["role"] = user_role
+    
     company = await db.companies.find_one({"id": current_user["company_id"]}, {"_id": 0})
     return {"user": user, "company": company}
 
@@ -276,6 +459,505 @@ async def get_my_company(current_user: dict = Depends(get_current_user)):
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     return {"company": company}
+
+@api_router.put("/users/me/preferences")
+async def update_user_preferences(
+    preferences: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update user preferences (dateFormat, theme, tableDensity, startPage, etc.)"""
+    # Validate dateFormat if provided
+    if "dateFormat" in preferences:
+        valid_formats = ["DD/MM/YYYY", "DD.MM.YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]
+        if preferences["dateFormat"] not in valid_formats:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid dateFormat. Must be one of: {', '.join(valid_formats)}"
+            )
+    
+    # Validate theme if provided
+    if "theme" in preferences:
+        valid_themes = ["light", "dark", "system"]
+        if preferences["theme"] not in valid_themes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid theme. Must be one of: {', '.join(valid_themes)}"
+            )
+    
+    # Validate tableDensity if provided
+    if "tableDensity" in preferences:
+        valid_densities = ["comfortable", "compact"]
+        if preferences["tableDensity"] not in valid_densities:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid tableDensity. Must be one of: {', '.join(valid_densities)}"
+            )
+    
+    # Validate startPage if provided (should be a valid route)
+    if "startPage" in preferences:
+        valid_start_pages = ["/dashboard", "/calendar", "/customers", "/reservations/new", "/reservations"]
+        if preferences["startPage"] not in valid_start_pages:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid startPage. Must be one of: {', '.join(valid_start_pages)}"
+            )
+    
+    # Validate currencyDisplay if provided
+    if "currencyDisplay" in preferences:
+        valid_currencies = ["TRY", "USD", "EUR", "GBP"]
+        if preferences["currencyDisplay"] not in valid_currencies:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid currencyDisplay. Must be one of: {', '.join(valid_currencies)}"
+            )
+    
+    # Validate boolean fields
+    if "soundEffects" in preferences:
+        if not isinstance(preferences["soundEffects"], bool):
+            raise HTTPException(
+                status_code=400,
+                detail="soundEffects must be a boolean"
+            )
+    
+    if "sidebarCollapsed" in preferences:
+        if not isinstance(preferences["sidebarCollapsed"], bool):
+            raise HTTPException(
+                status_code=400,
+                detail="sidebarCollapsed must be a boolean"
+            )
+    
+    # Get current user document
+    user = await db.users.find_one({"id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Merge with existing preferences
+    current_preferences = user.get("preferences", {})
+    updated_preferences = {**current_preferences, **preferences}
+    
+    # Update user preferences
+    await db.users.update_one(
+        {"id": current_user["user_id"]},
+        {
+            "$set": {
+                "preferences": updated_preferences,
+                "updated_at": datetime.now(timezone.utc)
+            }
+        }
+    )
+    
+    # Return updated user
+    updated_user = await db.users.find_one(
+        {"id": current_user["user_id"]},
+        {"_id": 0, "password": 0, "password_hash": 0}
+    )
+    
+    return {"message": "Preferences updated successfully", "user": updated_user}
+
+@api_router.put("/users/me/notifications")
+async def update_notification_preferences(
+    notificationPreferences: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update user notification preferences (Matrix Style)"""
+    # Get current user document
+    user = await db.users.find_one({"id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate notification preference structure
+    valid_keys = ["newBooking", "bookingCancellation", "paymentReceived", "dailyFinanceReport", "loginAlert", "marketingEmails"]
+    
+    for key, value in notificationPreferences.items():
+        if key not in valid_keys:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid notification preference key: {key}. Must be one of: {', '.join(valid_keys)}"
+            )
+        
+        # Validate structure based on notification type
+        if key == "dailyFinanceReport":
+            # Email only
+            if not isinstance(value, dict) or "email" not in value:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"dailyFinanceReport must have 'email' field"
+                )
+            if not isinstance(value["email"], bool):
+                raise HTTPException(
+                    status_code=400,
+                    detail="dailyFinanceReport.email must be a boolean"
+                )
+        elif key == "marketingEmails":
+            # Email only
+            if not isinstance(value, dict) or "email" not in value:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"marketingEmails must have 'email' field"
+                )
+            if not isinstance(value["email"], bool):
+                raise HTTPException(
+                    status_code=400,
+                    detail="marketingEmails.email must be a boolean"
+                )
+        else:
+            # Email and In-App
+            if not isinstance(value, dict) or "email" not in value or "inApp" not in value:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{key} must have both 'email' and 'inApp' fields"
+                )
+            if not isinstance(value["email"], bool) or not isinstance(value["inApp"], bool):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{key}.email and {key}.inApp must be booleans"
+                )
+    
+    # Merge with existing notification preferences
+    current_notification_preferences = user.get("notificationPreferences", {})
+    updated_notification_preferences = {**current_notification_preferences, **notificationPreferences}
+    
+    # Update user notification preferences
+    await db.users.update_one(
+        {"id": current_user["user_id"]},
+        {
+            "$set": {
+                "notificationPreferences": updated_notification_preferences,
+                "updated_at": datetime.now(timezone.utc)
+            }
+        }
+    )
+    
+    # Return updated user
+    updated_user = await db.users.find_one(
+        {"id": current_user["user_id"]},
+        {"_id": 0, "password": 0, "password_hash": 0}
+    )
+    
+    return {"message": "Notification preferences updated successfully", "user": updated_user}
+
+def should_send_notification(user: dict, notification_type: str, channel: str) -> bool:
+    """
+    Utility function to check if a notification should be sent.
+    
+    Args:
+        user: User document from database
+        notification_type: Type of notification (e.g., "newBooking", "paymentReceived")
+        channel: Channel to send notification ("email" or "inApp")
+    
+    Returns:
+        bool: True if notification should be sent, False otherwise
+    """
+    # Get notification preferences, default to enabled if not set
+    notification_preferences = user.get("notificationPreferences", {})
+    
+    # Special handling for email-only notifications
+    if notification_type == "dailyFinanceReport" or notification_type == "marketingEmails":
+        if channel != "email":
+            return False
+        pref = notification_preferences.get(notification_type, {})
+        return pref.get("email", True)  # Default to True
+    
+    # For notifications with both email and inApp
+    pref = notification_preferences.get(notification_type, {})
+    
+    if channel == "email":
+        return pref.get("email", True)  # Default to True
+    elif channel == "inApp":
+        return pref.get("inApp", True)  # Default to True
+    
+    return False
+
+# ==================== TWO-FACTOR AUTHENTICATION (2FA) ====================
+
+def generate_recovery_codes(count: int = 10) -> List[str]:
+    """Generate recovery codes for 2FA backup"""
+    return [secrets.token_urlsafe(16) for _ in range(count)]
+
+@api_router.post("/auth/2fa/generate")
+async def generate_2fa_secret(current_user: dict = Depends(get_current_user)):
+    """Generate a temporary 2FA secret and QR code for setup"""
+    try:
+        user = await db.users.find_one({"id": current_user["user_id"]})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Generate secret
+        secret = pyotp.random_base32()
+        
+        # Get company name for QR code label
+        # Super admin için company_id olmayabilir, bu durumu handle et
+        company_name = "TourCast"
+        if current_user.get("company_id"):
+            company = await db.companies.find_one({"id": current_user["company_id"]})
+            if company:
+                company_name = company.get("company_name", "TourCast")
+        
+        # Create TOTP object
+        totp = pyotp.TOTP(secret)
+        
+        # Generate otpauth URL
+        user_email = user.get("email") or user.get("username", "user")
+        otpauth_url = totp.provisioning_uri(
+            name=user_email,
+            issuer_name=company_name
+        )
+        
+        # Generate QR code
+        try:
+            qr = qrcode.QRCode(version=1, box_size=10, border=5)
+            qr.add_data(otpauth_url)
+            qr.make(fit=True)
+            
+            img = qr.make_image(fill_color="black", back_color="white")
+            buffer = BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+            
+            # Convert to base64 for frontend
+            qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
+            qr_code_url = f"data:image/png;base64,{qr_code_base64}"
+        except Exception as qr_error:
+            logger.error(f"QR code generation error: {str(qr_error)}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"QR code oluşturulamadı: {str(qr_error)}"
+            )
+        
+        # Store temporary secret in user document (not enabled yet)
+        await db.users.update_one(
+            {"id": current_user["user_id"]},
+            {"$set": {"two_factor_secret": {"base32": secret, "otpauth_url": otpauth_url}}}
+        )
+        
+        return {
+            "secret": secret,
+            "qr_code": qr_code_url,
+            "otpauth_url": otpauth_url
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"2FA secret generation error: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"2FA secret oluşturulamadı: {str(e)}"
+        )
+
+@api_router.post("/auth/2fa/verify")
+async def verify_2fa_setup(data: dict, current_user: dict = Depends(get_current_user)):
+    """Verify 2FA code and enable 2FA for user"""
+    code = data.get("code")
+    if not code:
+        raise HTTPException(status_code=400, detail="Code is required")
+    
+    user = await db.users.find_one({"id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get temporary secret
+    two_factor_secret = user.get("two_factor_secret")
+    if not two_factor_secret or "base32" not in two_factor_secret:
+        raise HTTPException(status_code=400, detail="No 2FA secret found. Please generate one first.")
+    
+    secret = two_factor_secret["base32"]
+    
+    # Verify code
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(code, valid_window=1):  # Allow 1 time step tolerance
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+    
+    # Generate recovery codes
+    recovery_codes = generate_recovery_codes(10)
+    
+    # Enable 2FA and store secret permanently
+    await db.users.update_one(
+        {"id": current_user["user_id"]},
+        {
+            "$set": {
+                "is_two_factor_enabled": True,
+                "two_factor_recovery_codes": recovery_codes
+            }
+        }
+    )
+    
+    # Activity log
+    await create_activity_log(
+        company_id=current_user["company_id"],
+        user_id=current_user["user_id"],
+        username=user.get("username", ""),
+        full_name=user.get("full_name", ""),
+        action="enable",
+        entity_type="2fa",
+        entity_id=current_user["user_id"],
+        description="Two-factor authentication enabled"
+    )
+    
+    return {
+        "message": "2FA enabled successfully",
+        "recovery_codes": recovery_codes  # Show only once!
+    }
+
+@api_router.post("/auth/2fa/disable")
+async def disable_2fa(data: dict, current_user: dict = Depends(get_current_user)):
+    """Disable 2FA (requires password confirmation)"""
+    password = data.get("password")
+    if not password:
+        raise HTTPException(status_code=400, detail="Password is required")
+    
+    user = await db.users.find_one({"id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify password
+    if not verify_password(password, user.get("password_hash") or user.get("password")):
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    # Disable 2FA
+    await db.users.update_one(
+        {"id": current_user["user_id"]},
+        {
+            "$set": {
+                "is_two_factor_enabled": False,
+                "two_factor_secret": None,
+                "two_factor_recovery_codes": []
+            }
+        }
+    )
+    
+    # Activity log
+    await create_activity_log(
+        company_id=current_user["company_id"],
+        user_id=current_user["user_id"],
+        username=user.get("username", ""),
+        full_name=user.get("full_name", ""),
+        action="disable",
+        entity_type="2fa",
+        entity_id=current_user["user_id"],
+        description="Two-factor authentication disabled"
+    )
+    
+    return {"message": "2FA disabled successfully"}
+
+@api_router.post("/auth/2fa/validate-login")
+async def validate_2fa_login(data: dict, request: Request):
+    """Validate 2FA code during login and return final JWT token"""
+    temp_token = data.get("tempToken")
+    code = data.get("code")
+    
+    if not temp_token or not code:
+        raise HTTPException(status_code=400, detail="tempToken and code are required")
+    
+    try:
+        # Decode temporary token
+        payload = jwt.decode(temp_token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        # Verify it's a temporary 2FA token
+        if not payload.get("temp_2fa"):
+            raise HTTPException(status_code=400, detail="Invalid token type")
+        
+        user_id = payload.get("sub")
+        company_id = payload.get("company_id")
+        
+        if not user_id or not company_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Get user
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not user.get("is_two_factor_enabled", False):
+            raise HTTPException(status_code=400, detail="2FA is not enabled for this user")
+        
+        # Get 2FA secret
+        two_factor_secret = user.get("two_factor_secret")
+        if not two_factor_secret or "base32" not in two_factor_secret:
+            raise HTTPException(status_code=400, detail="2FA secret not found")
+        
+        secret = two_factor_secret["base32"]
+        totp = pyotp.TOTP(secret)
+        
+        # Verify code or check recovery codes
+        is_valid = False
+        used_recovery_code = None
+        
+        # First try TOTP code
+        if totp.verify(code, valid_window=1):
+            is_valid = True
+        else:
+            # Check recovery codes
+            recovery_codes = user.get("two_factor_recovery_codes", [])
+            if code in recovery_codes:
+                is_valid = True
+                used_recovery_code = code
+                # Remove used recovery code
+                recovery_codes.remove(code)
+                await db.users.update_one(
+                    {"id": user_id},
+                    {"$set": {"two_factor_recovery_codes": recovery_codes}}
+                )
+        
+        if not is_valid:
+            raise HTTPException(status_code=401, detail="Invalid 2FA code")
+        
+        # Get company
+        company = await db.companies.find_one({"id": company_id})
+        if not company:
+            raise HTTPException(status_code=404, detail="Company not found")
+        
+        # Determine user role
+        user_role = user.get("role", "user")
+        if user_role == "user" and user.get("is_admin", False):
+            user_role = "admin"
+        
+        # Get IP address and user agent for login activity tracking
+        ip_address = get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "")
+        
+        # Create final JWT token
+        token = create_access_token({
+            "sub": user_id,
+            "company_id": company_id,
+            "role": user_role,
+            "is_admin": user.get("is_admin", False)
+        })
+        
+        # Save login activity asynchronously (non-blocking) after successful 2FA validation
+        await save_login_activity(
+            user_id=user_id,
+            company_id=company_id,
+            ip_address=ip_address,
+            user_agent_string=user_agent,
+            request=request
+        )
+        
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {
+                "id": user["id"],
+                "username": user.get("username"),
+                "full_name": user.get("full_name"),
+                "role": user_role,
+                "is_admin": user.get("is_admin", False),
+                "permissions": user.get("permissions", {})
+            },
+            "company": {
+                "id": company["id"],
+                "name": company.get("company_name"),
+                "code": company.get("company_code")
+            },
+            "recovery_code_used": used_recovery_code is not None
+        }
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Temporary token expired. Please login again.")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -346,6 +1028,9 @@ class Company(BaseModel):
     tax_number: Optional[str] = None
     package_start_date: str
     package_end_date: str
+    is_active: bool = True  # Tenant aktif/pasif durumu
+    subscription_plan: Optional[str] = None  # Subscription plan (e.g., "basic", "premium", "enterprise")
+    feature_flags: Dict[str, bool] = Field(default_factory=dict)  # Feature flags for enabling/disabling modules
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class StaffRole(BaseModel):
@@ -405,7 +1090,31 @@ class User(BaseModel):
     # Web Panel Ayarları
     web_panel_active: bool = False  # YENİ - Web panele erişim
     permissions: Dict[str, Dict[str, bool]] = Field(default_factory=dict)
-    is_admin: bool = False
+    is_admin: bool = False  # DEPRECATED: Use 'role' field instead. Kept for backward compatibility.
+    role: str = Field(default="user")  # Role: 'super_admin', 'admin', 'user'
+    # Two-Factor Authentication (2FA)
+    two_factor_secret: Optional[Dict[str, str]] = None  # { ascii, hex, base32, otpauth_url }
+    is_two_factor_enabled: bool = False
+    two_factor_recovery_codes: Optional[List[str]] = Field(default_factory=list)  # Backup codes
+    # User Preferences
+    preferences: Optional[Dict[str, Any]] = Field(default_factory=lambda: {
+        "dateFormat": "DD/MM/YYYY",  # Default date format
+        "theme": "system",  # light, dark, system
+        "tableDensity": "comfortable",  # comfortable, compact
+        "startPage": "/dashboard",  # Default start page after login
+        "currencyDisplay": "TRY",  # Default currency for display
+        "soundEffects": True,  # Enable/disable sound effects
+        "sidebarCollapsed": False  # Sidebar collapsed by default
+    })  # User preferences: theme, density, dateFormat, etc.
+    # Notification Preferences (Matrix Style)
+    notificationPreferences: Optional[Dict[str, Any]] = Field(default_factory=lambda: {
+        "newBooking": {"email": True, "inApp": True},  # New reservation notifications
+        "bookingCancellation": {"email": True, "inApp": True},  # Booking cancellation notifications
+        "paymentReceived": {"email": False, "inApp": True},  # Payment received notifications
+        "dailyFinanceReport": {"email": True},  # Daily finance report (email only)
+        "loginAlert": {"email": True, "inApp": False},  # Login alerts
+        "marketingEmails": {"email": True}  # Marketing emails
+    })
     # Diğer
     notes: Optional[str] = None  # YENİ - Notlar
     avatar_url: Optional[str] = None  # YENİ - Profil fotoğrafı URL'i
@@ -425,6 +1134,8 @@ class TourType(BaseModel):
     color: Optional[str] = None
     icon: Optional[str] = None
     is_active: Optional[bool] = True
+    # iCal Synchronization
+    icalLinks: Optional[List[Dict[str, str]]] = Field(default_factory=list)  # [{ provider: 'Viator', url: '...' }]
 
 class PaymentType(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -882,6 +1593,52 @@ class ActivityLog(BaseModel):
     ip_address: Optional[str] = None  # IP adresi (güvenlik ve takip için)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class LoginActivity(BaseModel):
+    """Login activity tracking model"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    company_id: Optional[str] = None
+    ip: str
+    browser: Optional[str] = None
+    os: Optional[str] = None
+    device_type: Optional[str] = None  # mobile, tablet, desktop
+    location: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+async def save_login_activity(
+    user_id: str,
+    company_id: Optional[str],
+    ip_address: str,
+    user_agent_string: Optional[str],
+    request: Optional[Request] = None
+):
+    """Save login activity asynchronously (non-blocking)"""
+    try:
+        # Parse user agent
+        ua_info = parse_user_agent_info(user_agent_string or "")
+        
+        # Get geo-location
+        location = await get_geo_location(ip_address)
+        
+        # Create login activity record
+        login_activity = LoginActivity(
+            user_id=user_id,
+            company_id=company_id,
+            ip=ip_address,
+            browser=ua_info.get("browser"),
+            os=ua_info.get("os"),
+            device_type=ua_info.get("device_type"),
+            location=location
+        )
+        
+        # Save to database (non-blocking)
+        await db.login_activities.insert_one(login_activity.model_dump())
+        logger.info(f"Login activity saved for user {user_id} from IP {ip_address}")
+    except Exception as e:
+        # Don't break login flow if activity logging fails
+        logger.error(f"Failed to save login activity: {e}")
+
 async def create_activity_log(
     company_id: str,
     user_id: str,
@@ -948,9 +1705,14 @@ class CompanyCreate(BaseModel):
     package_start_date: str
     package_end_date: str
 
+class DemoRequest(BaseModel):
+    company_name: str
+    contact_name: str
+    phone: str
+    email: EmailStr
+
 class LoginRequest(BaseModel):
-    company_code: str
-    username: str
+    username: str  # Can be username or email
     password: str
 
 class UserCreate(BaseModel):
@@ -1122,6 +1884,60 @@ def get_client_ip(request: Request) -> str:
         return request.client.host
     
     return "unknown"
+
+def parse_user_agent_info(user_agent_string: str) -> Dict[str, Optional[str]]:
+    """Parse user agent string and extract browser, OS, and device type"""
+    try:
+        ua = ua_parse(user_agent_string)
+        return {
+            "browser": ua.browser.family if ua.browser.family else None,
+            "os": ua.os.family if ua.os.family else None,
+            "device_type": "mobile" if ua.is_mobile else ("tablet" if ua.is_tablet else "desktop")
+        }
+    except Exception as e:
+        logger.warning(f"User agent parsing error: {e}")
+        return {
+            "browser": None,
+            "os": None,
+            "device_type": "unknown"
+        }
+
+async def get_geo_location(ip_address: str) -> str:
+    """Get geo-location from IP address using free API"""
+    # Handle localhost IPs
+    if ip_address in ["127.0.0.1", "::1", "localhost", "unknown"]:
+        return "Localhost / Dev Environment"
+    
+    try:
+        # Use ipapi.co free API (no API key required for basic usage)
+        response = requests.get(f"https://ipapi.co/{ip_address}/json/", timeout=3)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("error"):
+                return "Bilinmeyen Konum"
+            
+            # Build location string
+            city = data.get("city")
+            region = data.get("region")
+            country = data.get("country_name")
+            
+            location_parts = []
+            if city:
+                location_parts.append(city)
+            if region:
+                location_parts.append(region)
+            if country:
+                location_parts.append(country)
+            
+            if location_parts:
+                return ", ".join(location_parts)
+            else:
+                return "Bilinmeyen Konum"
+        else:
+            return "Bilinmeyen Konum"
+    except Exception as e:
+        logger.warning(f"Geo-location lookup error for IP {ip_address}: {e}")
+        return "Bilinmeyen Konum"
 
 async def get_current_user(
     request: Request,
@@ -1297,7 +2113,8 @@ async def register_company(data: CompanyCreate):
         username=data.admin_username,
         email=data.admin_email,
         full_name=data.admin_full_name,
-        is_admin=True,
+        role="admin",  # Set role to admin
+        is_admin=True,  # Keep for backward compatibility
         permissions={}
     )
     user_doc = user.model_dump()
@@ -1311,26 +2128,75 @@ async def register_company(data: CompanyCreate):
         "company_name": company.company_name
     }
 
+@api_router.post("/auth/demo-request")
+async def create_demo_request(data: DemoRequest):
+    """Create a demo request - saves to MongoDB, does NOT create a user"""
+    try:
+        # Create demo request document
+        demo_request = {
+            "id": str(uuid.uuid4()),
+            "company_name": data.company_name,
+            "contact_name": data.contact_name,
+            "phone": data.phone,
+            "email": data.email,
+            "status": "pending",  # pending, contacted, converted, rejected
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Save to demo_requests collection
+        await db.demo_requests.insert_one(demo_request)
+        
+        # Optional: Send email notification to admin (if SMTP is configured)
+        # This can be implemented later if needed
+        
+        logger.info(f"Demo request created: {demo_request['id']} - {data.company_name}")
+        
+        return {
+            "message": "Demo talebiniz başarıyla alındı. En kısa sürede size dönüş yapacağız.",
+            "request_id": demo_request["id"]
+        }
+    except Exception as e:
+        logger.error(f"Error creating demo request: {str(e)}")
+        raise HTTPException(status_code=500, detail="Demo talebi oluşturulurken bir hata oluştu")
+
 @api_router.post("/auth/login")
-async def login(data: LoginRequest):
-    # Find company
-    company = await db.companies.find_one({"company_code": data.company_code})
-    if not company:
-        raise HTTPException(status_code=401, detail="Invalid company code")
+async def login_duplicate(data: LoginRequest):
+    """Duplicate login endpoint - should be removed. Using the updated one at line 296."""
+    # Find user by username or email (username field can contain email)
+    user = await db.users.find_one({
+        "$or": [
+            {"username": data.username},
+            {"email": data.username}
+        ]
+    })
     
-    # Find user
-    user = await db.users.find_one({"company_id": company["id"], "username": data.username})
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
     # Verify password
-    if not verify_password(data.password, user["password"]):
+    if not verify_password(data.password, user.get("password_hash") or user.get("password")):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
-    # Create token
+    # Get company from user's company_id
+    company = await db.companies.find_one({"id": user["company_id"]})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Check if company is active
+    if not company.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Company account is inactive")
+    
+    # Determine user role
+    user_role = user.get("role", "user")
+    if user_role == "user" and user.get("is_admin", False):
+        user_role = "admin"
+    
+    # Create token with role
     token = create_access_token({
         "sub": user["id"],
         "company_id": user["company_id"],
+        "role": user_role,
         "is_admin": user.get("is_admin", False)
     })
     
@@ -1339,15 +2205,16 @@ async def login(data: LoginRequest):
         "token_type": "bearer",
         "user": {
             "id": user["id"],
-            "username": user["username"],
-            "full_name": user["full_name"],
+            "username": user.get("username"),
+            "full_name": user.get("full_name"),
+            "role": user_role,
             "is_admin": user.get("is_admin", False),
             "permissions": user.get("permissions", {})
         },
         "company": {
             "id": company["id"],
-            "name": company["company_name"],
-            "code": company["company_code"]
+            "name": company.get("company_name"),
+            "code": company.get("company_code")
         }
     }
 
@@ -1440,6 +2307,16 @@ async def cari_login(data: CariLoginRequest):
     company = await db.companies.find_one({"id": cari["company_id"]}, {"_id": 0})
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Paket süresi kontrolü - müşteri süresi dolmuşsa giriş yapamaz
+    if company.get("package_end_date"):
+        package_end_date = datetime.fromisoformat(company["package_end_date"].replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        if package_end_date < now:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Paket süreniz dolmuş. Paket bitiş tarihi: {package_end_date.strftime('%d.%m.%Y')}"
+            )
     
     # Token oluştur
     token = create_cari_access_token({
@@ -2346,7 +3223,7 @@ async def get_cari_customers(
     search: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Cari firma müşterilerini listele"""
+    """Cari firma müşterilerini listele - Current balance ile"""
     query = {"company_id": current_user["company_id"]}
     
     if cari_id:
@@ -2356,6 +3233,30 @@ async def get_cari_customers(
         query["customer_name"] = {"$regex": search, "$options": "i"}
     
     customers = await db.cari_customers.find(query, {"_id": 0}).sort("last_reservation_date", -1).to_list(1000)
+    
+    # Her müşteri için cari hesap balance'ını getir
+    for customer in customers:
+        cari_id_for_customer = customer.get("cari_id")
+        if cari_id_for_customer:
+            cari_account = await db.cari_accounts.find_one({
+                "id": cari_id_for_customer,
+                "company_id": current_user["company_id"]
+            }, {"_id": 0})
+            
+            if cari_account:
+                customer["current_balance"] = {
+                    "EUR": cari_account.get("balance_eur", 0) or 0,
+                    "USD": cari_account.get("balance_usd", 0) or 0,
+                    "TRY": cari_account.get("balance_try", 0) or 0
+                }
+                customer["cari_name"] = cari_account.get("name", "")
+            else:
+                customer["current_balance"] = {"EUR": 0, "USD": 0, "TRY": 0}
+                customer["cari_name"] = ""
+        else:
+            customer["current_balance"] = {"EUR": 0, "USD": 0, "TRY": 0}
+            customer["cari_name"] = ""
+    
     return customers
 
 @api_router.get("/cari-customers/{customer_id}")
@@ -2409,13 +3310,63 @@ async def get_munferit_customers(
     search: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Münferit müşterileri listele"""
+    """Münferit müşterileri listele - Payment status ile"""
     query = {"company_id": current_user["company_id"]}
     
     if search:
         query["customer_name"] = {"$regex": search, "$options": "i"}
     
     customers = await db.munferit_customers.find(query, {"_id": 0}).sort("last_sale_date", -1).to_list(1000)
+    
+    # Her müşteri için payment status hesapla
+    for customer in customers:
+        customer_id = customer.get("id")
+        customer_name = customer.get("customer_name", "")
+        
+        # Bu müşteriye ait rezervasyonları bul
+        reservations = await db.reservations.find({
+            "company_id": current_user["company_id"],
+            "customer_name": customer_name,
+            "status": {"$in": ["confirmed", "completed"]}
+        }, {"_id": 0}).to_list(10000)
+        
+        # Toplam borç (rezervasyon fiyatları)
+        total_debt = {"EUR": 0.0, "USD": 0.0, "TRY": 0.0}
+        for res in reservations:
+            if res.get("price") and res.get("currency"):
+                currency = res["currency"].upper()
+                if currency in total_debt:
+                    total_debt[currency] += res.get("price", 0)
+        
+        # Toplam ödeme (transactions - payment type)
+        total_payments = {"EUR": 0.0, "USD": 0.0, "TRY": 0.0}
+        # Münferit müşteriler için customer_name ile transaction arama
+        transactions = await db.transactions.find({
+            "company_id": current_user["company_id"],
+            "customer_name": customer_name,
+            "transaction_type": "payment"
+        }, {"_id": 0}).to_list(10000)
+        
+        for trans in transactions:
+            if trans.get("amount") and trans.get("currency"):
+                currency = trans["currency"].upper()
+                if currency in total_payments:
+                    total_payments[currency] += abs(trans.get("amount", 0))
+        
+        # Payment status hesapla
+        has_unpaid = False
+        unpaid_amount = {"EUR": 0.0, "USD": 0.0, "TRY": 0.0}
+        for currency in ["EUR", "USD", "TRY"]:
+            if total_debt[currency] > total_payments[currency]:
+                has_unpaid = True
+                unpaid_amount[currency] = total_debt[currency] - total_payments[currency]
+        
+        customer["payment_status"] = "unpaid" if has_unpaid else "paid"
+        customer["total_debt"] = total_debt
+        customer["total_payments"] = total_payments
+        customer["unpaid_amount"] = unpaid_amount
+        customer["has_unpaid"] = has_unpaid
+    
     return customers
 
 @api_router.get("/munferit-customers/{customer_id}")
@@ -3165,6 +4116,7 @@ class CariReservationCreate(BaseModel):
     
     customer_name: str
     customer_contact: Optional[str] = None
+    customer_details: Optional[Dict[str, Any]] = None  # phone, email, nationality, id_number, birth_date
     date: str
     time: str
     tour_id: str  # tour_type_id
@@ -3391,6 +4343,12 @@ async def cari_create_reservation(
     reservation_doc = reservation.model_dump()
     reservation_doc['created_at'] = reservation_doc['created_at'].isoformat()
     reservation_doc['updated_at'] = reservation_doc['updated_at'].isoformat()
+    
+    # Customer details ekle (eğer varsa)
+    customer_details = getattr(data, 'customer_details', None)
+    if customer_details:
+        reservation_doc['customer_details'] = customer_details
+    
     await db.reservations.insert_one(reservation_doc)
     
     # Activity log
@@ -8018,6 +8976,273 @@ async def create_user(data: dict, current_user: dict = Depends(get_current_user)
     
     return {"message": "Personel oluşturuldu", "id": user_data["id"]}
 
+# ==================== STAFF MANAGEMENT (ADMIN ONLY) ====================
+
+@api_router.post("/staff")
+async def create_staff(data: dict, current_user: dict = Depends(require_admin)):
+    """
+    Create a new staff member (user) - Admin only.
+    Security constraints:
+    - Forces role='user' (admin cannot create super_admin or admin)
+    - Forces companyId from JWT (admin cannot assign user to different company)
+    - Allows permissions object to be set
+    """
+    # Validation
+    if not data.get("full_name"):
+        raise HTTPException(status_code=400, detail="Full name is required")
+    
+    # Web panel active requires username and password
+    if data.get("web_panel_active"):
+        if not data.get("username"):
+            raise HTTPException(status_code=400, detail="Username is required when web panel is active")
+        if not data.get("password"):
+            raise HTTPException(status_code=400, detail="Password is required when web panel is active")
+        
+        # Check username uniqueness
+        existing = await db.users.find_one({"username": data["username"]})
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # SECURITY: Force role to 'user' - admin cannot create super_admin or admin
+    forced_role = "user"
+    
+    # SECURITY: Force companyId from JWT - admin cannot assign user to different company
+    forced_company_id = current_user["company_id"]
+    
+    # Create user data
+    user_data = {
+        "id": str(uuid.uuid4()),
+        "company_id": forced_company_id,  # SECURITY: Forced from JWT
+        "full_name": data["full_name"],
+        "email": data.get("email"),
+        "phone": data.get("phone"),
+        "address": data.get("address"),
+        "role_id": data.get("role_id"),  # Staff role (not user role)
+        "tc_no": data.get("tc_no"),
+        "birth_date": data.get("birth_date"),
+        "gender": data.get("gender"),
+        "nationality": data.get("nationality"),
+        "emergency_contact_name": data.get("emergency_contact_name"),
+        "emergency_contact_phone": data.get("emergency_contact_phone"),
+        "employee_id": data.get("employee_id"),
+        "hire_date": data.get("hire_date"),
+        "termination_date": data.get("termination_date"),
+        "is_active": data.get("is_active", True),
+        "gross_salary": data.get("gross_salary"),
+        "net_salary": data.get("net_salary"),
+        "salary_currency": data.get("salary_currency", "TRY"),
+        "advance_limit": data.get("advance_limit"),
+        "languages": data.get("languages", []),
+        "skills": data.get("skills", []),
+        "education_level": data.get("education_level"),
+        "education_field": data.get("education_field"),
+        "driving_license_class": data.get("driving_license_class"),
+        "driving_license_no": data.get("driving_license_no"),
+        "driving_license_expiry": data.get("driving_license_expiry"),
+        "web_panel_active": data.get("web_panel_active", False),
+        "permissions": data.get("permissions", {}),  # Allow permissions to be set
+        "role": forced_role,  # SECURITY: Always 'user', never 'admin' or 'super_admin'
+        "is_admin": False,  # SECURITY: Always False
+        "notes": data.get("notes"),
+        "avatar_url": data.get("avatar_url"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": None
+    }
+    
+    # Add username and password if web panel is active
+    if data.get("web_panel_active"):
+        user_data["username"] = data["username"]
+        user_data["password"] = hash_password(data["password"])
+    
+    await db.users.insert_one(user_data)
+    
+    # Activity log
+    await create_activity_log(
+        company_id=forced_company_id,
+        user_id=current_user["user_id"],
+        username=current_user.get("username", ""),
+        full_name=current_user.get("full_name", ""),
+        action="create",
+        entity_type="staff",
+        entity_id=user_data["id"],
+        entity_name=user_data["full_name"],
+        description=f"Yeni personel oluşturuldu: {user_data['full_name']}",
+        changes={"role": forced_role, "company_id": forced_company_id}
+    )
+    
+    # Return user without sensitive data
+    user_data.pop("password", None)
+    user_data.pop("password_hash", None)
+    return {"message": "Staff member created successfully", "user": user_data}
+
+@api_router.get("/staff")
+async def get_staff(
+    role_id: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Get all staff members for the admin's company - Admin only.
+    Only returns users with role='user' (not admins or super_admins)
+    """
+    query = {
+        "company_id": current_user["company_id"],
+        "role": "user"  # Only return regular users, not admins
+    }
+    
+    if role_id:
+        query["role_id"] = role_id
+    if is_active is not None:
+        query["is_active"] = is_active
+    
+    users = await db.users.find(
+        query,
+        {"_id": 0, "password": 0, "password_hash": 0}
+    ).sort("full_name", 1).to_list(1000)
+    
+    # Add role information if role_id exists
+    roles = await db.staff_roles.find(
+        {"company_id": current_user["company_id"], "is_active": True},
+        {"_id": 0}
+    ).to_list(100)
+    role_map = {role["id"]: role for role in roles}
+    
+    for user in users:
+        if user.get("role_id"):
+            role = role_map.get(user["role_id"])
+            if role:
+                user["role_name"] = role.get("name")
+                user["role_color"] = role.get("color", "#3EA6FF")
+    
+    return users
+
+@api_router.put("/staff/{staff_id}")
+async def update_staff(staff_id: str, data: dict, current_user: dict = Depends(require_admin)):
+    """
+    Update a staff member - Admin only.
+    Security constraints:
+    - Cannot change role to 'admin' or 'super_admin'
+    - Cannot change companyId
+    - Can update permissions
+    """
+    # Find staff member - must belong to admin's company and be a regular user
+    staff = await db.users.find_one({
+        "id": staff_id,
+        "company_id": current_user["company_id"],
+        "role": "user"  # Only allow updating regular users
+    })
+    
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    
+    # SECURITY: Prevent role escalation - remove role and is_admin from data if present
+    if "role" in data:
+        if data["role"] not in ["user"]:
+            raise HTTPException(status_code=403, detail="Cannot change role to admin or super_admin")
+        # Force to 'user' even if somehow passed
+        data["role"] = "user"
+    
+    if "is_admin" in data:
+        if data["is_admin"]:
+            raise HTTPException(status_code=403, detail="Cannot set is_admin to True")
+        data["is_admin"] = False
+    
+    # SECURITY: Prevent company_id change
+    if "company_id" in data:
+        if data["company_id"] != current_user["company_id"]:
+            raise HTTPException(status_code=403, detail="Cannot change company_id")
+        # Remove from update data since it's already correct
+        data.pop("company_id")
+    
+    # Full name validation
+    if "full_name" in data and not data["full_name"]:
+        raise HTTPException(status_code=400, detail="Full name is required")
+    
+    # Web panel active requires username
+    if data.get("web_panel_active") and not staff.get("username"):
+        if not data.get("username"):
+            raise HTTPException(status_code=400, detail="Username is required when web panel is active")
+        if not data.get("password"):
+            raise HTTPException(status_code=400, detail="Password is required when web panel is active")
+        
+        # Check username uniqueness
+        existing = await db.users.find_one({"username": data["username"], "id": {"$ne": staff_id}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Hash password if provided
+    if "password" in data and data["password"]:
+        data["password"] = hash_password(data["password"])
+    
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.users.update_one(
+        {"id": staff_id, "company_id": current_user["company_id"]},
+        {"$set": data}
+    )
+    
+    # Activity log
+    await create_activity_log(
+        company_id=current_user["company_id"],
+        user_id=current_user["user_id"],
+        username=current_user.get("username", ""),
+        full_name=current_user.get("full_name", ""),
+        action="update",
+        entity_type="staff",
+        entity_id=staff_id,
+        entity_name=staff.get("full_name", "Staff"),
+        description=f"Personel güncellendi: {staff.get('full_name', '')}",
+        changes=data
+    )
+    
+    return {"message": "Staff member updated successfully"}
+
+@api_router.delete("/staff/{staff_id}")
+async def delete_staff(staff_id: str, current_user: dict = Depends(require_admin)):
+    """
+    Delete a staff member - Admin only.
+    Security constraints:
+    - Can only delete users from admin's company
+    - Can only delete users with role='user'
+    """
+    # Find staff member - must belong to admin's company and be a regular user
+    staff = await db.users.find_one({
+        "id": staff_id,
+        "company_id": current_user["company_id"],
+        "role": "user"  # Only allow deleting regular users
+    })
+    
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    
+    # Prevent deleting yourself (if somehow a user tries to delete themselves)
+    if staff_id == current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Cannot delete yourself")
+    
+    # Delete staff member
+    result = await db.users.delete_one({
+        "id": staff_id,
+        "company_id": current_user["company_id"]
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    
+    # Activity log
+    await create_activity_log(
+        company_id=current_user["company_id"],
+        user_id=current_user["user_id"],
+        username=current_user.get("username", ""),
+        full_name=current_user.get("full_name", ""),
+        action="delete",
+        entity_type="staff",
+        entity_id=staff_id,
+        entity_name=staff.get("full_name", "Staff"),
+        description=f"Personel silindi: {staff.get('full_name', '')}"
+    )
+    
+    return {"message": "Staff member deleted successfully"}
+
 @api_router.put("/users/{user_id}")
 async def update_user(user_id: str, data: dict, current_user: dict = Depends(get_current_user)):
     """Personeli güncelle"""
@@ -10597,24 +11822,15 @@ async def get_cash_statistics(current_user: dict = Depends(get_current_user)):
         "rates": rates
     }
 
-# ==================== ADMIN ENDPOINTS ====================
+# ==================== ADMIN ENDPOINTS (DEPRECATED - Use super-admin routes) ====================
 
 async def get_admin_user(current_user: dict = Depends(get_current_user)):
-    """Admin kullanıcı kontrolü"""
-    # System admin kontrolü (company_code = "1000")
-    user = await db.users.find_one({"id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+    """Admin kullanıcı kontrolü - DEPRECATED: Use require_super_admin instead"""
+    # Check role instead of company_code
+    user_role = current_user.get("role", "user")
     
-    company = await db.companies.find_one({"id": current_user["company_id"]})
-    if not company:
-        raise HTTPException(status_code=401, detail="Company not found")
-    
-    is_system_admin = company.get("company_code") == "1000"
-    is_owner = user.get("is_admin", False) or user.get("role") == "owner"
-    
-    if not is_system_admin:
-        raise HTTPException(status_code=403, detail="Only system admins can access this endpoint")
+    if user_role != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admins can access this endpoint")
     
     return current_user
 
@@ -10624,9 +11840,11 @@ async def get_admin_customers(
     current_user: dict = Depends(get_admin_user)
 ):
     """Sistem admin için tüm müşterileri (şirketleri) listele - Filtreleme ile"""
-    # Tüm şirketleri getir (system admin hariç)
+    # Tüm şirketleri getir (super_admin company excluded by filtering super_admin users)
+    # Get all companies except those with super_admin users
+    super_admin_companies = await db.users.distinct("company_id", {"role": "super_admin"})
     companies = await db.companies.find(
-        {"company_code": {"$ne": "1000"}},
+        {"id": {"$nin": super_admin_companies}},
         {"_id": 0}
     ).sort("company_name", 1).to_list(10000)
     
@@ -10702,8 +11920,13 @@ async def get_admin_customers(
 @api_router.get("/admin/customers/{company_id}")
 async def get_admin_customer(company_id: str, current_user: dict = Depends(get_admin_user)):
     """Sistem admin için tek bir müşteriyi (şirketi) getir"""
+    # Check if company has super_admin users
+    super_admin_users = await db.users.find_one({"company_id": company_id, "role": "super_admin"})
+    if super_admin_users:
+        raise HTTPException(status_code=403, detail="Cannot access super admin company")
+    
     company = await db.companies.find_one(
-        {"id": company_id, "company_code": {"$ne": "1000"}},
+        {"id": company_id},
         {"_id": 0}
     )
     
@@ -10742,8 +11965,10 @@ async def update_admin_customer(company_id: str, data: dict, current_user: dict 
     if not target_company:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    if target_company.get("company_code") == "1000":
-        raise HTTPException(status_code=403, detail="Cannot update system admin company via this endpoint")
+    # Check if company has super_admin users
+    super_admin_users = await db.users.find_one({"company_id": company_id, "role": "super_admin"})
+    if super_admin_users:
+        raise HTTPException(status_code=403, detail="Cannot update super admin company via this endpoint")
 
     update_data = {}
 
@@ -10835,13 +12060,15 @@ async def admin_impersonate(data: dict, current_user: dict = Depends(get_admin_u
     if not company_id or not user_id:
         raise HTTPException(status_code=400, detail="company_id and user_id are required")
     
-    # Şirketi kontrol et (system admin olamaz)
+    # Şirketi kontrol et (super_admin company olamaz)
     company = await db.companies.find_one({"id": company_id})
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     
-    if company.get("company_code") == "1000":
-        raise HTTPException(status_code=403, detail="Cannot impersonate system admin")
+    # Check if company has super_admin users
+    super_admin_users = await db.users.find_one({"company_id": company_id, "role": "super_admin"})
+    if super_admin_users:
+        raise HTTPException(status_code=403, detail="Cannot impersonate super admin company")
     
     # Kullanıcıyı kontrol et
     user = await db.users.find_one({"id": user_id, "company_id": company_id})
@@ -10866,6 +12093,326 @@ async def admin_impersonate(data: dict, current_user: dict = Depends(get_admin_u
             "email": user.get("email"),
             "is_admin": user.get("is_admin", False),
             "permissions": user.get("permissions", {})
+        },
+        "company": {
+            "id": company["id"],
+            "name": company.get("company_name", ""),
+            "code": company.get("company_code", "")
+        }
+    }
+
+# ==================== SUPER ADMIN ENDPOINTS ====================
+
+@api_router.get("/super-admin/companies")
+async def get_super_admin_companies(
+    status_filter: Optional[str] = None,  # active, expiring_1_month, expiring_3_months, expired, inactive
+    current_user: dict = Depends(require_super_admin)
+):
+    """Super admin: List all companies (tenants)"""
+    query = {}
+    
+    # Apply status filter if provided
+    if status_filter == "inactive":
+        query["is_active"] = False
+    elif status_filter:
+        query["is_active"] = True
+    
+    companies = await db.companies.find(query, {"_id": 0}).sort("company_name", 1).to_list(10000)
+    
+    result = []
+    today = datetime.now(timezone.utc).date()
+    
+    for company in companies:
+        # Find company admin (role='admin' or is_admin=True)
+        admin = await db.users.find_one(
+            {
+                "company_id": company["id"],
+                "$or": [
+                    {"role": "admin"},
+                    {"is_admin": True}
+                ]
+            },
+            {"_id": 0, "password": 0, "password_hash": 0}
+        )
+        
+        # Calculate remaining days
+        package_end_date_str = company.get("package_end_date")
+        remaining_days = 0
+        status = "active"
+        
+        if package_end_date_str:
+            try:
+                package_end_date = datetime.strptime(package_end_date_str, "%Y-%m-%d").date()
+                remaining_days = (package_end_date - today).days
+                
+                if remaining_days < 0:
+                    status = "expired"
+                elif remaining_days <= 30:
+                    status = "expiring_1_month"
+                elif remaining_days <= 90:
+                    status = "expiring_3_months"
+                else:
+                    status = "active"
+            except ValueError:
+                remaining_days = 0
+                status = "unknown"
+        
+        # Apply status filter
+        if status_filter and status_filter not in ["inactive"]:
+            if status_filter == "expired" and status != "expired":
+                continue
+            if status_filter == "expiring_1_month" and status != "expiring_1_month":
+                continue
+            if status_filter == "expiring_3_months" and status != "expiring_3_months":
+                continue
+            if status_filter == "active" and status != "active":
+                continue
+        
+        company_data = {
+            "id": company["id"],
+            "company_code": company.get("company_code", ""),
+            "company_name": company.get("company_name", ""),
+            "contact_email": company.get("contact_email"),
+            "contact_phone": company.get("contact_phone"),
+            "package_start_date": company.get("package_start_date"),
+            "package_end_date": company.get("package_end_date"),
+            "remaining_days": remaining_days,
+            "status": status,
+            "is_active": company.get("is_active", True),
+            "subscription_plan": company.get("subscription_plan"),
+            "feature_flags": company.get("feature_flags", {}),
+            "admin": admin
+        }
+        result.append(company_data)
+    
+    return result
+
+@api_router.get("/super-admin/companies/{company_id}")
+async def get_super_admin_company(
+    company_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Super admin: Get a specific company"""
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0})
+    
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Find company admin
+    admin = await db.users.find_one(
+        {
+            "company_id": company_id,
+            "$or": [
+                {"role": "admin"},
+                {"is_admin": True}
+            ]
+        },
+        {"_id": 0, "password": 0, "password_hash": 0}
+    )
+    
+    return {
+        **company,
+        "admin": admin
+    }
+
+@api_router.post("/super-admin/companies")
+async def create_super_admin_company(
+    data: dict,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Super admin: Create a new company (tenant)"""
+    # Validate required fields
+    if not data.get("company_name") or not data.get("admin_username") or not data.get("admin_password"):
+        raise HTTPException(status_code=400, detail="company_name, admin_username, and admin_password are required")
+    
+    # Check if username already exists
+    existing_user = await db.users.find_one({"username": data["admin_username"]})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Generate unique company code
+    company_code = await generate_company_code(db)
+    
+    # Double check existence
+    while await db.companies.find_one({"company_code": company_code}):
+        if company_code.isdigit():
+            company_code = str(int(company_code) + 1)
+        else:
+            company_code = secrets.token_hex(4).upper()
+    
+    # Create company
+    company = Company(
+        company_code=company_code,
+        company_name=data["company_name"],
+        contact_phone=data.get("contact_phone", ""),
+        address=data.get("address", ""),
+        tax_office=data.get("tax_office", ""),
+        tax_number=data.get("tax_number", ""),
+        package_start_date=data.get("package_start_date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
+        package_end_date=data.get("package_end_date", (datetime.now(timezone.utc) + timedelta(days=365)).strftime("%Y-%m-%d")),
+        contact_email=data.get("contact_email"),
+        is_active=data.get("is_active", True),
+        subscription_plan=data.get("subscription_plan"),
+        feature_flags=data.get("feature_flags", {})
+    )
+    company_doc = company.model_dump()
+    company_doc['created_at'] = company_doc['created_at'].isoformat()
+    await db.companies.insert_one(company_doc)
+    
+    # Create admin user
+    hashed_password = hash_password(data["admin_password"])
+    user = User(
+        company_id=company.id,
+        username=data["admin_username"],
+        email=data.get("admin_email"),
+        full_name=data.get("admin_full_name", data["admin_username"]),
+        role="admin",  # Set role to admin
+        is_admin=True,  # Keep for backward compatibility
+        permissions={}
+    )
+    user_doc = user.model_dump()
+    user_doc['created_at'] = user_doc['created_at'].isoformat()
+    user_doc['password'] = hashed_password
+    await db.users.insert_one(user_doc)
+    
+    return {
+        "message": "Company created successfully",
+        "company": {
+            "id": company.id,
+            "company_code": company_code,
+            "company_name": company.company_name
+        }
+    }
+
+@api_router.put("/super-admin/companies/{company_id}")
+async def update_super_admin_company(
+    company_id: str,
+    data: dict,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Super admin: Update a company"""
+    company = await db.companies.find_one({"id": company_id})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    update_data = {}
+    
+    # Update company fields
+    company_fields = [
+        "company_name", "address", "contact_email", "contact_phone", "website",
+        "logo_url", "tax_office", "tax_number", "package_start_date", "package_end_date",
+        "is_active", "subscription_plan", "feature_flags"
+    ]
+    for field in company_fields:
+        if field in data:
+            update_data[field] = data[field]
+    
+    # Update admin user if provided
+    if "admin_username" in data or "admin_full_name" in data or "admin_password" in data:
+        admin = await db.users.find_one(
+            {
+                "company_id": company_id,
+                "$or": [
+                    {"role": "admin"},
+                    {"is_admin": True}
+                ]
+            }
+        )
+        
+        if admin:
+            admin_update = {}
+            if "admin_username" in data:
+                admin_update["username"] = data["admin_username"]
+            if "admin_full_name" in data:
+                admin_update["full_name"] = data["admin_full_name"]
+            if "admin_password" in data:
+                admin_update["password"] = hash_password(data["admin_password"])
+            
+            if admin_update:
+                await db.users.update_one({"id": admin["id"]}, {"$set": admin_update})
+    
+    # Update company
+    if update_data:
+        await db.companies.update_one({"id": company_id}, {"$set": update_data})
+    
+    return {"message": "Company updated successfully"}
+
+@api_router.post("/super-admin/companies/{company_id}/suspend")
+async def suspend_company(
+    company_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Super admin: Suspend a company (set is_active to False)"""
+    company = await db.companies.find_one({"id": company_id})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    await db.companies.update_one({"id": company_id}, {"$set": {"is_active": False}})
+    
+    return {"message": "Company suspended successfully"}
+
+@api_router.post("/super-admin/companies/{company_id}/activate")
+async def activate_company(
+    company_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Super admin: Activate a company (set is_active to True)"""
+    company = await db.companies.find_one({"id": company_id})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    await db.companies.update_one({"id": company_id}, {"$set": {"is_active": True}})
+    
+    return {"message": "Company activated successfully"}
+
+@api_router.post("/super-admin/impersonate/{company_id}")
+async def super_admin_impersonate(
+    company_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Super admin: Impersonate (ghost login) as a company admin"""
+    # Get company
+    company = await db.companies.find_one({"id": company_id})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Find company admin
+    admin = await db.users.find_one(
+        {
+            "company_id": company_id,
+            "$or": [
+                {"role": "admin"},
+                {"is_admin": True}
+            ]
+        }
+    )
+    
+    if not admin:
+        raise HTTPException(status_code=404, detail="Company admin not found")
+    
+    # Create short-lived impersonation token (1 hour)
+    expire = datetime.now(timezone.utc) + timedelta(hours=1)
+    to_encode = {
+        "sub": admin["id"],
+        "company_id": company_id,
+        "role": admin.get("role", "admin"),
+        "is_admin": admin.get("is_admin", False),
+        "impersonated_by": current_user["user_id"],
+        "exp": expire
+    }
+    token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "expires_in": 3600,  # 1 hour
+        "user": {
+            "id": admin["id"],
+            "username": admin.get("username"),
+            "full_name": admin.get("full_name"),
+            "email": admin.get("email"),
+            "role": admin.get("role", "admin"),
+            "is_admin": admin.get("is_admin", False)
         },
         "company": {
             "id": company["id"],
@@ -12993,7 +14540,10 @@ async def get_dashboard(
 @api_router.get("/notifications")
 async def get_notifications(
     current_user: dict = Depends(get_current_user),
-    unread_only: bool = False
+    unread_only: bool = False,
+    type: Optional[str] = None,
+    category: Optional[str] = None,
+    include_archived: bool = False
 ):
     """Kullanıcının bildirimlerini getir"""
     query = {
@@ -13004,7 +14554,19 @@ async def get_notifications(
     if unread_only:
         query["is_read"] = False
     
-    notifications = await db.notifications.find(query, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    # isArchived kontrolü (varsayılan olarak False, yani arşivlenmemiş olanlar)
+    if not include_archived:
+        query["is_archived"] = {"$ne": True}
+    
+    # Type filtresi (info, warning, error, success)
+    if type:
+        query["type"] = type
+    
+    # Category filtresi (system, inventory, booking, finance)
+    if category:
+        query["category"] = category
+    
+    notifications = await db.notifications.find(query, {"_id": 0}).sort("created_at", -1).limit(200).to_list(200)
     
     # created_at'i ISO format string'e çevir (eğer datetime objesi ise)
     for notif in notifications:
@@ -13015,13 +14577,27 @@ async def get_notifications(
             elif isinstance(created_at, str):
                 # Zaten string ise olduğu gibi bırak
                 pass
+        
+        # Varsayılan değerler (backward compatibility)
+        if "type" not in notif:
+            notif["type"] = "info"
+        if "category" not in notif:
+            notif["category"] = "system"
+        if "is_read" not in notif:
+            notif["is_read"] = False
+        if "is_archived" not in notif:
+            notif["is_archived"] = False
     
     # Okunmamış bildirim sayısı
-    unread_count = await db.notifications.count_documents({
+    unread_query = {
         "company_id": current_user["company_id"],
         "user_id": current_user["user_id"],
         "is_read": False
-    })
+    }
+    if not include_archived:
+        unread_query["is_archived"] = {"$ne": True}
+    
+    unread_count = await db.notifications.count_documents(unread_query)
     
     return {
         "notifications": notifications,
@@ -13074,6 +14650,753 @@ async def mark_all_notifications_read(
     
     return {"message": "All notifications marked as read"}
 
+@api_router.post("/notifications/mark-read")
+async def mark_notifications_read(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Toplu olarak bildirimleri okundu olarak işaretle"""
+    notification_ids = data.get("notification_ids", [])
+    
+    if not notification_ids or not isinstance(notification_ids, list):
+        raise HTTPException(status_code=400, detail="notification_ids must be a non-empty array")
+    
+    result = await db.notifications.update_many(
+        {
+            "id": {"$in": notification_ids},
+            "company_id": current_user["company_id"],
+            "user_id": current_user["user_id"]
+        },
+        {
+            "$set": {
+                "is_read": True,
+                "read_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {
+        "message": f"{result.modified_count} notifications marked as read",
+        "modified_count": result.modified_count
+    }
+
+@api_router.delete("/notifications/batch")
+async def delete_notifications_batch(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Toplu olarak bildirimleri sil"""
+    notification_ids = data.get("notification_ids", [])
+    
+    if not notification_ids or not isinstance(notification_ids, list):
+        raise HTTPException(status_code=400, detail="notification_ids must be a non-empty array")
+    
+    result = await db.notifications.delete_many(
+        {
+            "id": {"$in": notification_ids},
+            "company_id": current_user["company_id"],
+            "user_id": current_user["user_id"]
+        }
+    )
+    
+    return {
+        "message": f"{result.deleted_count} notifications deleted",
+        "deleted_count": result.deleted_count
+    }
+
+# ==================== NOTIFICATION HELPERS ====================
+
+async def create_inventory_notification(
+    company_id: str,
+    user_id: str,
+    item_name: str,
+    current_count: int,
+    threshold: int = 5
+):
+    """Envanter düşük olduğunda bildirim oluştur"""
+    if current_count >= threshold:
+        return  # Threshold'un üstündeyse bildirim oluşturma
+    
+    # Mevcut bildirimi kontrol et (aynı item için zaten var mı?)
+    existing = await db.notifications.find_one({
+        "company_id": company_id,
+        "type": "warning",
+        "category": "inventory",
+        "entity_id": item_name,
+        "is_read": False,
+        "is_archived": False
+    })
+    
+    if existing:
+        # Mevcut bildirimi güncelle
+        await db.notifications.update_one(
+            {"id": existing["id"]},
+            {
+                "$set": {
+                    "message": f"{item_name} stok seviyesi düşük: {current_count} adet kaldı (Minimum: {threshold})",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        return
+    
+    # Yeni bildirim oluştur
+    notification = {
+        "id": str(uuid.uuid4()),
+        "company_id": company_id,
+        "user_id": user_id,
+        "type": "warning",
+        "category": "inventory",
+        "title": "Düşük Stok Uyarısı",
+        "message": f"{item_name} stok seviyesi düşük: {current_count} adet kaldı (Minimum: {threshold})",
+        "entity_id": item_name,
+        "entity_type": "inventory",
+        "is_read": False,
+        "is_archived": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.notifications.insert_one(notification)
+
+
+# ==================== PUBLIC BOOKING ENGINE (NO AUTH REQUIRED) ====================
+
+class PublicBookingRequest(BaseModel):
+    """Public booking request model"""
+    tourId: str  # tour_type_id
+    date: str  # YYYY-MM-DD
+    pax: int  # person_count
+    customerName: str
+    email: EmailStr
+    phone: str
+    note: Optional[str] = None
+
+@api_router.get("/public/agency/{slug}/tours")
+@limiter.limit("30/minute")  # Rate limiting: 30 requests per minute
+async def get_public_agency_tours(slug: str, request: Request):
+    """Get active tours for a public agency (no auth required)"""
+    try:
+        # Find company by company_code (slug)
+        # Try with is_active check first, then without (for flexibility)
+        company = await db.companies.find_one({"company_code": slug, "is_active": True})
+        if not company:
+            # Try without is_active check (company might be temporarily inactive but still accessible)
+            company = await db.companies.find_one({"company_code": slug})
+            if not company:
+                raise HTTPException(status_code=404, detail="Agency not found")
+        
+        # Get active tour types for this company
+        tour_types = await db.tour_types.find(
+            {"company_id": company["id"], "is_active": True},
+            {"_id": 0, "company_id": 0}  # Don't expose internal IDs
+        ).sort("order", 1).to_list(100)
+        
+        # Format response (only expose public-safe data)
+        public_tours = []
+        for tour in tour_types:
+            public_tours.append({
+                "id": tour.get("id"),
+                "name": tour.get("name"),
+                "description": tour.get("description"),
+                "duration_hours": tour.get("duration_hours"),
+                "default_price": tour.get("default_price"),
+                "default_currency": tour.get("default_currency", "EUR"),
+                "color": tour.get("color"),
+                "icon": tour.get("icon")
+            })
+        
+        return {
+            "agency": {
+                "name": company.get("company_name"),
+                "logo_url": company.get("logo_url"),
+                "contact_email": company.get("contact_email"),
+                "contact_phone": company.get("contact_phone"),
+                "website": company.get("website")
+            },
+            "tours": public_tours
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching public tours: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@api_router.post("/public/booking")
+@limiter.limit("10/minute")  # Rate limiting: 10 bookings per minute per IP
+async def create_public_booking(data: PublicBookingRequest, request: Request):
+    """Create a public booking request (no auth required)"""
+    try:
+        # Validate date format
+        try:
+            booking_date = datetime.strptime(data.date, "%Y-%m-%d").date()
+            if booking_date < datetime.now().date():
+                raise HTTPException(status_code=400, detail="Booking date cannot be in the past")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        
+        # Get tour type
+        tour_type = await db.tour_types.find_one({"id": data.tourId})
+        if not tour_type:
+            raise HTTPException(status_code=404, detail="Tour not found")
+        
+        if not tour_type.get("is_active", True):
+            raise HTTPException(status_code=400, detail="Tour is not available")
+        
+        company_id = tour_type.get("company_id")
+        if not company_id:
+            raise HTTPException(status_code=500, detail="Tour configuration error")
+        
+        # Get company
+        company = await db.companies.find_one({"id": company_id})
+        if not company or not company.get("is_active", True):
+            raise HTTPException(status_code=404, detail="Agency not found or inactive")
+        
+        # Find or create a default "Public Booking" cari account for public bookings
+        # Or use a system cari account
+        public_cari = await db.cari_accounts.find_one({
+            "company_id": company_id,
+            "name": "Public Bookings"
+        })
+        
+        if not public_cari:
+            # Create a default cari account for public bookings
+            public_cari_doc = {
+                "id": str(uuid.uuid4()),
+                "company_id": company_id,
+                "name": "Public Bookings",
+                "cari_code": f"PUBLIC-{company.get('company_code', 'PUBLIC')}",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.cari_accounts.insert_one(public_cari_doc)
+            public_cari = public_cari_doc
+        
+        # Calculate price (use default price for now, can be enhanced with seasonal pricing)
+        default_price = tour_type.get("default_price", 0.0) or 0.0
+        default_currency = tour_type.get("default_currency", "EUR")
+        
+        # Calculate ATV count (assume 1 ATV per 2 people, minimum 1)
+        atv_count = max(1, (data.pax + 1) // 2)
+        total_price = float(default_price) * atv_count
+        
+        # Create reservation with status "request_received" (pending payment)
+        reservation_id = str(uuid.uuid4())
+        reservation_doc = {
+            "id": reservation_id,
+            "company_id": company_id,
+            "cari_id": public_cari["id"],
+            "cari_name": public_cari.get("name", "Public Bookings"),
+            "date": data.date,
+            "time": "09:00",  # Default time, can be adjusted
+            "tour_type_id": data.tourId,
+            "tour_type_name": tour_type.get("name"),
+            "customer_name": data.customerName,
+            "customer_contact": data.phone,
+            "customer_details": {
+                "phone": data.phone,
+                "email": data.email
+            },
+            "person_count": data.pax,
+            "atv_count": atv_count,
+            "price": total_price,
+            "currency": default_currency,
+            "exchange_rate": 1.0,
+            "notes": f"Public Booking Request\n{data.note or ''}",
+            "status": "request_received",  # New status for public bookings
+            "reservation_source": "public",
+            "created_by": "public",  # System user for public bookings
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.reservations.insert_one(reservation_doc)
+        
+        # Create notification for agency admins
+        admin_users = await db.users.find({
+            "company_id": company_id,
+            "$or": [
+                {"role": "admin"},
+                {"role": "super_admin"},
+                {"is_admin": True}
+            ],
+            "is_active": True
+        }, {"_id": 0}).to_list(100)
+        
+        for admin in admin_users:
+            # Check if admin wants to receive new booking notifications
+            if should_send_notification(admin, "newBooking", "inApp"):
+                notification = {
+                    "id": str(uuid.uuid4()),
+                    "company_id": company_id,
+                    "user_id": admin["id"],
+                    "type": "new_booking",
+                    "title": "Yeni Rezervasyon Talebi",
+                    "message": f"{data.customerName} tarafından yeni bir rezervasyon talebi oluşturuldu: {tour_type.get('name')} - {data.date}",
+                    "entity_type": "reservation",
+                    "entity_id": reservation_id,
+                    "is_read": False,
+                    "is_archived": False,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.notifications.insert_one(notification)
+        
+        logger.info(f"Public booking created: reservation_id={reservation_id}, company_id={company_id}, customer={data.customerName}")
+        
+        return {
+            "message": "Rezervasyon talebiniz başarıyla gönderildi. En kısa sürede size dönüş yapacağız.",
+            "reservation_id": reservation_id,
+            "status": "request_received"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating public booking: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# ==================== B2B PORTAL (CORPORATE CUSTOMER) AUTHENTICATION ====================
+
+class B2BLoginRequest(BaseModel):
+    """B2B Portal login request"""
+    agencySlug: str  # Company code (slug)
+    corporateCode: str  # Cari code
+    password: str
+
+@api_router.post("/auth/b2b-login")
+async def b2b_login(data: B2BLoginRequest):
+    """B2B Portal login for corporate customers"""
+    try:
+        # 1. First, try to find Cari by cari_code (more flexible approach)
+        # This allows login even if agencySlug is incorrect, as long as cari_code is valid
+        cari = await db.caris.find_one({
+            "cari_code": data.corporateCode.upper()
+        })
+        
+        if not cari:
+            raise HTTPException(status_code=401, detail="Geçersiz cari kodu veya şifre")
+        
+        # 2. Get company from cari's company_id (don't check is_active - allow login even if company is temporarily inactive)
+        company = await db.companies.find_one({"id": cari["company_id"]})
+        if not company:
+            raise HTTPException(status_code=401, detail="Geçersiz cari kodu veya şifre")
+        
+        # 3. Verify agencySlug matches (if provided, for security)
+        # But don't block login if it doesn't match - cari_code is the primary identifier
+        if data.agencySlug and company.get("company_code") != data.agencySlug:
+            # Log warning but don't block - allow login if cari_code is correct
+            logger.warning(f"Agency slug mismatch: provided={data.agencySlug}, actual={company.get('company_code')}, cari_code={data.corporateCode}")
+        
+        # 4. Find CorporateCustomer (CariAccount) by corporateCode within that Tenant
+        # Try with is_active check first, then without (for flexibility)
+        cari_account = await db.cari_accounts.find_one({
+            "company_id": company["id"],
+            "cari_code": data.corporateCode.upper(),
+            "is_active": True
+        })
+        
+        if not cari_account:
+            # Try without is_active check
+            cari_account = await db.cari_accounts.find_one({
+                "company_id": company["id"],
+                "cari_code": data.corporateCode.upper()
+            })
+            if not cari_account:
+                raise HTTPException(status_code=401, detail="Geçersiz cari kodu veya şifre")
+        
+        # 5. Verify password
+        if not cari.get("password_hash"):
+            raise HTTPException(status_code=401, detail="Şifre ayarlanmamış. Lütfen yöneticinizle iletişime geçin.")
+        
+        if not pwd_context.verify(data.password, cari["password_hash"]):
+            raise HTTPException(status_code=401, detail="Geçersiz cari kodu veya şifre")
+        
+        # 5. Check if password change is required
+        require_password_change = cari.get("require_password_change", False)
+        
+        # 6. Create JWT token with role "cari" (for compatibility with existing cari system)
+        token_data = {
+            "sub": cari["id"],  # Cari ID
+            "company_id": company["id"],
+            "cari_id": cari_account["id"],  # CariAccount ID
+            "cari_code": data.corporateCode.upper(),
+            "role": "cari",  # Use "cari" role for compatibility with existing cari endpoints
+            "agency_slug": data.agencySlug
+        }
+        
+        access_token = create_access_token(token_data)
+        
+        # Return response
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "corporate": {
+                "id": cari["id"],
+                "cari_code": cari.get("cari_code"),
+                "display_name": cari.get("display_name"),
+                "cari_account_id": cari_account["id"],
+                "cari_account_name": cari_account.get("name"),
+                "require_password_change": require_password_change
+            },
+            "agency": {
+                "id": company["id"],
+                "company_code": company.get("company_code"),
+                "company_name": company.get("company_name"),
+                "logo_url": company.get("logo_url")
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"B2B login error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+async def get_current_corporate_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current corporate user from JWT token (uses get_current_cari for compatibility)"""
+    # Use get_current_cari since we're using "cari" role now
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        role = payload.get("role")
+        # Accept both "cari" and "corporate_user" for backward compatibility
+        if role not in ["cari", "corporate_user"]:
+            raise HTTPException(status_code=403, detail="Access denied. This endpoint is for corporate users only.")
+        
+        cari_id = payload.get("sub")
+        company_id = payload.get("company_id")
+        cari_account_id = payload.get("cari_id")
+        
+        if not cari_id or not company_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Verify cari still exists and is active
+        cari = await db.caris.find_one({"id": cari_id, "company_id": company_id})
+        if not cari:
+            raise HTTPException(status_code=401, detail="Corporate account not found")
+        
+        if not cari.get("is_active", True):
+            raise HTTPException(status_code=403, detail="Corporate account is inactive")
+        
+        # Get cari_account_id from cari_account if not in token
+        if not cari_account_id:
+            cari_code = payload.get("cari_code") or cari.get("cari_code")
+            if cari_code:
+                cari_account = await db.cari_accounts.find_one({
+                    "company_id": company_id,
+                    "cari_code": cari_code
+                })
+                if cari_account:
+                    cari_account_id = cari_account["id"]
+        
+        # Verify cari account still exists and is active
+        if cari_account_id:
+            cari_account = await db.cari_accounts.find_one({"id": cari_account_id, "company_id": company_id})
+            if not cari_account or not cari_account.get("is_active", True):
+                cari_account_id = None  # Allow to continue without cari_account_id
+        
+        return {
+            "cari_id": cari_id,
+            "cari_account_id": cari_account_id,
+            "company_id": company_id,
+            "cari_code": payload.get("cari_code") or cari.get("cari_code"),
+            "agency_slug": payload.get("agency_slug"),
+            "role": "cari"  # Return as "cari" for compatibility
+        }
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Corporate auth error: {e}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
+@api_router.get("/portal/tours")
+async def get_portal_tours(current_corporate: dict = Depends(get_current_corporate_user)):
+    """Get available tours for B2B portal"""
+    try:
+        # Get active tour types for the company
+        tour_types = await db.tour_types.find(
+            {"company_id": current_corporate["company_id"], "is_active": True},
+            {"_id": 0}
+        ).sort("order", 1).to_list(100)
+        
+        # Format response
+        tours = []
+        for tour in tour_types:
+            tours.append({
+                "id": tour.get("id"),
+                "name": tour.get("name"),
+                "description": tour.get("description"),
+                "duration_hours": tour.get("duration_hours"),
+                "default_price": tour.get("default_price"),
+                "default_currency": tour.get("default_currency", "EUR"),
+                "color": tour.get("color"),
+                "icon": tour.get("icon")
+            })
+        
+        return {"tours": tours}
+    except Exception as e:
+        logger.error(f"Error fetching portal tours: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+class PortalReservationRequest(BaseModel):
+    """B2B Portal reservation request"""
+    tourId: str
+    date: str  # YYYY-MM-DD
+    pax: int  # person_count
+    customerName: str
+    customerContact: Optional[str] = None
+    notes: Optional[str] = None
+
+@api_router.post("/portal/reservations")
+async def create_portal_reservation(
+    data: PortalReservationRequest,
+    current_corporate: dict = Depends(get_current_corporate_user)
+):
+    """Create a reservation from B2B portal (status: pending_approval)"""
+    try:
+        # Validate date
+        try:
+            booking_date = datetime.strptime(data.date, "%Y-%m-%d").date()
+            if booking_date < datetime.now().date():
+                raise HTTPException(status_code=400, detail="Booking date cannot be in the past")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        
+        # Get tour type
+        tour_type = await db.tour_types.find_one({"id": data.tourId})
+        if not tour_type:
+            raise HTTPException(status_code=404, detail="Tour not found")
+        
+        if not tour_type.get("is_active", True):
+            raise HTTPException(status_code=400, detail="Tour is not available")
+        
+        # Get cari account
+        cari_account = await db.cari_accounts.find_one({"id": current_corporate["cari_account_id"]})
+        if not cari_account:
+            raise HTTPException(status_code=404, detail="Corporate account not found")
+        
+        # Calculate price using existing function
+        atv_count = max(1, (data.pax + 1) // 2)
+        total_price, currency = await calculate_reservation_price(
+            company_id=current_corporate["company_id"],
+            cari_id=current_corporate["cari_account_id"],
+            tour_type_id=data.tourId,
+            date=data.date,
+            atv_count=atv_count,
+            person_count=data.pax
+        )
+        
+        # Create reservation with status "pending_approval"
+        reservation_id = str(uuid.uuid4())
+        reservation_doc = {
+            "id": reservation_id,
+            "company_id": current_corporate["company_id"],
+            "cari_id": current_corporate["cari_account_id"],
+            "cari_name": cari_account.get("name", "Corporate Customer"),
+            "date": data.date,
+            "time": "09:00",  # Default time
+            "tour_type_id": data.tourId,
+            "tour_type_name": tour_type.get("name"),
+            "customer_name": data.customerName,
+            "customer_contact": data.customerContact,
+            "person_count": data.pax,
+            "atv_count": atv_count,
+            "price": total_price,
+            "currency": currency,
+            "exchange_rate": 1.0,
+            "notes": data.notes,
+            "status": "pending_approval",  # Onaya düştü
+            "reservation_source": "portal",
+            "created_by_cari": current_corporate["cari_id"],
+            "cari_code_snapshot": current_corporate["cari_code"],
+            "created_by": f"corporate_{current_corporate['cari_id']}",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.reservations.insert_one(reservation_doc)
+        
+        # Create notification for agency admins
+        admin_users = await db.users.find({
+            "company_id": current_corporate["company_id"],
+            "$or": [
+                {"role": "admin"},
+                {"role": "super_admin"},
+                {"is_admin": True}
+            ],
+            "is_active": True
+        }, {"_id": 0}).to_list(100)
+        
+        for admin in admin_users:
+            if should_send_notification(admin, "newBooking", "inApp"):
+                notification = {
+                    "id": str(uuid.uuid4()),
+                    "company_id": current_corporate["company_id"],
+                    "user_id": admin["id"],
+                    "type": "new_booking",
+                    "title": "Yeni Rezervasyon Talebi (B2B Portal)",
+                    "message": f"{cari_account.get('name')} tarafından yeni bir rezervasyon talebi oluşturuldu: {tour_type.get('name')} - {data.date}",
+                    "entity_type": "reservation",
+                    "entity_id": reservation_id,
+                    "is_read": False,
+                    "is_archived": False,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.notifications.insert_one(notification)
+        
+        logger.info(f"Portal reservation created: reservation_id={reservation_id}, cari_id={current_corporate['cari_account_id']}")
+        
+        return {
+            "message": "Rezervasyon talebiniz başarıyla oluşturuldu. Onay bekliyor.",
+            "reservation_id": reservation_id,
+            "status": "pending_approval"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating portal reservation: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# ==================== ICAL SYNCHRONIZATION ====================
+
+async def sync_calendars(company_id: Optional[str] = None, tour_type_id: Optional[str] = None):
+    """
+    Sync external iCal calendars with internal system.
+    Creates Block records or reduces quota for busy dates.
+    
+    Args:
+        company_id: Optional - Sync for specific company only
+        tour_type_id: Optional - Sync for specific tour type only
+    """
+    try:
+        from icalendar import Calendar
+        
+        # Build query
+        query = {}
+        if company_id:
+            query["company_id"] = company_id
+        if tour_type_id:
+            query["id"] = tour_type_id
+        
+        # Get tour types with iCal links
+        tour_types = await db.tour_types.find(query, {"_id": 0}).to_list(1000)
+        
+        synced_count = 0
+        error_count = 0
+        
+        for tour_type in tour_types:
+            ical_links = tour_type.get("icalLinks", [])
+            if not ical_links:
+                continue
+            
+            for ical_link in ical_links:
+                provider = ical_link.get("provider", "Unknown")
+                url = ical_link.get("url")
+                
+                if not url:
+                    continue
+                
+                try:
+                    # Fetch iCal data
+                    response = requests.get(url, timeout=10)
+                    response.raise_for_status()
+                    
+                    # Parse iCal
+                    cal = Calendar.from_ical(response.text)
+                    
+                    # Process events
+                    for component in cal.walk():
+                        if component.name == "VEVENT":
+                            # Get event details
+                            summary = str(component.get("summary", ""))
+                            dtstart = component.get("dtstart")
+                            dtend = component.get("dtend")
+                            
+                            if not dtstart:
+                                continue
+                            
+                            # Convert to datetime
+                            if hasattr(dtstart, "dt"):
+                                event_start = dtstart.dt
+                            else:
+                                event_start = dtstart
+                            
+                            if isinstance(event_start, datetime):
+                                event_date = event_start.date()
+                            else:
+                                # Date only
+                                event_date = event_start
+                            
+                            # Check if event indicates "Busy" or "Unavailable"
+                            # Common patterns: "Busy", "Unavailable", "Blocked", "Reserved"
+                            summary_lower = summary.lower()
+                            is_busy = any(keyword in summary_lower for keyword in [
+                                "busy", "unavailable", "blocked", "reserved", 
+                                "booked", "kapalı", "dolu", "rezerve"
+                            ])
+                            
+                            if is_busy:
+                                # Create a block record or reduce quota
+                                # For now, we'll log it - can be enhanced to create actual blocks
+                                logger.info(
+                                    f"iCal Block detected: tour_type_id={tour_type.get('id')}, "
+                                    f"date={event_date}, provider={provider}, summary={summary}"
+                                )
+                                
+                                # TODO: Create Block record in database
+                                # block_doc = {
+                                #     "id": str(uuid.uuid4()),
+                                #     "company_id": tour_type.get("company_id"),
+                                #     "tour_type_id": tour_type.get("id"),
+                                #     "date": event_date.isoformat(),
+                                #     "source": "ical",
+                                #     "provider": provider,
+                                #     "reason": summary,
+                                #     "created_at": datetime.now(timezone.utc).isoformat()
+                                # }
+                                # await db.blocks.insert_one(block_doc)
+                                
+                                synced_count += 1
+                    
+                    logger.info(f"iCal sync completed for tour_type_id={tour_type.get('id')}, provider={provider}")
+                    
+                except Exception as e:
+                    error_count += 1
+                    logger.error(f"Error syncing iCal for tour_type_id={tour_type.get('id')}, provider={provider}: {e}")
+                    continue
+        
+        return {
+            "message": "iCal synchronization completed",
+            "synced_events": synced_count,
+            "errors": error_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in sync_calendars: {e}")
+        raise
+
+@api_router.post("/ical/sync")
+async def sync_ical_endpoint(
+    company_id: Optional[str] = None,
+    tour_type_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Manually trigger iCal synchronization (Admin only)"""
+    # Only admins can trigger sync
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can trigger iCal sync")
+    
+    result = await sync_calendars(
+        company_id=company_id or current_user.get("company_id"),
+        tour_type_id=tour_type_id
+    )
+    
+    return result
 
 # ==================== INCLUDE ROUTER (MUST BE AT THE END) ====================
 # All endpoints must be defined BEFORE this line

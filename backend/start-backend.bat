@@ -1,18 +1,31 @@
 @echo off
-chcp 65001 >nul
+setlocal enabledelayedexpansion
+chcp 65001 >nul 2>&1
 cls
+
 echo ========================================
 echo BACKEND SERVER BASLATILIYOR
 echo ========================================
 echo.
 
-REM Script'in bulundugu dizine git
-cd /d "%~dp0"
+REM Get script directory
+set "SCRIPT_DIR=%~dp0"
+cd /d "%SCRIPT_DIR%"
 
 echo Calisma dizini: %CD%
 echo.
 
-REM .env kontrolu
+REM Check Python installation
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo HATA: Python bulunamadi!
+    echo Python kurulu mu kontrol edin: python --version
+    echo.
+    pause
+    exit /b 1
+)
+
+REM .env file check
 if not exist ".env" (
     echo .env dosyasi bulunamadi! Olusturuluyor...
     (
@@ -21,13 +34,14 @@ if not exist ".env" (
         echo CORS_ORIGINS=http://localhost:3000,https://app-one-lake-13.vercel.app,https://app-c1qr.onrender.com
         echo JWT_SECRET_KEY=tourcast_secret_key_2025
     ) > .env
-    echo ✓ .env olusturuldu
+    echo OK: .env olusturuldu
 ) else (
-    echo ✓ .env mevcut
+    echo OK: .env mevcut
 )
 
-REM Virtual environment kontrolu
-if not exist "venv\Scripts\python.exe" (
+REM Virtual environment check
+set "VENV_PYTHON=%SCRIPT_DIR%venv\Scripts\python.exe"
+if not exist "%VENV_PYTHON%" (
     echo.
     echo Virtual environment bulunamadi! Olusturuluyor...
     python -m venv venv
@@ -35,27 +49,28 @@ if not exist "venv\Scripts\python.exe" (
         echo.
         echo HATA: Virtual environment olusturulamadi!
         echo Python kurulu mu kontrol edin: python --version
+        echo.
         pause
         exit /b 1
     )
-    echo ✓ Virtual environment olusturuldu
+    echo OK: Virtual environment olusturuldu
     echo.
     echo Bagimliliklari yukleniyor...
-    venv\Scripts\python.exe -m pip install --upgrade pip
+    "%VENV_PYTHON%" -m pip install --upgrade pip
     if errorlevel 1 (
         echo HATA: pip yuklenemedi!
         pause
         exit /b 1
     )
-    venv\Scripts\python.exe -m pip install -r requirements.txt
+    "%VENV_PYTHON%" -m pip install -r requirements.txt
     if errorlevel 1 (
         echo HATA: Bagimliliklari yuklenemedi!
         pause
         exit /b 1
     )
-    echo ✓ Bagimliliklari yuklendi
+    echo OK: Bagimliliklari yuklendi
 ) else (
-    echo ✓ Virtual environment mevcut
+    echo OK: Virtual environment mevcut
 )
 
 echo.
@@ -69,8 +84,8 @@ echo.
 echo Durdurmak icin Ctrl+C basiniz.
 echo.
 
-REM Backend'i baslat
-venv\Scripts\python.exe -m uvicorn server:app --reload --host 0.0.0.0 --port 8000
+REM Start backend
+"%VENV_PYTHON%" -m uvicorn server:app --reload --host 0.0.0.0 --port 8000
 
 if errorlevel 1 (
     echo.
@@ -81,5 +96,3 @@ if errorlevel 1 (
 )
 
 pause
-
-

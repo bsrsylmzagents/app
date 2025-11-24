@@ -111,29 +111,37 @@ const CariCreateReservation = () => {
       });
       console.log('📤 Token exists:', !!token);
 
-      // Customer details'i sadece dolu alanları gönder
-      let customer_details = null;
+      // Prepare request payload - only send fields that backend expects
+      const requestPayload = {
+        customer_name: formData.customer_name,
+        date: formData.date,
+        time: formData.time,
+        tour_id: formData.tour_id,
+        person_count: formData.person_count || 1,
+        atv_count: formData.atv_count || 1
+      };
+      
+      // Add optional fields only if they have values
+      if (formData.customer_contact) {
+        requestPayload.customer_contact = formData.customer_contact;
+      }
+      
+      if (formData.notes) {
+        requestPayload.notes = formData.notes;
+      }
+      
+      // Customer details - only include if it has actual data
       if (formData.customer_details) {
         const details = formData.customer_details;
         const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
         if (hasDetails) {
-          customer_details = details;
+          requestPayload.customer_details = details;
         }
       }
       
       const response = await axios.post(
         apiUrl,
-        {
-          customer_name: formData.customer_name,
-          customer_contact: formData.customer_contact || null,
-          customer_details: customer_details,
-          date: formData.date,
-          time: formData.time,
-          tour_id: formData.tour_id,
-          person_count: formData.person_count || 1,
-          atv_count: formData.atv_count || 1,
-          notes: formData.notes || null
-        },
+        requestPayload,
         {
           headers: { 
             Authorization: `Bearer ${token}`,
@@ -161,7 +169,26 @@ const CariCreateReservation = () => {
       });
       
       if (error.response) {
-        const errorMessage = error.response?.data?.detail || error.response?.data?.message || 'Rezervasyon oluşturulamadı';
+        let errorMessage = 'Rezervasyon oluşturulamadı';
+        const detail = error.response?.data?.detail;
+        const message = error.response?.data?.message;
+        
+        // Handle different error formats
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (Array.isArray(detail) && detail.length > 0) {
+          // Pydantic validation errors - extract first error message
+          const firstError = detail[0];
+          errorMessage = typeof firstError === 'string' 
+            ? firstError 
+            : firstError?.msg || 'Rezervasyon oluşturulamadı';
+        } else if (detail && typeof detail === 'object') {
+          // If detail is an object, try to extract a message
+          errorMessage = detail.msg || detail.message || 'Rezervasyon oluşturulamadı';
+        } else if (typeof message === 'string') {
+          errorMessage = message;
+        }
+        
         toast.error(errorMessage);
       } else if (error.request) {
         toast.error('Backend\'e bağlanılamadı. Backend\'in çalıştığından emin olun.');

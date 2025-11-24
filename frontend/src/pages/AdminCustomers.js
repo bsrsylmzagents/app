@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API } from '../App';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Eye, RefreshCw, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, RefreshCw, Search, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,20 +26,21 @@ const AdminCustomers = () => {
       if (statusFilter && statusFilter !== 'all') {
         params.status_filter = statusFilter;
       }
-      const response = await axios.get(`${API}/admin/customers`, { params });
+      // Use new super-admin endpoint
+      const response = await axios.get(`${API}/super-admin/companies`, { params });
       console.log('Customers response:', response.data);
       const customersData = response.data || [];
       setCustomers(customersData);
       setFilteredCustomers(customersData);
       if (customersData.length === 0) {
-        console.warn('No customers found. Make sure you are logged in as system admin (company_code: 1000)');
+        console.warn('No customers found. Make sure you are logged in as super admin');
       }
     } catch (error) {
       console.error('Fetch customers error:', error);
       console.error('Error response:', error.response);
       
       if (error.response?.status === 403) {
-        toast.error('Bu sayfaya erişim yetkiniz yok. Sistem admin olarak giriş yapmalısınız.');
+        toast.error('Bu sayfaya erişim yetkiniz yok. Super admin olarak giriş yapmalısınız.');
         navigate('/');
       } else if (error.response?.status === 401) {
         toast.error('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın');
@@ -47,7 +48,25 @@ const AdminCustomers = () => {
       } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
         toast.error('Backend bağlantısı yapılamadı! Backend\'in çalıştığından emin olun.');
       } else {
-        const errorMessage = error.response?.data?.detail || error.message || 'Müşteriler yüklenemedi';
+        let errorMessage = 'Müşteriler yüklenemedi';
+        const detail = error.response?.data?.detail;
+        
+        // Handle different error formats
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (Array.isArray(detail) && detail.length > 0) {
+          // Pydantic validation errors - extract first error message
+          const firstError = detail[0];
+          errorMessage = typeof firstError === 'string' 
+            ? firstError 
+            : firstError?.msg || 'Müşteriler yüklenemedi';
+        } else if (detail && typeof detail === 'object') {
+          // If detail is an object, try to extract a message
+          errorMessage = detail.msg || detail.message || 'Müşteriler yüklenemedi';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
         toast.error(errorMessage);
       }
       setCustomers([]);
@@ -103,27 +122,15 @@ const AdminCustomers = () => {
       sessionStorage.setItem('admin_company', JSON.stringify(adminCompany));
       sessionStorage.setItem('admin_token', adminToken);
       
-      // Firma owner kullanıcısını al
-      const ownerResponse = await axios.get(`${API}/admin/customers/${customer.id}`);
-      const owner = ownerResponse.data.owner;
-      
-      if (!owner) {
-        toast.error('Firma owner kullanıcısı bulunamadı');
-        return;
-      }
-      
-      // Owner kullanıcısı ile login yap (admin token ile)
-      const loginResponse = await axios.post(`${API}/admin/impersonate`, {
-        company_id: customer.id,
-        user_id: owner.id
-      }, {
+      // Use new super-admin impersonate endpoint (no need to fetch owner separately)
+      const loginResponse = await axios.post(`${API}/super-admin/impersonate/${customer.id}`, {}, {
         headers: {
           Authorization: `Bearer ${adminToken}`
         }
       });
       
       // Yeni token ve kullanıcı bilgilerini kaydet
-      localStorage.setItem('token', loginResponse.data.token);
+      localStorage.setItem('token', loginResponse.data.access_token);
       localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
       localStorage.setItem('company', JSON.stringify(loginResponse.data.company));
       
@@ -227,7 +234,7 @@ const AdminCustomers = () => {
                   <TableHead className="text-gray-300">Paket Başlangıç</TableHead>
                   <TableHead className="text-gray-300">Paket Bitiş</TableHead>
                   <TableHead className="text-gray-300">Kalan Süre</TableHead>
-                  <TableHead className="text-gray-300">Owner Kullanıcı</TableHead>
+                  <TableHead className="text-gray-300">Admin Kullanıcı</TableHead>
                   <TableHead className="text-gray-300">Email</TableHead>
                   <TableHead className="text-gray-300">İşlemler</TableHead>
                 </TableRow>
@@ -279,10 +286,10 @@ const AdminCustomers = () => {
                           )}
                         </TableCell>
                         <TableCell className="text-[#A5A5A5]">
-                          {customer.owner?.username || '-'}
+                          {customer.admin?.username || customer.admin?.full_name || '-'}
                         </TableCell>
                         <TableCell className="text-[#A5A5A5]">
-                          {customer.email || customer.owner?.email || '-'}
+                          {customer.contact_email || customer.admin?.email || '-'}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
@@ -291,9 +298,9 @@ const AdminCustomers = () => {
                               size="sm"
                               onClick={() => handleViewCompany(customer)}
                               className="text-[#3EA6FF] hover:text-[#3EA6FF] hover:bg-[#3EA6FF]/10"
-                              title="Firma hesabını görüntüle"
+                              title="Bu firma hesabına giriş yap (Impersonate)"
                             >
-                              <Eye size={16} />
+                              <LogIn size={16} />
                             </Button>
                             <Button
                               variant="ghost"

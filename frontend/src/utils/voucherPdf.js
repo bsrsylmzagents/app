@@ -1,18 +1,27 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { createNewPdf, createDocumentHeader, createFooter, PDF_CONFIG, safeText } from './pdfTemplate';
 
 /**
- * Güvenli metin - özel karakterleri temizle
+ * Generate QR Code Data URL (placeholder - replace with actual QR code generation)
+ * In production, use a QR code library like qrcode.js
  */
-const safeText = (text) => {
-  if (!text) return '';
-  return String(text).replace(/[^\x00-\x7F]/g, ''); // ASCII olmayan karakterleri kaldır
+const generateQRCode = (text) => {
+  // Placeholder - replace with actual QR code generation
+  // For now, return null (QR code will be skipped)
+  return null;
 };
 
 /**
- * Yatay (landscape) voucher PDF oluştur
- * Bilet/ticket formatında, çift dilli (TR/EN)
+ * Voucher PDF Generator - Global Design System
+ * Portrait A4 format with warm/premium styling
+ * 
+ * Features:
+ * - Hero Section: Big, Bold Pickup Time & Location
+ * - QR Code: Top-right for easy scanning
+ * - Guest Info: Clean grid layout
+ * - Services: List with bullet points
  */
 export const generateVoucherPdf = async (reservation, company) => {
   // Validasyon
@@ -30,243 +39,215 @@ export const generateVoucherPdf = async (reservation, company) => {
     };
   }
   
-  // PDF oluştur - Landscape (yatay) A4
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'pt',
-    format: 'a4'
-  });
-
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+  const voucherCode = reservation.voucher_code || reservation.id?.substring(0, 8) || 'VCHR-XXXX';
+  const doc = createNewPdf('VOUCHER', voucherCode);
   
-  // Margin'ler
-  const margin = 30;
-  const contentWidth = pageWidth - (margin * 2);
-  const contentHeight = pageHeight - (margin * 2);
+  let yPos = PDF_CONFIG.MARGIN + 30; // After header
   
-  // Bilet çerçevesi - rounded rectangle
-  doc.setDrawColor(100, 100, 100);
-  doc.setLineWidth(2);
-  doc.roundedRect(margin, margin, contentWidth, contentHeight, 10, 10);
+  // ==================== HERO SECTION - Pickup Time & Location ====================
+  // Big, Bold Pickup Time & Location
+  const pickupTime = reservation.time || reservation.pickup_time || '-';
+  const pickupLocation = reservation.pickup_location || reservation.location || '-';
   
-  // Perforation çizgisi (yırtma çizgisi) - sol ve sağ blok arasında
-  const perforationX = margin + (contentWidth * 0.4); // Sol blok %40 genişliğinde
-  doc.setLineDash([3, 3]);
-  doc.setDrawColor(150, 150, 150);
-  doc.setLineWidth(1);
-  doc.line(perforationX, margin + 20, perforationX, margin + contentHeight - 20);
-  doc.setLineDash([]); // Reset
+  // Hero Background Box (subtle)
+  const heroHeight = 35;
+  doc.setFillColor(...PDF_CONFIG.COLORS.HEADER_BG);
+  doc.rect(PDF_CONFIG.MARGIN, yPos, PDF_CONFIG.CONTENT_WIDTH, heroHeight, 'F');
   
-  // ==================== SOL BLOK - FİRMA BİLGİLERİ ====================
-  let yPos = margin + 40;
-  const leftBlockWidth = perforationX - margin - 20;
+  // Pickup Time - Large and Bold
+  doc.setFontSize(20);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  doc.text('PICKUP TIME', PDF_CONFIG.MARGIN + 5, yPos + 10);
   
-  // Logo alanı (varsa - şimdilik boş bırakıyoruz, ileride eklenebilir)
-  // Logo varsa: doc.addImage(logoData, 'PNG', margin + 10, yPos, 40, 40);
-  
-  yPos += 20;
-  
-  // Firma Adı (büyük font)
   doc.setFontSize(16);
+  doc.setFont(undefined, 'normal');
+  doc.text(safeText(pickupTime), PDF_CONFIG.MARGIN + 5, yPos + 20);
+  
+  // Pickup Location - Large and Bold
+  doc.setFontSize(20);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 0, 0);
-  const companyName = company?.company_name || 'Firma Adı';
-  const companyNameLines = doc.splitTextToSize(safeText(companyName), leftBlockWidth - 20);
-  doc.text(companyNameLines, margin + 10, yPos);
-  yPos += (companyNameLines.length * 20) + 15;
+  doc.text('PICKUP LOCATION', PDF_CONFIG.MARGIN + 5, yPos + 30);
   
-  // Firma bilgileri (küçük font)
-  doc.setFontSize(11);
+  doc.setFontSize(16);
   doc.setFont(undefined, 'normal');
-  doc.setTextColor(60, 60, 60);
-  
-  if (company?.phone) {
-    doc.text(`Tel: ${safeText(company.phone)}`, margin + 10, yPos);
-    yPos += 18;
-  }
-  
-  if (company?.address) {
-    const addressLines = doc.splitTextToSize(`Adres: ${safeText(company.address)}`, leftBlockWidth - 20);
-    doc.text(addressLines, margin + 10, yPos);
-    yPos += (addressLines.length * 18);
-  }
-  
-  if (company?.email) {
-    doc.text(`E-posta: ${safeText(company.email)}`, margin + 10, yPos);
-    yPos += 18;
-  }
-  
-  if (company?.website) {
-    doc.text(`Web: ${safeText(company.website)}`, margin + 10, yPos);
-    yPos += 18;
-  }
-  
-  // Voucher numarası ve tarih (sol alt)
-  yPos = margin + contentHeight - 60;
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 0, 0);
-  
-  const voucherCode = reservation.voucher_code || 'VCHR-XXXX';
-  doc.text(`Voucher No / Voucher Number:`, margin + 10, yPos);
-  yPos += 16;
-  doc.setFontSize(12);
-  doc.text(safeText(voucherCode), margin + 10, yPos);
-  yPos += 20;
-  
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'normal');
-  const issuedDate = format(new Date(reservation.created_at || new Date()), 'dd.MM.yyyy', { locale: tr });
-  doc.text(`Olusturulma Tarihi / Issued Date: ${issuedDate}`, margin + 10, yPos);
-  
-  // ==================== SAĞ BLOK - REZERVASYON DETAYLARI ====================
-  const rightBlockX = perforationX + 20;
-  const rightBlockWidth = pageWidth - rightBlockX - margin;
-  yPos = margin + 40;
-  
-  // Başlık
-  doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('Rezervasyon Detaylari / Reservation Details', rightBlockX, yPos);
-  yPos += 30;
-  
-  // Grid yapısı - çift dilli alanlar
-  doc.setFontSize(11);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(0, 0, 0);
-  
-  const fieldSpacing = 25;
-  
-  // Rezervasyon Tarihi / Reservation Date
-  doc.setFont(undefined, 'bold');
-  doc.text('Rezervasyon Tarihi', rightBlockX, yPos);
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Reservation Date', rightBlockX, yPos + 12);
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  const reservationDate = format(new Date(reservation.date), 'dd.MM.yyyy', { locale: tr });
-  doc.text(reservationDate, rightBlockX + 120, yPos);
-  yPos += fieldSpacing;
-  
-  // Rezervasyon Saati / Reservation Time
-  doc.setFont(undefined, 'bold');
-  doc.text('Rezervasyon Saati', rightBlockX, yPos);
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Reservation Time', rightBlockX, yPos + 12);
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  doc.text(safeText(reservation.time || '-'), rightBlockX + 120, yPos);
-  yPos += fieldSpacing;
-  
-  // Tur Zamanı / Tour Time
-  doc.setFont(undefined, 'bold');
-  doc.text('Tur Zamani', rightBlockX, yPos);
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Tour Time', rightBlockX, yPos + 12);
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  const tourTime = reservation.time || '-';
-  doc.text(safeText(tourTime), rightBlockX + 120, yPos);
-  yPos += fieldSpacing;
-  
-  // Hizmet Tipi / Service Type
-  doc.setFont(undefined, 'bold');
-  doc.text('Hizmet Tipi', rightBlockX, yPos);
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Service Type', rightBlockX, yPos + 12);
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  const serviceType = reservation.tour_type_name || 'Belirtilmedi / Not Provided';
-  doc.text(safeText(serviceType), rightBlockX + 120, yPos);
-  yPos += fieldSpacing;
-  
-  // Hizmet Adedi / Quantity
-  doc.setFont(undefined, 'bold');
-  doc.text('Hizmet Adedi', rightBlockX, yPos);
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Quantity', rightBlockX, yPos + 12);
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`${reservation.atv_count || 0} ATV`, rightBlockX + 120, yPos);
-  yPos += fieldSpacing;
-  
-  // Müşteri Adı / Customer Name
-  doc.setFont(undefined, 'bold');
-  doc.text('Musteri Adi', rightBlockX, yPos);
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Customer Name', rightBlockX, yPos + 12);
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  const customerName = reservation.customer_name || 'Belirtilmedi / Not Provided';
-  const customerNameLines = doc.splitTextToSize(safeText(customerName), rightBlockWidth - 140);
-  doc.text(customerNameLines, rightBlockX + 120, yPos);
-  yPos += (customerNameLines.length > 1 ? customerNameLines.length * 18 : fieldSpacing);
-  
-  // Cari Firma / Agency
-  doc.setFont(undefined, 'bold');
-  doc.text('Cari Firma', rightBlockX, yPos);
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Agency', rightBlockX, yPos + 12);
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  const agencyName = reservation.cari_name || 'Belirtilmedi / Not Provided';
-  const agencyNameLines = doc.splitTextToSize(safeText(agencyName), rightBlockWidth - 140);
-  doc.text(agencyNameLines, rightBlockX + 120, yPos);
-  yPos += (agencyNameLines.length > 1 ? agencyNameLines.length * 18 : fieldSpacing);
-  
-  // Tutar / Amount
-  doc.setFont(undefined, 'bold');
-  doc.text('Tutar', rightBlockX, yPos);
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Amount', rightBlockX, yPos + 12);
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`${(reservation.price || 0).toFixed(2)}`, rightBlockX + 120, yPos);
-  yPos += fieldSpacing;
-  
-  // Döviz Tipi / Currency
-  doc.setFont(undefined, 'bold');
-  doc.text('Doviz Tipi', rightBlockX, yPos);
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Currency', rightBlockX, yPos + 12);
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  doc.text(reservation.currency || 'EUR', rightBlockX + 120, yPos);
-  
-  // ==================== FOOTER ====================
-  const footerY = margin + contentHeight - 20;
-  doc.setFontSize(8);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(120, 120, 120);
-  const footerText = 'Bu voucher sistem tarafindan otomatik olusturulmustur. / This voucher has been automatically generated by the system.';
-  const footerLines = doc.splitTextToSize(footerText, contentWidth - 40);
-  const footerStartY = footerY - (footerLines.length * 10);
-  footerLines.forEach((line, index) => {
-    doc.text(line, pageWidth / 2, footerStartY + (index * 10), { align: 'center' });
+  const locationLines = doc.splitTextToSize(safeText(pickupLocation), PDF_CONFIG.CONTENT_WIDTH - 60);
+  locationLines.forEach((line, idx) => {
+    doc.text(line, PDF_CONFIG.MARGIN + 5, yPos + 30 + (idx + 1) * 6);
   });
+  
+  const qrCode = generateQRCode(voucherCode);
+  if (qrCode) {
+    try {
+      const qrSize = 30;
+      const qrX = PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN - qrSize;
+      const qrY = yPos + 2;
+      doc.addImage(qrCode, 'PNG', qrX, qrY, qrSize, qrSize);
+    } catch (e) {
+      console.warn('QR code eklenemedi:', e);
+    }
+  }
+  
+  yPos += heroHeight + 15;
+  
+  // Separator line
+  doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+  doc.setLineWidth(0.3);
+  doc.line(PDF_CONFIG.MARGIN, yPos, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, yPos);
+  yPos += 10;
+  
+  // ==================== GUEST INFO - Clean Grid Layout ====================
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  doc.text('Guest Information', PDF_CONFIG.MARGIN, yPos);
+  yPos += 8;
+  
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  const gridSpacing = 6;
+  
+  // Name
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+  doc.text('Name:', PDF_CONFIG.MARGIN, yPos);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  const customerName = reservation.customer_name || 'Not Provided';
+  doc.text(safeText(customerName), PDF_CONFIG.MARGIN + 30, yPos);
+  yPos += gridSpacing;
+  
+  // Pax (Passengers)
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+  doc.text('Pax:', PDF_CONFIG.MARGIN, yPos);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  doc.text(String(reservation.pax || reservation.atv_count || 0), PDF_CONFIG.MARGIN + 30, yPos);
+  yPos += gridSpacing;
+  
+  // Hotel
+  if (reservation.hotel || reservation.hotel_name) {
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+    doc.text('Hotel:', PDF_CONFIG.MARGIN, yPos);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+    doc.text(safeText(reservation.hotel || reservation.hotel_name), PDF_CONFIG.MARGIN + 30, yPos);
+    yPos += gridSpacing;
+  }
+  
+  // Agency
+  if (reservation.cari_name) {
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+    doc.text('Agency:', PDF_CONFIG.MARGIN, yPos);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+    doc.text(safeText(reservation.cari_name), PDF_CONFIG.MARGIN + 30, yPos);
+    yPos += gridSpacing;
+  }
+  
+  // Reservation Date
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+  doc.text('Date:', PDF_CONFIG.MARGIN, yPos);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  const reservationDate = format(new Date(reservation.date || new Date()), 'dd.MM.yyyy', { locale: tr });
+  doc.text(reservationDate, PDF_CONFIG.MARGIN + 30, yPos);
+  yPos += gridSpacing;
+  
+  // Service Type
+  if (reservation.tour_type_name) {
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_SECONDARY);
+    doc.text('Service Type:', PDF_CONFIG.MARGIN, yPos);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+    doc.text(safeText(reservation.tour_type_name), PDF_CONFIG.MARGIN + 30, yPos);
+    yPos += gridSpacing;
+  }
+  
+  yPos += 8;
+  
+  // Separator line
+  doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+  doc.setLineWidth(0.3);
+  doc.line(PDF_CONFIG.MARGIN, yPos, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, yPos);
+  yPos += 10;
+  
+  // ==================== SERVICES - List with Bullet Points ====================
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+  doc.text('Included Services', PDF_CONFIG.MARGIN, yPos);
+  yPos += 8;
+  
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  
+  // Services list
+  const services = [];
+  
+  // Add service type as main service
+  if (reservation.tour_type_name) {
+    services.push(reservation.tour_type_name);
+  }
+  
+  // Add quantity info
+  if (reservation.atv_count) {
+    services.push(`${reservation.atv_count} ATV`);
+  }
+  
+  // Add any additional services from reservation
+  if (reservation.services && Array.isArray(reservation.services)) {
+    services.push(...reservation.services);
+  } else if (reservation.services) {
+    services.push(reservation.services);
+  }
+  
+  // If no services, add default
+  if (services.length === 0) {
+    services.push('Tour Service');
+  }
+  
+  // Display services with bullet points
+  services.forEach((service, idx) => {
+    if (yPos > PDF_CONFIG.PAGE_HEIGHT - PDF_CONFIG.FOOTER_HEIGHT - PDF_CONFIG.MARGIN - 10) {
+      doc.addPage();
+      createDocumentHeader(doc, 'VOUCHER', voucherCode);
+      yPos = PDF_CONFIG.MARGIN + 30;
+    }
+    
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+    doc.text('•', PDF_CONFIG.MARGIN, yPos);
+    doc.text(safeText(String(service)), PDF_CONFIG.MARGIN + 5, yPos);
+    yPos += 6;
+  });
+  
+  yPos += 10;
+  
+  // ==================== ADDITIONAL INFO ====================
+  // Amount and Currency
+  if (reservation.price) {
+    doc.setDrawColor(...PDF_CONFIG.COLORS.BORDER);
+    doc.setLineWidth(0.3);
+    doc.line(PDF_CONFIG.MARGIN, yPos, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, yPos);
+    yPos += 8;
+    
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...PDF_CONFIG.COLORS.TEXT_PRIMARY);
+    doc.text('Total Amount:', PDF_CONFIG.MARGIN, yPos);
+    
+    doc.setFontSize(14);
+    const amountText = `${(reservation.price || 0).toFixed(2)} ${reservation.currency || 'EUR'}`;
+    doc.text(amountText, PDF_CONFIG.PAGE_WIDTH - PDF_CONFIG.MARGIN, yPos, { align: 'right' });
+  }
   
   // PDF'i kaydet veya yazdır
-  const filename = `voucher-${reservation.voucher_code || reservation.id.substring(0, 8)}-${format(new Date(), 'yyyyMMdd')}.pdf`;
+  const filename = `voucher-${voucherCode}-${format(new Date(), 'yyyyMMdd')}.pdf`;
   
   return { doc, filename };
 };
@@ -276,6 +257,14 @@ export const generateVoucherPdf = async (reservation, company) => {
  */
 export const downloadVoucherPdf = async (reservation, company) => {
   const { doc, filename } = await generateVoucherPdf(reservation, company);
+  
+  // Add footer to all pages
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    createFooter(doc, '', totalPages, i);
+  }
+  
   doc.save(filename);
   return filename;
 };
@@ -285,6 +274,14 @@ export const downloadVoucherPdf = async (reservation, company) => {
  */
 export const printVoucherPdf = async (reservation, company) => {
   const { doc, filename } = await generateVoucherPdf(reservation, company);
+  
+  // Add footer to all pages
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    createFooter(doc, '', totalPages, i);
+  }
+  
   // PDF'i yazdırma için yeni pencerede aç
   const pdfBlob = doc.output('blob');
   const pdfUrl = URL.createObjectURL(pdfBlob);

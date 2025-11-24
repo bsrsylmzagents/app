@@ -136,7 +136,6 @@ const ExtraSales = () => {
         purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : 0
       };
       
-      // Customer details'i sadece dolu alanları gönder
       if (submitData.customer_details) {
         const details = submitData.customer_details;
         const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
@@ -354,7 +353,6 @@ const ExtraSales = () => {
     });
   }, [sales]);
 
-  // Geçmiş günlere ait satışlar (bugünkü satışlar hariç)
   const pastSales = useMemo(() => {
     const today = new Date();
     const todayDateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD formatında
@@ -414,15 +412,15 @@ const ExtraSales = () => {
   const filteredPastSales = filterAndSortSales(pastSales);
 
   const renderSalesTable = (salesList, title) => (
-    <div className="bg-[#25272A] backdrop-blur-xl border border-[#2D2F33] rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-[#2D2F33]">
+    <div className="backdrop-blur-xl rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderWidth: '1px', borderStyle: 'solid' }}>
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
         <h2 className="text-lg font-semibold text-white">{title}</h2>
       </div>
       {loading ? (
         <Loading className="py-20" />
       ) : (
         <table className="w-full">
-        <thead className="bg-[#2D2F33] border-b border-[#2D2F33]">
+        <thead className="border-b" style={{ backgroundColor: 'var(--table-header)', borderColor: 'var(--border-color)' }}>
           <tr>
             <th className="px-6 py-4 text-left text-sm font-semibold text-white">Tarih</th>
             <th className="px-6 py-4 text-left text-sm font-semibold text-white">Ürün</th>
@@ -442,7 +440,18 @@ const ExtraSales = () => {
             return (
               <tr 
                 key={sale.id} 
-                className={`hover:bg-[#2D2F33] ${sale.status === 'cancelled' ? 'opacity-60 bg-red-500/5' : ''}`}
+                className={sale.status === 'cancelled' ? 'opacity-60 bg-red-500/5' : ''}
+                style={{ backgroundColor: 'var(--bg-card)' }}
+                onMouseEnter={(e) => {
+                  if (sale.status !== 'cancelled') {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (sale.status !== 'cancelled') {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+                  }
+                }}
               >
                 <td className={`px-6 py-4 text-sm ${sale.status === 'cancelled' ? 'text-red-400 line-through' : 'text-white'}`}>
                   {sale.date ? formatDateStringDDMMYYYY(sale.date) : ''} {sale.time}
@@ -453,10 +462,11 @@ const ExtraSales = () => {
                 <td className={`px-6 py-4 text-sm ${sale.status === 'cancelled' ? 'text-red-400 line-through' : 'text-white'}`}>
                   {sale.customer_name}
                 </td>
-                <td className={`px-6 py-4 text-sm ${sale.status === 'cancelled' ? 'text-red-400/70 line-through' : 'text-[#A5A5A5]'}`}>
+                <td className={`px-6 py-4 text-sm ${sale.status === 'cancelled' ? 'text-red-400/70 line-through' : ''}`}
+                style={{ color: sale.status === 'cancelled' ? undefined : 'var(--text-secondary)' }}>
                   {sale.person_count || '-'}
                 </td>
-                <td className="px-6 py-4 text-sm text-[#A5A5A5]">
+                <td className="px-6 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {sale.customer_contact ? (
                     whatsappLink ? (
                       <a
@@ -471,14 +481,14 @@ const ExtraSales = () => {
                         {sale.customer_contact}
                       </a>
                     ) : (
-                      <span className="text-[#A5A5A5]">{sale.customer_contact}</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{sale.customer_contact}</span>
                     )
                   ) : (
-                    <span className="text-[#A5A5A5]">-</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>-</span>
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm text-[#A5A5A5]">{sale.pickup_location || '-'}</td>
-                <td className="px-6 py-4 text-sm text-[#A5A5A5]">{sale.cari_name}</td>
+                <td className="px-6 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>{sale.pickup_location || '-'}</td>
+                <td className="px-6 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>{sale.cari_name}</td>
                 <td className={`px-6 py-4 text-sm font-semibold ${sale.status === 'cancelled' ? 'text-red-400 line-through' : 'text-white'}`}>
                   {sale.sale_price} {sale.currency}
                 </td>
@@ -552,7 +562,7 @@ const ExtraSales = () => {
       )}
       {!loading && salesList.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-[#A5A5A5]">Henüz satış bulunmamaktadır</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Henüz satış bulunmamaktadır</p>
         </div>
       )}
     </div>
@@ -569,7 +579,23 @@ const ExtraSales = () => {
               setStatusFilter(e.target.value);
               fetchSales(e.target.value);
             }}
-            className="w-48 px-3 py-2 bg-[#2D2F33] border border-[#3EA6FF]/30 rounded-lg text-white focus:outline-none focus:border-[#3EA6FF]"
+            className="w-48 px-3 py-2 rounded-lg text-white focus:outline-none"
+            style={{
+              backgroundColor: 'var(--input-bg)',
+              borderColor: 'var(--accent)',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              opacity: 0.3,
+              color: 'var(--text-primary)'
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = 'var(--accent)';
+              e.currentTarget.style.opacity = '1';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = 'var(--accent)';
+              e.currentTarget.style.opacity = '0.3';
+            }}
           >
             <option value="all">Tümü</option>
             <option value="active">Aktif</option>
@@ -582,7 +608,12 @@ const ExtraSales = () => {
               Yeni Satış
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl bg-[#25272A] border-[#2D2F33] text-white max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl text-white max-h-[90vh] overflow-y-auto"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            borderColor: 'var(--border-color)',
+            color: 'var(--text-primary)'
+          }}>
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold">Yeni Satış</DialogTitle>
             </DialogHeader>
@@ -592,7 +623,22 @@ const ExtraSales = () => {
                 placeholder="Ürün Adı"
                 value={formData.product_name}
                 onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
-                className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 required
                 data-testid="product-name"
               />
@@ -608,7 +654,22 @@ const ExtraSales = () => {
                     payment_type_id: isMunferit ? (formData.payment_type_id || paymentTypes.find(pt => pt.code === 'cash')?.id || '') : ''
                   });
                 }}
-                className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 required
               >
                 <option value="">Cari Firma Seçin</option>
@@ -648,7 +709,22 @@ const ExtraSales = () => {
                   placeholder="Pax Sayısı"
                   value={formData.person_count}
                   onChange={(e) => setFormData({ ...formData, person_count: e.target.value ? parseInt(e.target.value) : '' })}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                  className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                   min="1"
                 />
                 <input
@@ -656,7 +732,22 @@ const ExtraSales = () => {
                   placeholder="Telefon Numarası"
                   value={formData.customer_contact}
                   onChange={(e) => setFormData({ ...formData, customer_contact: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                  className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 />
               </div>
               <input
@@ -664,7 +755,22 @@ const ExtraSales = () => {
                 placeholder="Pick-up Yeri"
                 value={formData.pickup_location}
                 onChange={(e) => setFormData({ ...formData, pickup_location: e.target.value })}
-                className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               />
               <div className="grid grid-cols-2 gap-4">
                 <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] focus:border-[#3EA6FF] rounded-lg text-white" required />
@@ -687,7 +793,22 @@ const ExtraSales = () => {
                     <select
                       value={formData.payment_type_id}
                       onChange={(e) => setFormData({ ...formData, payment_type_id: e.target.value, bank_account_id: '' })}
-                      className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                      className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                       required
                     >
                       <option value="">Seçiniz</option>
@@ -702,7 +823,22 @@ const ExtraSales = () => {
                       <select
                         value={formData.bank_account_id}
                         onChange={(e) => setFormData({ ...formData, bank_account_id: e.target.value })}
-                        className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                        className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                         required
                       >
                         <option value="">Seçiniz</option>
@@ -727,13 +863,28 @@ const ExtraSales = () => {
 
       {/* Arama Çubuğu */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#A5A5A5] size-5" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-5" style={{ color: 'var(--text-secondary)' }} />
         <input
           type="text"
           placeholder="Ürün, müşteri, cari, telefon, pick-up veya tarih ile ara..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white placeholder-[#A5A5A5] focus:outline-none focus:border-[#3EA6FF] transition-colors"
+          className="w-full pl-11 pr-4 py-3 rounded-lg text-white focus:outline-none transition-colors"
+          style={{
+            backgroundColor: 'var(--input-bg)',
+            borderColor: 'var(--border-color)',
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            color: 'var(--text-primary)'
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'var(--accent)';
+            e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border-color)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
         />
       </div>
 
@@ -784,7 +935,22 @@ const ExtraSales = () => {
               <textarea
                 value={cancelFormData.cancellation_reason}
                 onChange={(e) => setCancelFormData({ ...cancelFormData, cancellation_reason: e.target.value })}
-                className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 rows="3"
                 placeholder="İptal sebebini açıklayın..."
                 required
@@ -817,7 +983,22 @@ const ExtraSales = () => {
                       min="0"
                       value={cancelFormData.no_show_amount}
                       onChange={(e) => setCancelFormData({ ...cancelFormData, no_show_amount: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                      className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                       placeholder="0.00"
                       required={cancelFormData.apply_no_show}
                     />
@@ -831,7 +1012,22 @@ const ExtraSales = () => {
                         no_show_currency: e.target.value,
                         exchange_rate: rates[e.target.value] || 1.0
                       })}
-                      className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                      className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                       required={cancelFormData.apply_no_show}
                     >
                       <option value="EUR">EUR</option>

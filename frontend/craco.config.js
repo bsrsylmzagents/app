@@ -109,4 +109,45 @@ if (config.enableVisualEdits || config.enableHealthCheck) {
   };
 }
 
+// Always configure devServer for WebSocket port fix (even if visual edits/health check are disabled)
+if (!webpackConfig.devServer) {
+  webpackConfig.devServer = (devServerConfig) => {
+    // HARDCODE WebSocket to use port 3000 (dev server port) - NEVER use 443
+    // Only set webSocketURL inside client, host and port are at root level
+    if (!devServerConfig.client) {
+      devServerConfig.client = {};
+    }
+    // Force WebSocket to use localhost:3000/ws (dev server port)
+    devServerConfig.client.webSocketURL = {
+      hostname: 'localhost',
+      pathname: '/ws',
+      port: 3000,  // HARDCODED to dev server port
+      protocol: 'ws',  // Force ws:// not wss://
+    };
+    
+    return devServerConfig;
+  };
+} else {
+  // If devServer already exists, enhance it with WebSocket fix
+  const originalDevServer = webpackConfig.devServer;
+  webpackConfig.devServer = (devServerConfig) => {
+    const config = originalDevServer ? originalDevServer(devServerConfig) : devServerConfig;
+    
+    // HARDCODE WebSocket to use port 3000 - NEVER use 443
+    // Only set webSocketURL inside client, host and port are at root level
+    if (!config.client) {
+      config.client = {};
+    }
+    // Force WebSocket to use localhost:3000/ws (dev server port)
+    config.client.webSocketURL = {
+      hostname: 'localhost',
+      pathname: '/ws',
+      port: 3000,  // HARDCODED to dev server port
+      protocol: 'ws',  // Force ws:// not wss://
+    };
+    
+    return config;
+  };
+}
+
 module.exports = webpackConfig;

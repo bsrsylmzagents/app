@@ -61,6 +61,10 @@ import Security from './pages/Security';
 import Integrations from './pages/Integrations';
 import Preferences from './pages/Preferences';
 import SettingsCurrencyRates from './pages/settings/SettingsCurrencyRates';
+import PublicLayout from './components/PublicLayout';
+import PublicBooking from './pages/PublicBooking';
+import PortalLogin from './pages/portal/PortalLogin';
+import PortalDashboard from './pages/portal/PortalDashboard';
 
 // Admin Pages
 import AdminCustomers from './pages/AdminCustomers';
@@ -101,11 +105,20 @@ axios.interceptors.request.use(
       }
     }
     
-    // Cari routes için cari_token kullan
-    if (config.url?.includes('/cari/') || config.url?.includes('/api/cari/')) {
+    // Portal ve Cari routes için cari_token kullan (portal login'den sonra cari_token kullanılıyor)
+    if (config.url?.includes('/portal/') || config.url?.includes('/api/portal/') || 
+        config.url?.includes('/cari/') || config.url?.includes('/api/cari/') ||
+        config.url?.includes('/auth/b2b-login')) {
+      // Önce cari_token'ı kontrol et (portal login'den sonra bu kullanılıyor)
       const cariToken = localStorage.getItem('cari_token');
       if (cariToken) {
         config.headers.Authorization = `Bearer ${cariToken}`;
+      } else {
+        // Fallback: portal_token varsa onu kullan
+        const portalToken = localStorage.getItem('portal_token');
+        if (portalToken) {
+          config.headers.Authorization = `Bearer ${portalToken}`;
+        }
       }
     } else {
       // Normal routes için token kullan
@@ -145,9 +158,30 @@ axios.interceptors.response.use(
         return Promise.reject(error);
       }
       
-      // Normal admin routes için (cari route'ları hariç)
-      // Sadece login/register sayfalarında değilsek ve cari route'da değilsek yönlendir
-      const isAdminRoute = !window.location.pathname.startsWith('/cari/') && !window.location.pathname.startsWith('/r/');
+      // Portal routes için özel işlem
+      const isPortalRoute = window.location.pathname.startsWith('/portal/');
+      if (isPortalRoute) {
+        // Portal token hatası - portal login'e yönlendir
+        if (error.config?.url?.includes('/portal/') || error.config?.url?.includes('/auth/b2b-login')) {
+          const pathParts = window.location.pathname.split('/');
+          const agencySlug = pathParts[2]; // /portal/:agencySlug/...
+          localStorage.removeItem('portal_token');
+          localStorage.removeItem('portal_corporate');
+          localStorage.removeItem('portal_agency');
+          // Portal login sayfasına yönlendir
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = `/portal/${agencySlug}/login`;
+          }
+        }
+        return Promise.reject(error);
+      }
+      
+      // Normal admin routes için (cari ve portal route'ları hariç)
+      // Sadece login/register sayfalarında değilsek ve cari/portal route'da değilsek yönlendir
+      const isAdminRoute = !window.location.pathname.startsWith('/cari/') && 
+                          !window.location.pathname.startsWith('/r/') && 
+                          !window.location.pathname.startsWith('/portal/') &&
+                          !window.location.pathname.startsWith('/booking/');
       if (isAdminRoute && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -167,9 +201,13 @@ function App() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Cari routes için auth kontrolü yapma
+      // Cari, Portal ve Public routes için auth kontrolü yapma
       const isCariRoute = window.location.pathname.startsWith('/cari/') || window.location.pathname.startsWith('/r/');
-      if (isCariRoute) {
+      const isPortalRoute = window.location.pathname.startsWith('/portal/');
+      const isPublicRoute = window.location.pathname.startsWith('/booking/');
+      const isCompanySlugRoute = window.location.pathname.match(/^\/[^\/]+$/); // Sadece /:slug formatı
+      
+      if (isCariRoute || isPortalRoute || isPublicRoute || isCompanySlugRoute) {
         setLoading(false);
         setIsAuthenticated(false);
         return;
@@ -235,6 +273,12 @@ function App() {
             localStorage.setItem('user', JSON.stringify(response.data.user));
             localStorage.setItem('company', JSON.stringify(response.data.company));
             setIsAuthenticated(true);
+            
+            // If we're on the root path, redirect to user's preferred start page
+            if (window.location.pathname === '/') {
+              const startPage = response.data.user?.preferences?.startPage || '/dashboard';
+              window.location.href = startPage;
+            }
           }
         } catch (error) {
           console.error('Auth check failed after login:', error);
@@ -246,15 +290,23 @@ function App() {
     }
   };
 
-  // Cari routes için loading kontrolü - cari route'larda loading gösterme
+  // Cari, Portal ve Public routes için loading kontrolü - bu route'larda loading gösterme
   // /:companySlug route'u da cari route olarak kabul edilir (login sayfası)
   const pathname = window.location.pathname;
-  const isCariRoute = pathname.startsWith('/cari/') || 
-                      pathname.startsWith('/r/') || 
-                      (pathname !== '/' && pathname !== '/login' && pathname !== '/register' && 
-                       !pathname.startsWith('/reports') && !isAuthenticated);
+  const isCariRoute = pathname.startsWith('/cari/') || pathname.startsWith('/r/');
+  const isPortalRoute = pathname.startsWith('/portal/');
+  const isPublicRoute = pathname.startsWith('/booking/');
+  const isCompanySlugRoute = pathname !== '/' && 
+                             pathname !== '/login' && 
+                             pathname !== '/register' && 
+                             !pathname.startsWith('/reports') && 
+                             !pathname.startsWith('/portal/') &&
+                             !pathname.startsWith('/booking/') &&
+                             !pathname.startsWith('/cari/') &&
+                             !isAuthenticated &&
+                             pathname.match(/^\/[^\/]+$/); // Sadece /:slug formatı
   
-  if (loading && !isCariRoute) {
+  if (loading && !isCariRoute && !isPortalRoute && !isPublicRoute && !isCompanySlugRoute) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-[#0a0e1a] to-[#0f1419]">
         <div className="text-center">
@@ -290,6 +342,7 @@ function App() {
           {/* Admin Routes */}
           <Route path="/" element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
             <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="reservations" element={<Reservations />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="customers" element={<Customers />} />
@@ -346,9 +399,31 @@ function App() {
             
           </Route>
           
-          {/* Firma bazlı URL: /:companySlug -> CariLogin (EN SONDA - genel route) */}
-          {/* Bu route tüm diğer route'lardan sonra gelmeli, aksi halde tüm route'ları yakalar */}
-          <Route path="/:companySlug" element={<CariLogin />} />
+          {/* Public Routes (No Auth Required) */}
+          <Route element={<PublicLayout />}>
+            <Route path="booking/:agencySlug" element={<PublicBooking />} />
+          </Route>
+          
+          {/* B2B Portal Routes (Corporate Customer) */}
+          <Route path="portal/:agencySlug/login" element={<PortalLogin />} />
+          <Route path="portal/:agencySlug/dashboard" element={<PortalDashboard />} />
+          
+          {/* Cari Routes (Legacy - using /cari/* paths) */}
+          <Route path="cari/login" element={<CariLogin />} />
+          <Route path="cari/dashboard" element={<CariDashboard />} />
+          <Route path="cari/reservations/new" element={<CariCreateReservation />} />
+          <Route path="cari/transactions" element={<CariTransactions />} />
+          <Route path="cari/change-password" element={<CariRequirePasswordChange />} />
+          
+          {/* Legacy Route: /:companySlug -> CariLogin (Backward Compatibility) */}
+          {/* Bu route EN SONDA olmalı, aksi halde diğer route'ları yakalar */}
+          {/* Bilinen route'ları exclude et: login, register, dashboard, vb. */}
+          <Route 
+            path="/:companySlug" 
+            element={<CariLogin />}
+            // Sadece gerçekten company slug olan route'ları yakala
+            // Bilinen route'ları exclude et
+          />
           
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

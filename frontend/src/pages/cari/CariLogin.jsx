@@ -16,6 +16,17 @@ const CariLogin = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Bilinen admin panel route'larını kontrol et - bunlar company slug değil
+    const knownRoutes = ['login', 'register', 'dashboard', 'reservations', 'calendar', 'customers', 
+                         'extra-sales', 'cari-accounts', 'seasonal-prices', 'service-purchases', 
+                         'reports', 'inventory', 'cash', 'settings', 'company-profile', 'admin'];
+    
+    if (companySlug && knownRoutes.includes(companySlug.toLowerCase())) {
+      // Bu bilinen bir route, normal admin panel route'una yönlendir
+      navigate(`/${companySlug}`, { replace: true });
+      return;
+    }
+    
     // Eski sistem için: /r/:cariCode route'undan geldiyse username'i doldur (backward compatibility)
     if (cariCode) {
       setFormData(prev => ({ ...prev, username: cariCode }));
@@ -25,7 +36,7 @@ const CariLogin = () => {
     if (companySlug) {
       fetchCompanyInfo(companySlug);
     }
-  }, [companySlug, cariCode]);
+  }, [companySlug, cariCode, navigate]);
 
   const fetchCompanyInfo = async (slug) => {
     try {

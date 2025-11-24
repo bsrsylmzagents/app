@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { downloadVoucherPdf, printVoucherPdf } from '../utils/voucherPdf';
-import { formatDateStringDDMMYYYY } from '../utils/dateFormatter';
+import { formatDate, formatDateStringDDMMYYYY } from '../utils/dateFormatter';
 import useConfirmDialog from '../hooks/useConfirmDialog';
 import Loading from '../components/Loading';
 
@@ -1060,7 +1060,7 @@ const CariDetail = () => {
                   {reservations.map((reservation) => (
                     <tr key={reservation.id} className="hover:bg-[#2D2F33]">
                       <td className="px-6 py-4 text-white text-sm">
-                        {reservation.date ? format(new Date(reservation.date), 'dd.MM.yyyy', { locale: tr }) : '-'}
+                        {reservation.date ? formatDate(reservation.date) : '-'}
                       </td>
                       <td className="px-6 py-4 text-white text-sm">{reservation.time || '-'}</td>
                       <td className="px-6 py-4 text-white text-sm">{reservation.customer_name || '-'}</td>

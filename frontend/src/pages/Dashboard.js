@@ -2,17 +2,28 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { API } from '../App';
-import { Calendar as CalendarIcon, Bike, Download, CheckCircle2, CheckSquare, X, Check, Clock } from 'lucide-react';
+import { Download, CheckCircle2, CheckSquare, X, Check, Clock } from 'lucide-react';
+// Phosphor Icons - Warm/Premium Theme
+import { 
+  ClockClockwise,
+  CalendarBlank,
+  Bicycle,
+  CheckCircle,
+  Wallet,
+  WarningCircle
+} from '@phosphor-icons/react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { createNewPdf, createTitle, savePdf, createTable, safeText } from '../utils/pdfTemplate';
-import { formatDateStringDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
+import { formatDate, formatDateStringDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateFormatter';
 import Loading from '../components/Loading';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Dashboard = () => {
+  const { theme } = useTheme();
   const timelineRef = useRef(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [tooltipState, setTooltipState] = useState({ visible: false, content: null, x: 0, y: 0 });
@@ -26,6 +37,7 @@ const Dashboard = () => {
   const [loadingPending, setLoadingPending] = useState(false);
   const [approvingReservation, setApprovingReservation] = useState(null);
   const [pickupTimes, setPickupTimes] = useState({}); // Her rezervasyon için ayrı pick-up saati
+  const [selectedReservations, setSelectedReservations] = useState(new Set()); // PDF için seçili rezervasyonlar
 
   useEffect(() => {
     fetchDashboard();
@@ -209,7 +221,6 @@ const Dashboard = () => {
     });
   };
 
-  // Seçili güne ait tamamlanan turlar
   const getCompletedReservations = () => {
     if (!dashboardData) return [];
     
@@ -234,7 +245,6 @@ const Dashboard = () => {
     try {
       await axios.put(`${API}/reservations/${reservationId}`, { status: newStatus });
       toast.success('Rezervasyon durumu güncellendi');
-      // Dashboard'ı yeniden yükle - await ile bekle
       await fetchDashboard();
     } catch (error) {
       console.error('Rezervasyon durumu güncellenemedi:', error);
@@ -398,13 +408,97 @@ const Dashboard = () => {
     setDialogOpen(open);
     if (!open) {
       setSelectedHour(null);
+      setSelectedReservations(new Set()); // Dialog kapandığında seçimleri temizle
+    }
+  };
+
+  // Dialog açıldığında tüm rezervasyonları seçili yap
+  useEffect(() => {
+    if (dialogOpen && selectedHour !== null && dashboardData) {
+      const reservations = getReservationsForHour(selectedHour);
+      const allIds = new Set(reservations.map(r => r.id));
+      setSelectedReservations(allIds);
+    }
+  }, [dialogOpen, selectedHour, dashboardData]);
+
+  // Rezervasyon seçim toggle
+  const toggleReservationSelection = (reservationId) => {
+    setSelectedReservations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(reservationId)) {
+        newSet.delete(reservationId);
+      } else {
+        newSet.add(reservationId);
+      }
+      return newSet;
+    });
+  };
+
+  // Tümünü seç/seçimi kaldır
+  const toggleAllReservations = () => {
+    if (selectedHour === null) return;
+    const reservations = getReservationsForHour(selectedHour);
+    const allIds = new Set(reservations.map(r => r.id));
+    
+    if (selectedReservations.size === allIds.size) {
+      // Tümü seçiliyse, hepsini kaldır
+      setSelectedReservations(new Set());
+    } else {
+      // Değilse, hepsini seç
+      setSelectedReservations(allIds);
     }
   };
 
   const generatePDF = () => {
     if (!selectedHour) return;
 
-    const groupedData = groupReservationsByPickup(selectedHour);
+    // Sadece seçili rezervasyonları filtrele
+    const allReservations = getReservationsForHour(selectedHour);
+    const filteredReservations = allReservations.filter(r => selectedReservations.has(r.id));
+    
+    if (filteredReservations.length === 0) {
+      toast.warning('Lütfen en az bir rezervasyon seçin');
+      return;
+    }
+
+    // Seçili rezervasyonları pickup location'a göre grupla
+    const grouped = {};
+    filteredReservations.forEach(reservation => {
+      const pickupLocation = reservation.pickup_location || 'Belirtilmemiş';
+      if (!grouped[pickupLocation]) {
+        grouped[pickupLocation] = {
+          location: pickupLocation,
+          mapsLink: reservation.pickup_maps_link || null,
+          customers: [],
+          totalAtvs: 0,
+          totalCustomers: 0
+        };
+      } else {
+        if (!grouped[pickupLocation].mapsLink && reservation.pickup_maps_link) {
+          grouped[pickupLocation].mapsLink = reservation.pickup_maps_link;
+        }
+      }
+      grouped[pickupLocation].customers.push({
+        id: reservation.id,
+        name: reservation.customer_name,
+        atvCount: reservation.atv_count,
+        personCount: reservation.person_count,
+        cariName: reservation.cari_name,
+        time: reservation.time,
+        price: reservation.price,
+        currency: reservation.currency,
+        tourTypeName: reservation.tour_type_name,
+        voucherCode: reservation.voucher_code,
+        pickupLocation: reservation.pickup_location,
+        pickupMapsLink: reservation.pickup_maps_link,
+        notes: reservation.notes,
+        status: reservation.status
+      });
+      grouped[pickupLocation].totalAtvs += reservation.atv_count;
+      grouped[pickupLocation].totalCustomers += 1;
+    });
+    
+    const groupedData = Object.values(grouped);
     const hourStr = `${selectedHour.toString().padStart(2, '0')}:00`;
 
     try {
@@ -569,7 +663,7 @@ const Dashboard = () => {
     return (
       <div className="space-y-6" data-testid="dashboard-page">
         <div className="text-center py-12">
-          <p className="text-[#A5A5A5]">Dashboard verisi yükleniyor...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Dashboard verisi yükleniyor...</p>
         </div>
       </div>
     );
@@ -580,9 +674,9 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-[#A5A5A5]">
-            {formatDateStringDDMMYYYY(selectedDate)}
+          <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            {formatDate(selectedDate)}
           </p>
         </div>
         <div>
@@ -590,7 +684,7 @@ const Dashboard = () => {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-4 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:outline-none focus:border-[#3EA6FF]"
+            className="px-4 py-2 bg-input border-0 border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring hover:bg-elevated"
             data-testid="dashboard-date-picker"
           />
         </div>
@@ -600,62 +694,63 @@ const Dashboard = () => {
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         {/* Onay Bekleyen Rezervasyonlar */}
         <div 
-          className="stat-card p-4 rounded-xl cursor-pointer hover:bg-[#2D2F33] transition-colors relative"
+          className="stat-card p-4 rounded-2xl cursor-pointer hover:bg-elevated transition-colors relative bg-card shadow-[0_2px_8px_0_rgba(0,0,0,0.04),0_0_1px_0_rgba(0,0,0,0.1)] border-b border-border"
           onClick={() => setPendingDialogOpen(true)}
           style={{ 
-            border: ((dashboardData?.pending_reservations_count ?? pendingReservations.length) > 0) ? '2px solid #3EA6FF' : '1px solid #2D2F33',
-            background: ((dashboardData?.pending_reservations_count ?? pendingReservations.length) > 0) ? 'rgba(62, 166, 255, 0.1)' : 'var(--bg-elevated)'
+            border: ((dashboardData?.pending_reservations_count ?? pendingReservations.length) > 0) ? '2px solid #3EA6FF' : undefined,
+            background: ((dashboardData?.pending_reservations_count ?? pendingReservations.length) > 0) ? 'rgba(59, 130, 246, 0.1)' : undefined
           }}
         >
           <div className="flex flex-col">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-[#A5A5A5] text-xs">Onay Bekleyen</p>
-              {((dashboardData?.pending_reservations_count ?? pendingReservations.length) > 0) && (
-                <div className="relative">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-ping absolute" />
-                  <div className="w-2 h-2 bg-red-500 rounded-full" />
-                </div>
-              )}
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Onay Bekleyen</p>
+              <WarningCircle weight="duotone" size={32} className="text-amber-500 dark:text-amber-400" />
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-2xl font-bold text-white">
+              <p className="text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {(dashboardData?.pending_reservations_count ?? pendingReservations.length) || 0}
               </p>
-              {((dashboardData?.pending_reservations_count ?? pendingReservations.length) > 0) && (
-                <span className="text-red-500 text-xl animate-bounce inline-block">⚠</span>
-              )}
             </div>
             {((dashboardData?.pending_reservations_count ?? pendingReservations.length) > 0) && (
-              <p className="text-xs text-[#3EA6FF] mt-1 animate-pulse">Yeni!</p>
+              <p className="text-xs mt-1 animate-pulse" style={{ color: 'var(--accent)' }}>Yeni!</p>
             )}
           </div>
         </div>
 
         {/* Toplam Depar */}
-        <div className="stat-card p-4 rounded-xl">
+        <div className="stat-card p-4 rounded-2xl bg-card shadow-[0_2px_8px_0_rgba(0,0,0,0.04),0_0_1px_0_rgba(0,0,0,0.1)] border-b border-border">
           <div className="flex flex-col">
-            <p className="text-[#A5A5A5] text-xs mb-1">Toplam Depar</p>
-            <p className="text-2xl font-bold text-white" data-testid="total-departures">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-slate-700 dark:text-slate-300">Toplam Depar</p>
+              <CalendarBlank weight="duotone" size={32} className="text-blue-500 dark:text-blue-400" />
+            </div>
+            <p className="text-4xl font-bold text-stone-800 dark:text-white" data-testid="total-departures">
               {dashboardData?.reservations?.filter(r => r.status !== 'cancelled').length || 0}
             </p>
           </div>
         </div>
 
         {/* Şu Anki Turlar - ATV Sayısı */}
-        <div className="stat-card p-4 rounded-xl">
+        <div className="stat-card p-4 rounded-2xl bg-card shadow-[0_2px_8px_0_rgba(0,0,0,0.04),0_0_1px_0_rgba(0,0,0,0.1)] border-b border-border">
           <div className="flex flex-col">
-            <p className="text-[#A5A5A5] text-xs mb-1">Şu Anki Turlar</p>
-            <p className="text-2xl font-bold text-white">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Şu Anki Turlar</p>
+              <Bicycle weight="duotone" size={32} className="text-green-500 dark:text-green-400" />
+            </div>
+            <p className="text-4xl font-bold text-stone-800 dark:text-white">
               {getActiveReservations().reduce((sum, r) => sum + (r.atv_count || 0), 0)} ATV
             </p>
           </div>
         </div>
 
         {/* Yoğun Saatler */}
-        <div className="stat-card p-4 rounded-xl">
+        <div className="stat-card p-4 rounded-2xl bg-card shadow-[0_2px_8px_0_rgba(0,0,0,0.04),0_0_1px_0_rgba(0,0,0,0.1)] border-b border-border">
           <div className="flex flex-col">
-            <p className="text-[#A5A5A5] text-xs mb-1">Yoğun Saatler</p>
-            <p className="text-2xl font-bold text-white">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Yoğun Saatler</p>
+              <ClockClockwise weight="duotone" size={32} className="text-purple-500 dark:text-purple-400" />
+            </div>
+            <p className="text-4xl font-bold text-stone-800 dark:text-white">
               {(() => {
                 const busyHours = hours.filter(hour => {
                   const reservations = getReservationsForHour(hour);
@@ -665,23 +760,29 @@ const Dashboard = () => {
                 return busyHours.length;
               })()}
             </p>
-            <p className="text-xs text-[#A5A5A5] mt-1">saat yoğun</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>saat yoğun</p>
           </div>
         </div>
 
         {/* Tamamlanan Turlar */}
-        <div className="stat-card p-4 rounded-xl">
+        <div className="stat-card p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}>
           <div className="flex flex-col">
-            <p className="text-[#A5A5A5] text-xs mb-1">Tamamlanan Turlar</p>
-            <p className="text-2xl font-bold text-white">{getCompletedReservations().length}</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Tamamlanan Turlar</p>
+              <CheckCircle weight="duotone" size={32} className="text-emerald-500 dark:text-emerald-400" />
+            </div>
+            <p className="text-4xl font-bold text-stone-800 dark:text-white">{getCompletedReservations().length}</p>
           </div>
         </div>
 
         {/* Kalan Turlar */}
-        <div className="stat-card p-4 rounded-xl">
+        <div className="stat-card p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-card)', boxShadow: 'var(--card-shadow)' }}>
           <div className="flex flex-col">
-            <p className="text-[#A5A5A5] text-xs mb-1">Kalan Turlar</p>
-            <p className="text-2xl font-bold text-white">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Kalan Turlar</p>
+              <Wallet weight="duotone" size={32} className="text-indigo-500 dark:text-indigo-400" />
+            </div>
+            <p className="text-4xl font-bold text-stone-800 dark:text-white">
               {(() => {
                 const allReservations = dashboardData?.reservations?.filter(r => r.status !== 'cancelled') || [];
                 const completed = getCompletedReservations().length;
@@ -692,29 +793,25 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Horizontal Timeline */}
-      <div className="bg-[#25272A] backdrop-blur-xl border border-[#2D2F33] rounded-xl p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Günlük Zaman Çizelgesi</h2>
+      {/* Horizontal Timeline - Warm Minimalism */}
+      <div className="bg-card backdrop-blur-xl rounded-2xl p-6 shadow-[0_2px_8px_0_rgba(0,0,0,0.04),0_0_1px_0_rgba(0,0,0,0.1)] border-b border-border">
+        <h2 className="text-xl font-semibold mb-4 tracking-tight" style={{ color: 'var(--text-primary)' }}>Günlük Zaman Çizelgesi</h2>
         
         <div className="relative overflow-visible">
           {/* Timeline container */}
           <div 
             className="relative overflow-visible"
             style={{
-              minHeight: '180px',
+              minHeight: '120px', // Reduced from 180px to match slimmer bubbles
               height: (() => {
                 const maxRow = reservationBars.length > 0 ? Math.max(...reservationBars.map(b => b.rowIndex), 0) : 0;
-                return `${40 + (maxRow + 1) * 70 + 50}px`; // 40px header + (rows * 70px) + 50px bottom area (saat kutusu için)
+                return `${40 + (maxRow + 1) * 35 + 50}px`; // 40px header + (rows * 35px) + 50px bottom area - Reduced row spacing from 70px to 35px
               })()
             }}
           >
             <div
               ref={timelineRef}
-              className="relative overflow-x-auto overflow-y-visible h-full"
-              style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#3EA6FF #25272A'
-              }}
+              className="relative overflow-x-auto overflow-y-visible h-full no-scrollbar"
             >
               <div className="relative flex overflow-visible" style={{ minWidth: '1920px', height: '100%' }}>
                 {/* Current time indicator line - bayrak direği gibi */}
@@ -722,12 +819,13 @@ const Dashboard = () => {
                   <>
                     {/* Dikey çizgi - saat başlıkları alanının altından başlayıp saat kutusunun hemen altına kadar */}
                     <div
-                      className="absolute w-0.5 bg-[#3EA6FF] z-20 pointer-events-none transition-all duration-1000"
+                      className="absolute w-0.5 z-20 pointer-events-none transition-all duration-1000"
                       style={{
                         left: `${((currentTime.getHours() + currentTime.getMinutes() / 60) / 24) * 100}%`,
                         top: '40px', // Saat başlıkları alanının altından başlıyor
                         bottom: '43px', // Saat kutusunun hemen altına kadar
-                        boxShadow: '0 0 10px rgba(62, 166, 255, 0.8)'
+                        backgroundColor: 'var(--accent)',
+                        boxShadow: '0 0 10px var(--accent)'
                       }}
                     >
                     </div>
@@ -741,16 +839,10 @@ const Dashboard = () => {
                       }}
                     >
                       <div
-                        className="inline-flex items-center justify-center"
+                        className="inline-flex items-center justify-center text-white shadow-md rounded-lg px-3 py-1.5 text-sm font-semibold"
                         style={{
-                          background: 'var(--bg-elevated)',
-                          color: 'var(--text-primary)',
-                          border: '1px solid var(--border)',
-                          boxShadow: 'var(--soft-shadow)',
-                          borderRadius: '8px',
-                          padding: '6px 12px',
-                          fontSize: '14px',
-                          fontWeight: 600
+                          backgroundColor: 'var(--accent)',
+                          color: 'var(--primary-foreground)'
                         }}
                       >
                         {currentTimeString}
@@ -765,18 +857,20 @@ const Dashboard = () => {
                   return (
                     <div
                       key={hour}
-                      className="relative flex-shrink-0 border-r border-[#2D2F33]"
-                      style={{ width: '80px' }}
+                      className="relative flex-shrink-0 border-r"
+                      style={{ 
+                        width: '80px',
+                        borderColor: 'var(--border-color)'
+                      }}
                       data-testid={`timeline-hour-${hour}`}
                     >
                       {/* Hour label */}
                       <div className="absolute top-0 left-0 right-0 h-10 flex items-center justify-center z-10">
                         <span
-                          className={`text-xs font-semibold ${
-                            isCurrent
-                              ? 'text-[#3EA6FF]'
-                              : 'text-[#A5A5A5]'
-                          }`}
+                          className="text-xs font-semibold"
+                          style={{
+                            color: isCurrent ? 'var(--accent)' : 'var(--text-secondary)'
+                          }}
                         >
                           {hour.toString().padStart(2, '0')}:00
                         </span>
@@ -784,11 +878,20 @@ const Dashboard = () => {
 
                       {/* Hour background */}
                       <div
-                        className={`absolute top-10 bottom-0 left-0 right-0 transition-colors ${
-                          isCurrent
-                            ? 'bg-[#3EA6FF]/10'
-                            : 'bg-transparent hover:bg-[#2D2F33]/10'
-                        }`}
+                        className="absolute top-10 bottom-0 left-0 right-0 transition-colors"
+                        style={{
+                          backgroundColor: isCurrent ? 'var(--accent)' + '1A' : 'transparent'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isCurrent) {
+                            e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isCurrent) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
+                        }}
                       ></div>
                     </div>
                   );
@@ -799,7 +902,7 @@ const Dashboard = () => {
                   const reservation = bar.reservation;
                   const barColor = reservation.tour_type_color || '#3EA6FF';
                   const textColor = getContrastColor(barColor);
-                  const topPosition = 40 + (bar.rowIndex * 70); // 40px header + (rowIndex * 70px)
+                  const topPosition = 40 + (bar.rowIndex * 35); // 40px header + (rowIndex * 35px) - Reduced from 70px to 35px for slimmer bubbles
                   
                   return (
                     <div
@@ -809,7 +912,7 @@ const Dashboard = () => {
                         left: `${bar.start}px`,
                         top: `${topPosition}px`,
                         width: `${bar.width}px`,
-                        height: '60px',
+                        height: '30px', // Reduced from 60px to 30px (50% slimmer)
                         backgroundColor: barColor,
                         color: textColor,
                         minWidth: '60px'
@@ -839,13 +942,34 @@ const Dashboard = () => {
                       }}
                       title={`${reservation.customer_name} - ${reservation.time} - ${reservation.tour_type_name || 'Tur'} - ${reservation.atv_count} ATV - ${reservation.pickup_location || 'Belirtilmemiş'}`}
                     >
-                      <div className="flex items-center justify-between h-full px-2">
-                        <span className="text-xs font-bold truncate">
+                      <div className="flex items-center justify-between h-full px-2.5 py-1">
+                        <span 
+                          className="text-xs font-bold truncate leading-tight"
+                          style={{
+                            color: textColor,
+                            textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.3)',
+                            letterSpacing: '0.03em',
+                            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                            fontWeight: 700,
+                            lineHeight: '1.2'
+                          }}
+                        >
                           {reservation.atv_count} ATV
                         </span>
                         {bar.width > 100 && (
-                          <span className="text-xs font-semibold truncate ml-1">
-                            {reservation.tour_type_name ? reservation.tour_type_name.substring(0, 8) : ''}
+                          <span 
+                            className="text-[10px] font-semibold truncate ml-1.5 leading-tight"
+                            style={{
+                              color: textColor,
+                              textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.3)',
+                              letterSpacing: '0.02em',
+                              fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                              fontWeight: 600,
+                              lineHeight: '1.2',
+                              opacity: 0.95
+                            }}
+                          >
+                            {reservation.tour_type_name ? reservation.tour_type_name.substring(0, 10) : ''}
                           </span>
                         )}
                       </div>
@@ -861,18 +985,22 @@ const Dashboard = () => {
       {/* Global Tooltip - Dashboard seviyesinde, portal ile body'ye render ediliyor */}
       {tooltipState.visible && tooltipState.content && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed px-3 py-2 bg-[#1E1E1E] border border-[#3EA6FF]/30 rounded-lg shadow-xl whitespace-nowrap pointer-events-none z-[99999]"
+          className="fixed px-3 py-2 rounded-lg shadow-xl whitespace-nowrap pointer-events-none z-[99999]"
           style={{
             left: `${tooltipState.x}px`,
             top: `${tooltipState.y - 8}px`,
-            transform: 'translate(-50%, -100%)'
+            transform: 'translate(-50%, -100%)',
+            backgroundColor: 'var(--tooltip-bg)',
+            borderColor: 'var(--border-color)',
+            borderWidth: '1px',
+            borderStyle: 'solid'
           }}
         >
-          <p className="text-xs text-white font-semibold">{tooltipState.content.customer_name}</p>
-          <p className="text-xs text-[#A5A5A5]">{tooltipState.content.time} • {tooltipState.content.tour_type_name}</p>
-          <p className="text-xs text-[#3EA6FF]">{tooltipState.content.atv_count} ATV • {tooltipState.content.person_count} Kişi</p>
+          <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{tooltipState.content.customer_name}</p>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{tooltipState.content.time} • {tooltipState.content.tour_type_name}</p>
+          <p className="text-xs" style={{ color: 'var(--accent)' }}>{tooltipState.content.atv_count} ATV • {tooltipState.content.person_count} Kişi</p>
           {tooltipState.content.pickup_location && (
-            <p className="text-xs text-[#A5A5A5] mt-1">📍 {tooltipState.content.pickup_location}</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>📍 {tooltipState.content.pickup_location}</p>
           )}
         </div>,
         document.body
@@ -880,37 +1008,53 @@ const Dashboard = () => {
 
       {/* Hour Details Dialog */}
       <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="max-w-3xl bg-[#25272A] border-[#2D2F33] text-white max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center justify-between">
               <span>
                 {selectedHour !== null && `${selectedHour.toString().padStart(2, '0')}:00 - Rezervasyon Detayları`}
               </span>
-              <Button
-                onClick={generatePDF}
-                className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
-                size="sm"
-                title="PDF İndir"
-              >
-                <Download size={16} />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={toggleAllReservations}
+                  style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
+                  className="hover:opacity-80"
+                  size="sm"
+                  title={selectedReservations.size === getReservationsForHour(selectedHour)?.length ? "Tümünü Kaldır" : "Tümünü Seç"}
+                >
+                  <CheckSquare size={16} />
+                </Button>
+                <Button
+                  onClick={generatePDF}
+                  style={{ backgroundColor: 'var(--accent)', color: 'var(--primary-foreground)' }}
+                  className="hover:opacity-90"
+                  size="sm"
+                  title="PDF İndir"
+                >
+                  <Download size={16} />
+                </Button>
+              </div>
             </DialogTitle>
           </DialogHeader>
           
           {selectedHour !== null && (
             <div className="space-y-6 mt-4">
-              <div className="text-sm text-[#A5A5A5] mb-4">
-                Tarih: {formatDateStringDDMMYYYY(selectedDate)}
+              <div className="flex items-center justify-between text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+                <span>Tarih: {formatDate(selectedDate)}</span>
+                <span style={{ color: 'var(--accent)' }}>
+                  {selectedReservations.size} / {getReservationsForHour(selectedHour)?.length || 0} seçili
+                </span>
               </div>
               
               {groupReservationsByPickup(selectedHour).map((group, index) => (
                 <div
                   key={index}
-                  className="bg-[#1E1E1E] border border-[#2D2F33] rounded-lg p-4"
+                  className="rounded-lg p-4"
+                  style={{ backgroundColor: 'var(--bg-app)', borderColor: 'var(--border-color)', borderWidth: '1px', borderStyle: 'solid' }}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-white mb-2">
+                      <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
                         {group.location}
                       </h3>
                       {group.mapsLink && (
@@ -918,61 +1062,82 @@ const Dashboard = () => {
                           href={group.mapsLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#3EA6FF] text-sm hover:underline"
+                          className="text-sm hover:underline"
+                          style={{ color: 'var(--accent)' }}
                         >
                           Haritada Görüntüle
                         </a>
                       )}
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-[#A5A5A5]">Toplam Müşteri</div>
-                      <div className="text-xl font-bold text-[#3EA6FF]">{group.totalCustomers}</div>
-                      <div className="text-sm text-[#A5A5A5] mt-2">Toplam ATV</div>
-                      <div className="text-xl font-bold text-[#3EA6FF]">{group.totalAtvs}</div>
+                      <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Toplam Müşteri</div>
+                      <div className="text-xl font-bold" style={{ color: 'var(--accent)' }}>{group.totalCustomers}</div>
+                      <div className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>Toplam ATV</div>
+                      <div className="text-xl font-bold" style={{ color: 'var(--accent)' }}>{group.totalAtvs}</div>
                     </div>
                   </div>
                   
-                  <div className="border-t border-[#2D2F33] pt-4">
-                    <h4 className="text-sm font-semibold text-white mb-3">Müşteri Listesi:</h4>
+                  <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
+                    <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Müşteri Listesi:</h4>
                     <div className="space-y-2">
                       {group.customers.map((customer, idx) => {
+                        const isSelected = selectedReservations.has(customer.id);
                         return (
                           <div
                             key={customer.id || idx}
-                            className="flex items-center justify-between bg-[#25272A] p-3 rounded-lg"
+                            className="flex items-center justify-between p-3 rounded-lg border transition-colors"
+                            style={{
+                              backgroundColor: isSelected ? 'var(--accent)' + '1A' : 'var(--bg-card)',
+                              borderColor: isSelected ? 'var(--accent)' : 'transparent',
+                              borderWidth: '1px',
+                              borderStyle: 'solid'
+                            }}
                           >
-                            <div className="flex-1">
+                            <div className="flex items-center gap-3 flex-1">
+                              <button
+                                onClick={() => toggleReservationSelection(customer.id)}
+                                className="flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors"
+                                style={{
+                                  borderColor: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
+                                  backgroundColor: isSelected ? 'var(--accent)' : 'transparent',
+                                  color: isSelected ? 'var(--primary-foreground)' : 'var(--text-primary)'
+                                }}
+                              >
+                                {isSelected && <Check size={14} style={{ color: 'var(--primary-foreground)' }} />}
+                              </button>
+                              <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <div className="text-white font-medium">{customer.name}</div>
+                                <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{customer.name}</div>
                                 {customer.voucherCode && (
-                                  <span className="text-xs font-mono text-[#3EA6FF] bg-[#3EA6FF]/10 px-2 py-0.5 rounded">
+                                  <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ color: 'var(--accent)', backgroundColor: 'var(--accent)' + '1A' }}>
                                     {customer.voucherCode}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-sm text-[#A5A5A5] mt-1">
+                              <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                                 {customer.cariName} • {customer.time}
                                 {customer.tourTypeName && ` • ${customer.tourTypeName}`}
                               </div>
-                              <div className="text-sm text-white mt-1 font-semibold">
+                              <div className="text-sm mt-1 font-semibold" style={{ color: 'var(--text-primary)' }}>
                                 {customer.price ? parseFloat(customer.price).toFixed(2) : '0.00'} {customer.currency || 'EUR'}
                               </div>
                               {customer.pickupLocation && (
-                                <div className="text-xs text-[#A5A5A5] mt-1">
+                                <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                                   📍 {customer.pickupLocation}
                                 </div>
                               )}
                               {customer.notes && (
-                                <div className="text-xs text-[#A5A5A5] mt-1 italic">
+                                <div className="text-xs mt-1 italic" style={{ color: 'var(--text-secondary)' }}>
                                   {customer.notes}
                                 </div>
                               )}
+                              </div>
                             </div>
                             <div className="flex flex-col items-end gap-2">
                               <div className="text-right">
-                                <div className="text-sm text-[#A5A5A5]">ATV</div>
-                                <div className="text-lg font-bold text-[#3EA6FF]">{customer.atvCount}</div>
-                                <div className="text-xs text-[#A5A5A5]">{customer.personCount} Kişi</div>
+                                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>ATV</div>
+                                <div className="text-lg font-bold" style={{ color: 'var(--accent)' }}>{customer.atvCount}</div>
+                                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{customer.personCount} Kişi</div>
                               </div>
                             </div>
                           </div>
@@ -995,9 +1160,9 @@ const Dashboard = () => {
 
       {/* Şu Anki Turlar - Aktif Turlar */}
       {selectedDate === format(new Date(), 'yyyy-MM-dd') && (
-        <div className="bg-[#25272A] backdrop-blur-xl border border-[#2D2F33] rounded-xl p-6">
+        <div className="bg-card backdrop-blur-xl rounded-2xl p-6 shadow-[0_2px_8px_0_rgba(0,0,0,0.04),0_0_1px_0_rgba(0,0,0,0.1)] border-b border-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-white">
+            <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
               Şu Anki Turlar ({getActiveReservations().length})
             </h2>
             {getActiveReservations().length > 0 && (
@@ -1006,7 +1171,10 @@ const Dashboard = () => {
                   const ids = getActiveReservations().map(r => r.id);
                   markMultipleAsCompleted(ids);
                 }}
-                className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
+                className="text-white"
+            style={{
+              backgroundColor: 'var(--accent)'
+            }}
                 size="sm"
               >
                 <CheckSquare size={16} className="mr-2" />
@@ -1026,25 +1194,25 @@ const Dashboard = () => {
                 return (
                   <div
                     key={reservation.id}
-                    className="bg-[#2D2F33] border border-[#3EA6FF]/50 rounded-lg p-4 flex items-center justify-between hover:border-[#3EA6FF] transition-colors"
+                    className="bg-card border-0 border-accent/50 rounded-lg p-4 flex items-center justify-between hover:bg-elevated transition-colors shadow-sm"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-white font-semibold">{reservation.customer_name || 'İsimsiz Müşteri'}</h3>
+                        <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{reservation.customer_name || 'İsimsiz Müşteri'}</h3>
                         {reservation.voucher_code && (
-                          <span className="text-xs font-mono text-[#3EA6FF] bg-[#3EA6FF]/10 px-2 py-0.5 rounded">
+                          <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ color: 'var(--accent)', backgroundColor: 'var(--accent)' + '1A' }}>
                             {reservation.voucher_code}
                           </span>
                         )}
-                        <span className="text-sm text-[#A5A5A5]">{reservation.cari_name}</span>
-                        <span className="text-sm text-[#3EA6FF] font-semibold">
+                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{reservation.cari_name}</span>
+                        <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
                           {reservation.atv_count} ATV
                         </span>
-                        <span className="text-sm text-[#A5A5A5]">
+                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                           {reservation.person_count} Kişi
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-[#A5A5A5]">
+                      <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
                         <span>Başlangıç: {reservation.time}</span>
                         <span>→</span>
                         <span>Tahmini Bitiş: {estimatedEndTime}</span>
@@ -1055,16 +1223,16 @@ const Dashboard = () => {
                           </>
                         )}
                       </div>
-                      <div className="text-sm text-white mt-1 font-semibold">
+                      <div className="text-sm mt-1 font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {reservation.price?.toFixed(2)} {reservation.currency}
                       </div>
                       {reservation.pickup_location && (
-                        <p className="text-sm text-[#A5A5A5] mt-1">
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                           📍 {reservation.pickup_location}
                         </p>
                       )}
                       {reservation.notes && (
-                        <p className="text-xs text-[#A5A5A5] mt-1 italic">
+                        <p className="text-xs mt-1 italic" style={{ color: 'var(--text-secondary)' }}>
                           {reservation.notes}
                         </p>
                       )}
@@ -1072,7 +1240,7 @@ const Dashboard = () => {
                     <div className="flex flex-col gap-2">
                       <Button
                         onClick={() => updateReservationStatus(reservation.id, 'completed')}
-                        className="bg-blue-500 hover:bg-blue-600 text-white"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-md hover:-translate-y-0.5 transition-all"
                         size="sm"
                       >
                         <CheckCircle2 size={16} className="mr-2" />
@@ -1084,7 +1252,7 @@ const Dashboard = () => {
               })}
             </div>
           ) : (
-            <p className="text-center text-[#A5A5A5] py-8">
+            <p className="text-center py-8" style={{ color: 'var(--text-secondary)' }}>
               Şu anda aktif tur bulunmamaktadır
             </p>
           )}
@@ -1092,8 +1260,8 @@ const Dashboard = () => {
       )}
 
       {/* Tamamlanan Turlar - Seçili güne ait tüm tamamlanan turlar */}
-      <div className="bg-[#25272A] backdrop-blur-xl border border-[#2D2F33] rounded-xl p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">
+      <div className="bg-card backdrop-blur-xl rounded-2xl p-6 shadow-[0_2px_8px_0_rgba(0,0,0,0.04),0_0_1px_0_rgba(0,0,0,0.1)] border-b border-border">
+        <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
           Tamamlanan Turlar ({getCompletedReservations().length})
         </h2>
           
@@ -1108,23 +1276,29 @@ const Dashboard = () => {
                 return (
                   <div
                     key={reservation.id}
-                    className="bg-[#2D2F33] border border-[#555555]/50 rounded-lg p-4"
+                    className="rounded-lg p-4 shadow-sm"
+                    style={{
+                      backgroundColor: 'var(--bg-elevated)',
+                      borderColor: 'var(--border-color)',
+                      borderWidth: '1px',
+                      borderStyle: 'solid'
+                    }}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-white font-semibold">{reservation.customer_name || 'İsimsiz Müşteri'}</h3>
+                          <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{reservation.customer_name || 'İsimsiz Müşteri'}</h3>
                           {reservation.voucher_code && (
-                            <span className="text-xs font-mono text-[#3EA6FF] bg-[#3EA6FF]/10 px-2 py-0.5 rounded">
+                            <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ color: 'var(--accent)', backgroundColor: 'var(--accent)' + '1A' }}>
                               {reservation.voucher_code}
                             </span>
                           )}
-                          <span className="text-sm text-[#A5A5A5]">{reservation.cari_name}</span>
-                          <span className="text-sm text-[#3EA6FF] font-semibold">
+                          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{reservation.cari_name}</span>
+                          <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
                             {reservation.atv_count} ATV
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-[#A5A5A5]">
+                        <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
                           <span>{reservation.time}</span>
                           <span>→</span>
                           <span>{estimatedEndTime}</span>
@@ -1135,22 +1309,22 @@ const Dashboard = () => {
                             </>
                           )}
                         </div>
-                        <div className="text-sm text-white mt-1 font-semibold">
+                        <div className="text-sm mt-1 font-semibold" style={{ color: 'var(--text-primary)' }}>
                           {reservation.price?.toFixed(2)} {reservation.currency}
                         </div>
                         {reservation.pickup_location && (
-                          <p className="text-sm text-[#A5A5A5] mt-1">
+                          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                             📍 {reservation.pickup_location}
                           </p>
                         )}
                         {reservation.notes && (
-                          <p className="text-xs text-[#A5A5A5] mt-1 italic">
+                          <p className="text-xs mt-1 italic" style={{ color: 'var(--text-secondary)' }}>
                             {reservation.notes}
                           </p>
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <span className="px-3 py-1 bg-[#555555]/30 text-[#999999] rounded-full text-xs font-medium">
+                        <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'var(--chip-bg)', color: 'var(--text-secondary)' }}>
                           Tamamlandı
                         </span>
                       </div>
@@ -1160,7 +1334,7 @@ const Dashboard = () => {
               })}
             </div>
           ) : (
-            <p className="text-center text-[#A5A5A5] py-8">
+            <p className="text-center py-8" style={{ color: 'var(--text-secondary)' }}>
               Henüz tamamlanan tur bulunmamaktadır
             </p>
           )}
@@ -1171,17 +1345,17 @@ const Dashboard = () => {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Clock className="text-[#3EA6FF]" size={24} />
+              <Clock style={{ color: 'var(--accent)' }} size={24} />
               Onay Bekleyen Rezervasyonlar ({pendingReservations.length})
             </DialogTitle>
           </DialogHeader>
           
           {loadingPending ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3EA6FF]"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--accent)' }}></div>
             </div>
           ) : pendingReservations.length === 0 ? (
-            <p className="text-center text-[#A5A5A5] py-8">
+            <p className="text-center py-8" style={{ color: 'var(--text-secondary)' }}>
               Onay bekleyen rezervasyon bulunmamaktadır
             </p>
           ) : (
@@ -1189,26 +1363,42 @@ const Dashboard = () => {
               {pendingReservations.map((reservation) => (
                 <div
                   key={reservation.id}
-                  className="bg-[#2D2F33] border border-[#3EA6FF]/30 rounded-lg p-4"
+                  className="border-0 rounded-lg p-4 shadow-sm"
+                  style={{
+                    backgroundColor: 'var(--bg-card)',
+                    borderColor: 'var(--accent)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid'
+                  }}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-white font-semibold">{reservation.customer_name || 'İsimsiz Müşteri'}</h3>
                         {reservation.voucher_code && (
-                          <span className="text-xs font-mono text-[#3EA6FF] bg-[#3EA6FF]/10 px-2 py-0.5 rounded">
+                          <span className="text-xs font-mono px-2 py-0.5 rounded"
+                          style={{
+                            color: 'var(--accent)',
+                            backgroundColor: 'var(--accent)',
+                            opacity: 0.1
+                          }}>
                             {reservation.voucher_code}
                           </span>
                         )}
-                        <span className="text-sm text-[#A5A5A5]">{reservation.cari_name || reservation.display_name}</span>
-                        <span className="text-xs text-[#3EA6FF] bg-[#3EA6FF]/10 px-2 py-0.5 rounded">
+                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{reservation.cari_name || reservation.display_name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded"
+                        style={{
+                          color: 'var(--accent)',
+                          backgroundColor: 'var(--accent)',
+                          opacity: 0.1
+                        }}>
                           {reservation.cari_code_snapshot}
                         </span>
-                        <span className="text-sm text-[#3EA6FF] font-semibold">
+                        <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
                           {reservation.atv_count} ATV
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-[#A5A5A5] mb-2">
+                      <div className="flex items-center gap-4 text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
                         <span>📅 {reservation.date}</span>
                         <span>🕐 {reservation.time}</span>
                         {reservation.tour_type_name && (
@@ -1219,7 +1409,7 @@ const Dashboard = () => {
                         )}
                       </div>
                       {reservation.created_at && (
-                        <div className="text-xs text-[#A5A5A5] mb-2">
+                        <div className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
                           ⏰ Oluşturulma: {format(new Date(reservation.created_at), 'dd.MM.yyyy HH:mm', { locale: tr })}
                         </div>
                       )}
@@ -1227,24 +1417,24 @@ const Dashboard = () => {
                         {reservation.price?.toFixed(2)} {reservation.currency}
                       </div>
                       {reservation.customer_contact && (
-                        <p className="text-sm text-[#A5A5A5] mb-1">
+                        <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
                           📞 {reservation.customer_contact}
                         </p>
                       )}
                       {reservation.pickup_location && (
-                        <p className="text-sm text-[#A5A5A5] mb-1">
+                        <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
                           📍 {reservation.pickup_location}
                         </p>
                       )}
                       {reservation.notes && (
-                        <p className="text-xs text-[#A5A5A5] mt-2 italic">
+                        <p className="text-xs mt-2 italic" style={{ color: 'var(--text-secondary)' }}>
                           {reservation.notes}
                         </p>
                       )}
                     </div>
                     <div className="flex flex-col gap-2 min-w-[200px]">
                       <div className="mb-2">
-                        <label className="block text-xs text-[#A5A5A5] mb-1">
+                        <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
                           Pick-up Saati <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -1254,14 +1444,14 @@ const Dashboard = () => {
                             ...prev,
                             [reservation.id]: e.target.value
                           }))}
-                          className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#2D2F33] rounded-lg text-white focus:outline-none focus:border-[#3EA6FF]"
+                          className="w-full px-3 py-2 bg-input border-0 border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring hover:bg-elevated"
                           required
                         />
                       </div>
                       <button
                         onClick={() => handleApproveReservation(reservation.id)}
                         disabled={!pickupTimes[reservation.id] || approvingReservation === reservation.id}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-full transition-all shadow-md hover:-translate-y-0.5"
                       >
                         {approvingReservation === reservation.id ? (
                           <>
@@ -1282,7 +1472,7 @@ const Dashboard = () => {
                             handleRejectReservation(reservation.id, reason || '');
                           }
                         }}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-card hover:bg-elevated text-foreground border border-border rounded-lg transition-colors"
                       >
                         <X size={18} />
                         Reddet

@@ -14,7 +14,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { downloadVoucherPdf, printVoucherPdf } from '../utils/voucherPdf';
-import { formatDateStringDDMMYYYY } from '../utils/dateFormatter';
+import { formatDate, formatDateStringDDMMYYYY } from '../utils/dateFormatter';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import useConfirmDialog from '../hooks/useConfirmDialog';
@@ -1758,7 +1758,7 @@ const Reservations = () => {
                   data-testid={`reservation-row-${reservation.id}`}
                 >
                   <td className={`px-6 py-4 text-sm ${reservation.status === 'cancelled' ? 'text-red-400 line-through' : 'text-white'}`}>
-                    {reservation.date ? formatDateStringDDMMYYYY(reservation.date) : ''} {reservation.time}
+                    {reservation.date ? formatDate(reservation.date) : ''} {reservation.time}
                   </td>
                   <td className={`px-6 py-4 text-sm ${reservation.status === 'cancelled' ? 'text-red-400 line-through' : 'text-white'}`}>
                     {reservation.customer_name}

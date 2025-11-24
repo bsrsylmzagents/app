@@ -10,11 +10,36 @@ import { Button } from '@/components/ui/button';
 import { downloadVoucherPdf, printVoucherPdf } from '../utils/voucherPdf';
 import CustomerDetailDialog from '../components/CustomerDetailDialog';
 
+// Custom hook for mobile detection
+const useMediaQuery = (query) => {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    const listener = () => setMatches(media.matches);
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, [matches, query]);
+
+  return matches;
+};
+
 const Calendar = () => {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [reservations, setReservations] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Ensure selectedDate is set when switching to mobile view
+  useEffect(() => {
+    if (isMobile && !selectedDate) {
+      setSelectedDate(new Date());
+    }
+  }, [isMobile]);
   
   // Rezervasyon formu için state'ler
   const [reservationDialogOpen, setReservationDialogOpen] = useState(false);
@@ -383,11 +408,11 @@ const Calendar = () => {
     const isWeekendDay = isWeekend(date);
     
     if (isTodayDate) {
-      return 'bg-gradient-to-br from-[#3EA6FF]/30 to-[#3EA6FF]/10 border-2 border-[#3EA6FF]';
+      return 'border-2';
     }
     
     if (isWeekendDay) {
-      return 'bg-[#1E1E1E]/60 border border-[#2D2F33]/50';
+      return 'border';
     }
     
     switch (intensity) {
@@ -398,7 +423,7 @@ const Calendar = () => {
       case 'low':
         return 'bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-400/30';
       default:
-        return 'bg-[#2D2F33]/50 border border-[#2D2F33]';
+        return 'border';
     }
   };
 
@@ -411,7 +436,7 @@ const Calendar = () => {
       case 'cancelled':
         return 'border-red-400/50';
       default:
-        return 'border-[#3EA6FF]/30';
+        return '';
     }
   };
 
@@ -446,7 +471,6 @@ const Calendar = () => {
     try {
       const { status, ...payload } = formData;
       
-      // Customer details'i sadece dolu alanları gönder
       if (payload.customer_details) {
         const details = payload.customer_details;
         const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
@@ -537,7 +561,6 @@ const Calendar = () => {
     }
   };
 
-  // Export fonksiyonları
   const handleExportPDF = async () => {
     try {
       const { createNewPdf, createTitle, savePdf, createTable, safeText } = await import('../utils/pdfTemplate');
@@ -669,7 +692,6 @@ const Calendar = () => {
       // Status'u payload'dan çıkar (backend default "confirmed" kullanacak)
       const { status, ...payload } = formData;
       
-      // Customer details'i sadece dolu alanları gönder
       if (payload.customer_details) {
         const details = payload.customer_details;
         const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
@@ -891,16 +913,20 @@ const Calendar = () => {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">Takvim</h1>
-          <p className="text-[#A5A5A5] text-sm mt-1">Rezervasyon yönetimi ve takvim görünümü</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Rezervasyon yönetimi ve takvim görünümü</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Görünüm Modları */}
-          <div className="flex items-center gap-1 bg-[#2D2F33] rounded-lg p-1">
+          <div className="flex items-center gap-1 rounded-lg p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
             <Button
               variant={viewMode === 'month' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('month')}
-              className={viewMode === 'month' ? 'bg-[#3EA6FF] text-white' : 'text-[#A5A5A5] hover:text-white'}
+              className={viewMode === 'month' ? 'text-white' : ''}
+              style={{
+                backgroundColor: viewMode === 'month' ? 'var(--accent)' : 'transparent',
+                color: viewMode === 'month' ? 'var(--primary-foreground)' : 'var(--text-secondary)'
+              }}
             >
               Aylık
             </Button>
@@ -934,7 +960,13 @@ const Calendar = () => {
             variant="outline"
             size="sm"
             onClick={handleExportPDF}
-            className="border-[#2D2F33] text-white hover:bg-[#2D2F33]"
+            className="text-white"
+            style={{
+              borderColor: 'var(--border-color)',
+              backgroundColor: 'transparent'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-elevated)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <FileText size={16} className="mr-2" />
             PDF
@@ -943,7 +975,13 @@ const Calendar = () => {
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
-            className="border-[#2D2F33] text-white hover:bg-[#2D2F33]"
+            className="text-white"
+            style={{
+              borderColor: 'var(--border-color)',
+              backgroundColor: 'transparent'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-elevated)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <FileSpreadsheet size={16} className="mr-2" />
             Excel
@@ -965,7 +1003,7 @@ const Calendar = () => {
               className="p-2 hover:bg-[#3EA6FF]/20 rounded-lg transition-colors"
               data-testid="prev-month-btn"
             >
-              <ChevronLeft size={24} className="text-[#3EA6FF]" />
+              <ChevronLeft size={24} style={{ color: 'var(--accent)' }} />
             </button>
             <h2 className="text-xl font-semibold text-white min-w-[200px] text-center">
               {viewMode === 'week' ? `${format(startOfWeek(currentMonth, { weekStartsOn: 1 }), 'd MMM', { locale: tr })} - ${format(endOfWeek(currentMonth, { weekStartsOn: 1 }), 'd MMM yyyy', { locale: tr })}` :
@@ -988,7 +1026,7 @@ const Calendar = () => {
               className="p-2 hover:bg-[#3EA6FF]/20 rounded-lg transition-colors"
               data-testid="next-month-btn"
             >
-              <ChevronRight size={24} className="text-[#3EA6FF]" />
+              <ChevronRight size={24} style={{ color: 'var(--accent)' }} />
             </button>
           </div>
         </div>
@@ -996,26 +1034,43 @@ const Calendar = () => {
 
 
       {/* Filtreler ve Arama */}
-      <div className="bg-[#25272A] border border-[#2D2F33] rounded-xl p-4">
+      <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderWidth: '1px', borderStyle: 'solid' }}>
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           {/* Arama */}
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#A5A5A5] size-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4" style={{ color: 'var(--text-secondary)' }} />
             <input
               type="text"
               placeholder="Müşteri, cari veya notlarda ara..."
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              className="w-full pl-10 pr-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF] placeholder:text-[#A5A5A5]"
+              className="w-full pl-10 pr-3 py-2 rounded-lg text-white"
+              style={{
+                backgroundColor: 'var(--input-bg)',
+                borderColor: 'var(--border-color)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                color: 'var(--text-primary)'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--accent)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+              }}
             />
           </div>
           {/* Görünüm Modları */}
-          <div className="flex items-center gap-1 bg-[#2D2F33] rounded-lg p-1">
+          <div className="flex items-center gap-1 rounded-lg p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
             <Button
               variant={viewMode === 'month' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('month')}
-              className={viewMode === 'month' ? 'bg-[#3EA6FF] text-white' : 'text-[#A5A5A5] hover:text-white'}
+              className={viewMode === 'month' ? 'text-white' : ''}
+              style={{
+                backgroundColor: viewMode === 'month' ? 'var(--accent)' : 'transparent',
+                color: viewMode === 'month' ? 'var(--primary-foreground)' : 'var(--text-secondary)'
+              }}
             >
               Aylık
             </Button>
@@ -1049,7 +1104,7 @@ const Calendar = () => {
 
       {/* Yaklaşan Rezervasyonlar */}
       {upcomingReservations.length > 0 && (
-        <div className="bg-[#25272A] border border-[#2D2F33] rounded-xl p-4">
+        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderWidth: '1px', borderStyle: 'solid' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
               <AlertCircle size={18} className="text-yellow-400" />
@@ -1059,7 +1114,10 @@ const Calendar = () => {
               variant="ghost"
               size="sm"
               onClick={fetchUpcomingReservations}
-              className="text-[#A5A5A5] hover:text-white"
+              className=""
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
             >
               <RefreshCw size={14} />
             </Button>
@@ -1068,15 +1126,29 @@ const Calendar = () => {
             {upcomingReservations.map((res) => (
               <div
                 key={res.id}
-                className="p-3 bg-[#2D2F33] rounded-lg border border-[#3EA6FF]/20 hover:border-[#3EA6FF]/50 transition-all cursor-pointer"
+                className="p-3 rounded-lg border transition-all cursor-pointer"
+                style={{
+                  backgroundColor: 'var(--bg-elevated)',
+                  borderColor: 'var(--accent)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  opacity: 0.2
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.5';
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '0.2';
+                }}
                 onClick={() => {
                   setSelectedDate(parseISO(res.date));
                   setDialogOpen(true);
                 }}
               >
-                <p className="text-xs text-[#A5A5A5]">{format(parseISO(res.date), 'd MMM', { locale: tr })} {res.time}</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{format(parseISO(res.date), 'd MMM', { locale: tr })} {res.time}</p>
                 <p className="text-sm font-semibold text-white mt-1">{res.customer_name}</p>
-                <p className="text-xs text-[#3EA6FF] mt-1">{res.atv_count} ATV • {res.person_count} Kişi</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--accent)' }}>{res.atv_count} ATV • {res.person_count} Kişi</p>
               </div>
             ))}
           </div>
@@ -1085,15 +1157,233 @@ const Calendar = () => {
 
       {/* Takvim */}
       <div className="mt-6">
+        {/* Mobile View: Mini Calendar + Event List */}
+        {isMobile && (
+          <div className="space-y-4 md:hidden">
+            {/* Mini Calendar */}
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              {/* Month Navigation */}
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronLeft size={20} className="text-gray-600" />
+                </button>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {format(currentMonth, 'MMMM yyyy', { locale: tr })}
+                </h3>
+                <button
+                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronRight size={20} className="text-gray-600" />
+                </button>
+              </div>
+
+              {/* Weekday Headers */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day, index) => (
+                  <div
+                    key={day}
+                    className={`text-center text-xs font-semibold py-2 ${
+                      index >= 5 ? 'text-orange-600' : 'text-gray-600'
+                    }`}
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Mini Calendar Grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {(() => {
+                  const monthStart = startOfMonth(currentMonth);
+                  const monthEnd = endOfMonth(currentMonth);
+                  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+                  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+                  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+                  return days.map((day) => {
+                    const dayReservations = getReservationsForDate(day);
+                    const isCurrentMonth = isSameMonth(day, currentMonth);
+                    const isTodayDate = isToday(day);
+                    const isSelected = selectedDate && isSameDay(day, selectedDate);
+
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        onClick={() => setSelectedDate(day)}
+                        className={`h-10 w-10 rounded-full flex flex-col items-center justify-center transition-colors ${
+                          isSelected
+                            ? 'bg-orange-500 text-white'
+                            : isTodayDate
+                            ? 'bg-orange-100 text-orange-600 font-semibold'
+                            : isCurrentMonth
+                            ? 'text-gray-900 hover:bg-gray-100'
+                            : 'text-gray-400'
+                        }`}
+                      >
+                        <span className="text-sm">{format(day, 'd')}</span>
+                        {dayReservations.length > 0 && (
+                          <div className="h-1.5 w-1.5 bg-orange-500 rounded-full mx-auto mt-1" />
+                        )}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {/* Event List for Selected Date */}
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedDate && format(selectedDate, 'd MMMM yyyy, EEEE', { locale: tr })}
+                </h3>
+                <Button
+                  onClick={() => {
+                    if (selectedDate) {
+                      handleReservationButtonClick(selectedDate);
+                    }
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  size="sm"
+                >
+                  <Plus size={16} className="mr-1" />
+                  Yeni
+                </Button>
+              </div>
+
+              {selectedDate && getReservationsForDate(selectedDate).length > 0 ? (
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                  {getReservationsForDate(selectedDate)
+                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                    .map((reservation) => (
+                      <div
+                        key={reservation.id}
+                        className="w-full bg-white p-4 rounded-xl shadow-sm mb-3 border border-gray-200"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Clock size={16} className="text-orange-600" />
+                              <p className="text-gray-900 font-semibold text-base">
+                                {reservation.customer_name}
+                              </p>
+                              {reservation.status && (
+                                <span
+                                  className={`px-2 py-0.5 rounded text-xs ${
+                                    reservation.status === 'confirmed'
+                                      ? 'bg-green-100 text-green-700'
+                                      : reservation.status === 'completed'
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-red-100 text-red-700'
+                                  }`}
+                                >
+                                  {reservation.status === 'confirmed'
+                                    ? 'Onaylı'
+                                    : reservation.status === 'completed'
+                                    ? 'Tamamlandı'
+                                    : 'İptal'}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">{reservation.cari_name}</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Saat: {reservation.time}
+                            </p>
+                            {reservation.tour_type_name && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Tur: {reservation.tour_type_name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-orange-600 font-bold text-lg">
+                              {reservation.atv_count} ATV
+                            </p>
+                            <p className="text-sm text-gray-600">{reservation.person_count} Kişi</p>
+                            <p className="text-sm text-green-600 mt-1 font-semibold">
+                              {(reservation.price || 0).toFixed(2)} {reservation.currency || 'EUR'}
+                            </p>
+                          </div>
+                        </div>
+                        {reservation.notes && (
+                          <p className="text-sm text-gray-600 mt-2 italic border-l-2 border-orange-200 pl-2">
+                            {reservation.notes}
+                          </p>
+                        )}
+                        {reservation.pickup_location && (
+                          <p className="text-xs text-gray-500 mt-2">📍 {reservation.pickup_location}</p>
+                        )}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              handleEditReservation(reservation);
+                            }}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          >
+                            <Edit size={14} className="mr-1" />
+                            Düzenle
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              handleCopyReservation(reservation);
+                            }}
+                            className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                          >
+                            <Copy size={14} className="mr-1" />
+                            Kopyala
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteReservation(reservation.id)}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                          >
+                            <Trash2 size={14} className="mr-1" />
+                            Sil
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 mb-4">Bugün planlanmış tur yok.</p>
+                  <Button
+                    onClick={() => {
+                      if (selectedDate) {
+                        handleReservationButtonClick(selectedDate);
+                      }
+                    }}
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Yeni Rezervasyon Ekle
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Desktop View: Full Calendar Grid */}
+        <div className="hidden md:block">
           {/* Calendar Grid */}
-      <div className="bg-[#25272A] backdrop-blur-xl border border-[#3EA6FF]/20 rounded-xl p-6">
+          <div className="backdrop-blur-xl rounded-xl p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--accent)', borderWidth: '1px', borderStyle: 'solid', opacity: 0.2 }}>
         {/* Weekday Headers */}
         <div className="grid grid-cols-7 gap-2 mb-4">
           {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day, index) => (
             <div 
               key={day} 
               className={`text-center font-semibold text-sm py-2 ${
-                index >= 5 ? 'text-[#B8860B]' : 'text-[#A5A5A5]'
+                index >= 5 ? '#B8860B' : 'var(--text-secondary)'
               }`}
             >
               {day}
@@ -1153,10 +1443,11 @@ const Calendar = () => {
                 data-testid={`calendar-day-${format(day, 'yyyy-MM-dd')}`}
               >
                   <div className="flex items-center justify-between mb-2">
-                    <span className={`text-sm font-semibold ${
-                      isTodayDate ? 'text-[#3EA6FF]' : 
-                      isWeekendDay ? 'text-[#B8860B]' : 'text-white'
-                    }`}>
+                    <span className="text-sm font-semibold"
+                    style={{
+                      color: isTodayDate ? 'var(--accent)' : 
+                             isWeekendDay ? '#B8860B' : 'var(--text-primary)'
+                    }}>
                       {format(day, 'd')}
                     </span>
                     {dayReservations.length > 0 && (
@@ -1171,8 +1462,8 @@ const Calendar = () => {
                   </div>
                   
                   {totalAtvs > 0 && (
-                    <div className="text-xs text-[#A5A5A5] mb-2">
-                      <span className="text-[#3EA6FF] font-semibold">{totalAtvs}</span> ATV
+                    <div className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      <span className="font-semibold" style={{ color: 'var(--accent)' }}>{totalAtvs}</span> ATV
                     </div>
                   )}
                   
@@ -1221,7 +1512,8 @@ const Calendar = () => {
             </div>
           );
         })()}
-      </div>
+          </div>
+        </div>
 
       {/* Day Detail Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -1240,7 +1532,13 @@ const Calendar = () => {
                       toggleAllReservationsSelection(dateReservations);
                     }}
                     variant="outline"
-                    className="border-[#2D2F33] text-white hover:bg-[#2D2F33]"
+                    className="text-white"
+            style={{
+              borderColor: 'var(--border-color)',
+              backgroundColor: 'transparent'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-elevated)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     {getReservationsForDate(selectedDate).every(r => selectedReservations.includes(r.id)) ? (
                       <CheckSquare size={16} className="mr-2" />

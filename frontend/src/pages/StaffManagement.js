@@ -16,7 +16,6 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { parseISO, differenceInDays, format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
-// Yetki grupları ve detaylı yetki yapısı
 const PERMISSION_GROUPS = {
   reservation: {
     name: 'Rezervasyon Yönetimi',
@@ -106,7 +105,6 @@ const PERMISSION_GROUPS = {
   }
 };
 
-// Varsayılan boş yetki yapısı
 const getDefaultPermissions = () => {
   const defaultPerms = {};
   Object.keys(PERMISSION_GROUPS).forEach(module => {
@@ -122,7 +120,6 @@ const StaffManagement = () => {
   const navigate = useNavigate();
   const { confirm, dialog } = useConfirmDialog();
   
-  // State Management
   const [staff, setStaff] = useState([]);
   const [roles, setRoles] = useState([]);
   const [statistics, setStatistics] = useState({
@@ -140,9 +137,7 @@ const StaffManagement = () => {
   const [expandedGroups, setExpandedGroups] = useState({});
   const [loading, setLoading] = useState(false);
   
-  // Form Data
   const [formData, setFormData] = useState({
-    // Kişisel Bilgiler
     full_name: '',
     email: '',
     phone: '',
@@ -151,27 +146,22 @@ const StaffManagement = () => {
     birth_date: '',
     gender: null,
     nationality: '',
-    // Acil Durum
     emergency_contact_name: '',
     emergency_contact_phone: '',
-    // İş Bilgileri
     employee_id: '',
     role_id: null,
     hire_date: '',
     termination_date: '',
     is_active: true,
-    // Maaş Bilgileri
     gross_salary: '',
     net_salary: '',
     salary_currency: 'TRY',
     advance_limit: '',
     salary_payment_day: null,
-    // Eğitim ve Yetenekler
     languages: [],
     skills: [],
     education_level: null,
     education_field: '',
-    // Ehliyet
     driving_license_class: '',
     driving_license_no: '',
     driving_license_expiry: '',
@@ -186,11 +176,9 @@ const StaffManagement = () => {
     avatar_url: ''
   });
   
-  // Tag Input States
   const [languageInput, setLanguageInput] = useState('');
   const [skillInput, setSkillInput] = useState('');
   
-  // Staff Detail & Salary Management States
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [staffDetailDialogOpen, setStaffDetailDialogOpen] = useState(false);
   const [staffDetail, setStaffDetail] = useState(null);
@@ -225,12 +213,12 @@ const StaffManagement = () => {
     description: ''
   });
 
-  // Permission kontrolü
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const company = JSON.parse(localStorage.getItem('company') || '{}');
-    const isAdmin = user.role === 'admin' || (user.is_admin && company.code === '1000');
-    const isOwner = user.is_admin && company.code !== '1000';
+    const isSuperAdmin = user.role === 'super_admin';
+    const isAdmin = user.role === 'admin' || user.role === 'super_admin' || user.is_admin;
+    const isOwner = user.role === 'admin' || (user.is_admin && !isSuperAdmin);
     const userPermissions = user.permissions || {};
     const hasStaffManagement = isAdmin || isOwner || (userPermissions.settings?.staff_management === true);
     
@@ -258,7 +246,8 @@ const StaffManagement = () => {
       if (statusFilter === 'active') params.is_active = true;
       else if (statusFilter === 'inactive') params.is_active = false;
       
-      const response = await axios.get(`${API}/users`, { params });
+      // Use new /staff endpoint for admin-only staff management
+      const response = await axios.get(`${API}/staff`, { params });
       setStaff(response.data);
     } catch (error) {
       console.error('Personeller yüklenemedi:', error);
@@ -324,7 +313,7 @@ const StaffManagement = () => {
         web_panel_active: person.web_panel_active === true,
         username: person.username || '',
         password: '',
-        is_admin: person.is_admin || false,
+        // is_admin is not editable - staff members always have role='user'
         permissions: person.permissions || getDefaultPermissions(),
         notes: person.notes || '',
         avatar_url: person.avatar_url || ''
@@ -377,7 +366,6 @@ const StaffManagement = () => {
     setSkillInput('');
   };
 
-  // Staff Detail & Salary Management Functions
   const handleOpenStaffDetail = async (staff) => {
     setSelectedStaff(staff);
     setStaffDetailDialogOpen(true);
@@ -542,12 +530,17 @@ const StaffManagement = () => {
       if (editingStaff && !payload.password) {
         delete payload.password;
       }
+      
+      // Remove is_admin - staff members always have role='user' (enforced by backend)
+      delete payload.is_admin;
 
       if (editingStaff) {
-        await axios.put(`${API}/users/${editingStaff.id}`, payload);
+        // Use new /staff endpoint for admin-only staff management
+        await axios.put(`${API}/staff/${editingStaff.id}`, payload);
         toast.success('Personel güncellendi');
       } else {
-        await axios.post(`${API}/users`, payload);
+        // Use new /staff endpoint for admin-only staff management
+        await axios.post(`${API}/staff`, payload);
         toast.success('Personel oluşturuldu');
       }
       
@@ -571,7 +564,8 @@ const StaffManagement = () => {
     if (!confirmed) return;
 
     try {
-      await axios.delete(`${API}/users/${userId}`);
+      // Use new /staff endpoint for admin-only staff management
+      await axios.delete(`${API}/staff/${userId}`);
       toast.success('Personel silindi');
       fetchUsers();
       fetchStatistics();
@@ -607,7 +601,6 @@ const StaffManagement = () => {
     }
   };
 
-  // Tag Input Functions
   const addLanguage = () => {
     if (languageInput.trim() && !formData.languages.includes(languageInput.trim())) {
       setFormData({
@@ -665,7 +658,6 @@ const StaffManagement = () => {
     return null;
   };
 
-  // Permission Functions
   const toggleGroup = (module) => {
     setExpandedGroups(prev => ({
       ...prev,
@@ -1551,16 +1543,8 @@ const StaffManagement = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          id="is_admin"
-                          checked={formData.is_admin}
-                          onCheckedChange={(checked) => setFormData({ ...formData, is_admin: checked })}
-                        />
-                        <Label htmlFor="is_admin" className="text-white cursor-pointer">
-                          Admin Yetkisi
-                        </Label>
-                      </div>
+                      {/* Admin Yetkisi removed - Staff members always have role='user' */}
+                      {/* Admins cannot create other admins - this is enforced by the backend */}
 
                       {/* Yetki Grupları */}
                       <div className="space-y-4">

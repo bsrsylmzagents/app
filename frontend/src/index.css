@@ -1,21 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* DARK THEME - Mevcut dark theme korunuyor */
-  :root.dark,
-  :root:not(.light) {
-    /* HSL format (Tailwind uyumlu) */
+  /* DARK MODE ONLY - Contrast Level System */
+  /* Always dark mode - contrast levels change the shade */
+  
+  /* CLASSIC CONTRAST - Original Dark Theme */
+  :root[data-contrast="classic"],
+  :root:not([data-contrast]) {
+    /* Original dark theme values */
+    --bg-app: #1E1E1E; /* Original background */
+    --bg-card: #25272A; /* Original panel/card */
+    --bg-elevated: #2D2F33; /* Original elevated surface */
+    --bg-input: #2D2F33; /* Original input background */
+    --border-color: #2D2F33; /* Original border */
+    --border-subtle: #2D2F33; /* Original subtle border */
+    
+    /* HSL format (Tailwind uyumlu) - Converted from HEX */
     --background: 0 0% 12%; /* #1E1E1E */
     --foreground: 0 0% 100%; /* #FFFFFF */
     --card: 0 0% 15%; /* #25272A */
-    --card-foreground: 0 0% 100%;
+    --card-foreground: 0 0% 100%; /* #FFFFFF */
     --popover: 0 0% 15%; /* #25272A */
-    --popover-foreground: 0 0% 100%;
-    --primary: 200 100% 65%; /* #3EA6FF */
+    --popover-foreground: 0 0% 100%; /* #FFFFFF */
+    --primary: 200 100% 65%; /* #3EA6FF - Original accent */
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 18%; /* #2D2F33 */
     --secondary-foreground: 0 0% 100%;
@@ -28,38 +40,187 @@
     --border: 0 0% 18%; /* #2D2F33 */
     --input: 0 0% 18%; /* #2D2F33 */
     --ring: 200 100% 65%; /* #3EA6FF */
-    --radius: 0.5rem;
+    --radius: 0.5rem; /* Original rounded-lg, not 2xl */
     
-    /* Eksiksiz Dark Theme Değişkenleri */
+    /* Legacy variables - EXACT original values */
     --bg-primary: #1E1E1E;
-    --bg-surface: #222426;
+    --bg-surface: #222426; /* Original sidebar/panel */
     --bg-elevated: #25272A;
-    --text-primary: #FFFFFF;
-    --text-secondary: #A5A5A5;
-    --muted: #7B7B7B;
-    --border: #2D2F33;
-    --divider: #2D2F33;
-    --border-width: 1px;            /* Dark mode'da normal border */
-    --accent: #3EA6FF;
-    --accent-hover: #2C8BDD;
-    --success: #16A34A;
-    --danger: #DC2626;
-    --warning: #F59E0B;
+    --text-primary: #FFFFFF; /* Original text */
+    --text-secondary: #A5A5A5; /* Original secondary text */
+    --text-main: #FFFFFF;
+    --text-muted: #A5A5A5;
+    --primary-color: #3EA6FF; /* Original accent color */
+    --sidebar-bg: #222426; /* Original sidebar */
+    --sidebar-hover: #2D2F33; /* Original hover */
     --chip-bg: #2D2F33;
-    --table-header: #1F2023;
+    --table-header: #1F2023; /* Original table header */
+    --input-bg: #2D2F33; /* Original input background */
     --modal-overlay: rgba(0,0,0,0.5);
     --popup-bg: #1E1E1E;
     --tooltip-bg: #111;
     --tooltip-text: #FFF;
+    --card-shadow: none; /* Original didn't use heavy shadows */
+    --timeline-bg: #1D1F22; /* Original timeline */
+    --placeholder: #A5A5A5; /* Original placeholder */
+  }
+  
+  /* SOFT CONTRAST - Slate-900 bluish dark */
+  :root[data-contrast="soft"] {
+    --bg-app: #0f172a; /* Slate-900 */
+    --bg-card: #1e293b; /* Slate-800 */
+    --bg-elevated: #334155; /* Slate-700 */
+    --bg-input: #1e293b; /* Slate-800 for inputs */
+    --border-color: #334155; /* Slate-700 */
+    --border-subtle: #475569; /* Slate-600 */
+    
+    /* HSL format (Tailwind uyumlu) */
+    --background: 222 47% 11%; /* Slate-900 */
+    --foreground: 0 0% 100%; /* #FFFFFF */
+    --card: 217 33% 17%; /* Slate-800 */
+    --card-foreground: 0 0% 100%;
+    --popover: 217 33% 17%; /* Slate-800 */
+    --popover-foreground: 0 0% 100%;
+    --primary: 200 100% 65%; /* #3EA6FF */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 28% 17%; /* Slate-800 */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 215 20% 25%; /* Slate-700 */
+    --muted-foreground: 0 0% 65%; /* #A5A5A5 */
+    --accent: 200 100% 65%; /* #3EA6FF */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 28% 17%; /* Slate-800 */
+    --input: 215 28% 17%; /* Slate-800 */
+    --ring: 200 100% 65%; /* #3EA6FF */
+    --radius: 0.5rem;
+    
+    /* Legacy variables for compatibility */
+    --bg-primary: #0f172a;
+    --bg-surface: #1e293b;
+    --bg-elevated: #334155;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A5A5A5;
+    --sidebar-bg: #1e293b;
+    --sidebar-hover: #334155;
+    --chip-bg: #334155;
+    --table-header: #1e293b;
+    --input-bg: #1e293b;
+    --modal-overlay: rgba(0,0,0,0.5);
+    --popup-bg: #1e293b;
+    --tooltip-bg: #0f172a;
+    --tooltip-text: #FFF;
     --card-shadow: 0 4px 12px rgba(0,0,0,0.35);
-    --timeline-bg: #1D1F22;
-    --input-bg: #1F2023;
+    --timeline-bg: #1e293b;
     --placeholder: #A5A5A5;
-    --sidebar-bg: #222426;
-    --sidebar-hover: #2D2F33;
   }
 
-  /* LIGHT THEME - Modern Clean Light Mode */
+  /* MEDIUM CONTRAST - Neutral Gray-900 */
+  :root[data-contrast="medium"] {
+    --bg-app: #111827; /* Gray-900 */
+    --bg-card: #1f2937; /* Gray-800 */
+    --bg-elevated: #374151; /* Gray-700 */
+    --bg-input: #1f2937; /* Gray-800 for inputs */
+    --border-color: #374151; /* Gray-700 */
+    --border-subtle: #4b5563; /* Gray-600 */
+    
+    /* HSL format (Tailwind uyumlu) */
+    --background: 222 47% 11%; /* Gray-900 */
+    --foreground: 0 0% 100%; /* #FFFFFF */
+    --card: 215 28% 17%; /* Gray-800 */
+    --card-foreground: 0 0% 100%;
+    --popover: 215 28% 17%; /* Gray-800 */
+    --popover-foreground: 0 0% 100%;
+    --primary: 200 100% 65%; /* #3EA6FF */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 28% 17%; /* Gray-800 */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 215 20% 25%; /* Gray-700 */
+    --muted-foreground: 0 0% 65%; /* #A5A5A5 */
+    --accent: 200 100% 65%; /* #3EA6FF */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 28% 17%; /* Gray-800 */
+    --input: 215 28% 17%; /* Gray-800 */
+    --ring: 200 100% 65%; /* #3EA6FF */
+    --radius: 0.5rem;
+    
+    /* Legacy variables */
+    --bg-primary: #111827;
+    --bg-surface: #1f2937;
+    --bg-elevated: #374151;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A5A5A5;
+    --sidebar-bg: #1f2937;
+    --sidebar-hover: #374151;
+    --chip-bg: #374151;
+    --table-header: #1f2937;
+    --input-bg: #1f2937;
+    --modal-overlay: rgba(0,0,0,0.5);
+    --popup-bg: #1f2937;
+    --tooltip-bg: #111827;
+    --tooltip-text: #FFF;
+    --card-shadow: 0 4px 12px rgba(0,0,0,0.35);
+    --timeline-bg: #1f2937;
+    --placeholder: #A5A5A5;
+  }
+
+  /* HIGH CONTRAST - Pure Black for OLED */
+  :root[data-contrast="high"] {
+    --bg-app: #000000; /* Pure Black */
+    --bg-card: #0a0a0a; /* Almost Black */
+    --bg-elevated: #1a1a1a; /* Very Dark Gray */
+    --bg-input: #0a0a0a; /* Almost Black for inputs */
+    --border-color: #404040; /* High Contrast Border */
+    --border-subtle: #525252; /* Medium Gray */
+    
+    /* HSL format (Tailwind uyumlu) */
+    --background: 0 0% 0%; /* Pure Black */
+    --foreground: 0 0% 100%; /* #FFFFFF */
+    --card: 0 0% 4%; /* Almost Black */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 4%; /* Almost Black */
+    --popover-foreground: 0 0% 100%;
+    --primary: 200 100% 65%; /* #3EA6FF */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 10%; /* Very Dark */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 20%; /* Dark Gray */
+    --muted-foreground: 0 0% 70%; /* Light Gray */
+    --accent: 200 100% 65%; /* #3EA6FF */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 25%; /* High Contrast Border */
+    --input: 0 0% 4%; /* Almost Black */
+    --ring: 200 100% 65%; /* #3EA6FF */
+    --radius: 0.5rem;
+    
+    /* Legacy variables */
+    --bg-primary: #000000;
+    --bg-surface: #0a0a0a;
+    --bg-elevated: #1a1a1a;
+    --text-primary: #FFFFFF;
+    --text-secondary: #E5E5E5;
+    --sidebar-bg: #0a0a0a;
+    --sidebar-hover: #1a1a1a;
+    --chip-bg: #1a1a1a;
+    --table-header: #0a0a0a;
+    --input-bg: #0a0a0a;
+    --modal-overlay: rgba(0,0,0,0.8);
+    --popup-bg: #0a0a0a;
+    --tooltip-bg: #000000;
+    --tooltip-text: #FFF;
+    --card-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    --timeline-bg: #0a0a0a;
+    --placeholder: #808080;
+  }
+
+  /* LIGHT THEME REMOVED - Dark Mode Only */
+  /* Light theme styles removed - app is always dark mode */
+  /*
   :root.light,
   [data-theme="light"] {
     /* HSL format (Tailwind uyumlu) */
@@ -226,7 +387,6 @@
     --sidebar-purple: #FFFFFF;
     --header-purple: #FFFFFF;
   }
-}
 
 @layer base {
   * {
@@ -234,23 +394,601 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     line-height: 1.5;
-  }
-
-  /* Light mode body background */
-  [data-theme="light"] body {
-    background-color: var(--bg-primary) !important;
+    background-color: var(--bg-app) !important; /* Always use contrast-based background */
+    color: var(--text-primary) !important;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-weight: 600;
     line-height: 1.5;
+    letter-spacing: -0.025em; /* tracking-tight */
+  }
+  
+  /* Dark Mode Only Typography */
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+    letter-spacing: -0.025em; /* tracking-tight */
+  }
+  
+  p, span, div:not(button):not([class*="text-"]) {
+    color: var(--text-secondary) !important;
+  }
+  
+  .text-muted,
+  .text-tertiary,
+  [class*="helper"],
+  [class*="description"],
+  [class*="inactive"],
+  [class*="subtle"] {
+    color: var(--muted-foreground) !important;
   }
   
 }
 
 @layer components {
+  /* Premium Filled Input Style (B2B Portal Style) */
+  .input-filled {
+    @apply bg-slate-800/50 border-transparent rounded-lg px-4 py-3 h-11;
+    @apply focus:bg-slate-800 focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-0;
+    @apply transition-all duration-200;
+  }
+  
+  /* Premium Modal Style (Glassmorphism) */
+  .modal-premium {
+    @apply rounded-2xl border border-white/10 shadow-2xl;
+  }
+  
+  .modal-overlay-premium {
+    @apply bg-black/40 backdrop-blur-md;
+  }
+  
+  /* Form Button Styles */
+  .btn-cancel {
+    @apply hover:bg-white/5 transition-colors;
+  }
+  
+  .btn-submit {
+    @apply rounded-full shadow-md hover:-translate-y-0.5 transition-all;
+  }
+  
+  /* Global Form Input Overrides - Use CSS Variables for Dynamic Contrast */
+  form input[type="text"],
+  form input[type="email"],
+  form input[type="password"],
+  form input[type="number"],
+  form input[type="tel"],
+  form input[type="date"],
+  form input[type="time"],
+  form input[type="datetime-local"],
+  form textarea,
+  form select,
+  input[type="text"]:not([class*="bg-"]),
+  input[type="email"]:not([class*="bg-"]),
+  input[type="password"]:not([class*="bg-"]),
+  input[type="number"]:not([class*="bg-"]),
+  textarea:not([class*="bg-"]),
+  select:not([class*="bg-"]) {
+    background-color: var(--input-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+    border-radius: var(--radius) !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  form input:focus,
+  form textarea:focus,
+  form select:focus,
+  input:focus:not([class*="bg-"]),
+  textarea:focus:not([class*="bg-"]),
+  select:focus:not([class*="bg-"]) {
+    background-color: var(--bg-elevated) !important;
+    border-color: var(--accent) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px var(--ring) !important;
+  }
+  
+  form input::placeholder,
+  form textarea::placeholder,
+  input::placeholder:not([class*="bg-"]),
+  textarea::placeholder:not([class*="bg-"]) {
+    color: var(--placeholder) !important;
+  }
+  
+  /* Ensure modals use CSS variables */
+  [role="dialog"],
+  [data-radix-dialog-content],
+  .modal,
+  .popup {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+    border-radius: 1rem !important;
+    box-shadow: var(--card-shadow) !important;
+  }
+  
+  [data-radix-dialog-overlay],
+  .modal-overlay,
+  .popup-overlay {
+    background-color: var(--modal-overlay) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+  
+  /* Sidebar - Use CSS Variables */
+  .sidebar,
+  aside[class*="sidebar"],
+  nav[class*="sidebar"] {
+    background-color: var(--sidebar-bg) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  .sidebar a:hover,
+  .sidebar button:hover,
+  aside[class*="sidebar"] a:hover,
+  aside[class*="sidebar"] button:hover {
+    background-color: var(--sidebar-hover) !important;
+  }
+  
+  /* Header - Use CSS Variables */
+  header,
+  .header {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Cards - Use CSS Variables */
+  .card,
+  [class*="card"],
+  [class*="Card"] {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+    box-shadow: var(--card-shadow) !important;
+  }
+  
+  /* Tables - Use CSS Variables */
+  table,
+  thead,
+  tbody {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  thead th,
+  table th {
+    background-color: var(--table-header) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+  }
+  
+  tbody tr,
+  table tr {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+  }
+  
+  tbody tr:hover,
+  table tr:hover {
+    background-color: var(--bg-elevated) !important;
+  }
+  
+  /* Buttons - Use CSS Variables */
+  button:not([class*="bg-"]):not([class*="text-"]) {
+    color: var(--text-primary) !important;
+  }
+  
+  button[class*="primary"],
+  button[type="submit"]:not([class*="bg-"]) {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+  }
+  
+  button[class*="ghost"]:hover,
+  button[class*="outline"]:hover {
+    background-color: var(--bg-elevated) !important;
+  }
+  
+  /* Dropdowns and Selects - Use CSS Variables */
+  [data-radix-select-content],
+  [data-radix-dropdown-content],
+  [data-radix-menu-content],
+  .dropdown-menu,
+  .select-content {
+    background-color: var(--popover) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Labels - Use CSS Variables */
+  label {
+    color: var(--text-primary) !important;
+  }
+  
+  /* Text Colors - Use CSS Variables */
+  p:not([class*="text-"]),
+  span:not([class*="text-"]),
+  div:not([class*="text-"]):not(button):not(a) {
+    color: var(--text-secondary) !important;
+  }
+  
+  h1:not([class*="text-"]),
+  h2:not([class*="text-"]),
+  h3:not([class*="text-"]),
+  h4:not([class*="text-"]),
+  h5:not([class*="text-"]),
+  h6:not([class*="text-"]) {
+    color: var(--text-primary) !important;
+  }
+  
+  /* Background Colors - Use CSS Variables */
+  body,
+  main,
+  #root {
+    background-color: var(--bg-app) !important;
+  }
+  
+  /* Chips/Badges - Use CSS Variables */
+  [class*="chip"],
+  [class*="badge"],
+  [class*="tag"] {
+    background-color: var(--chip-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+  }
+  
+  /* Dividers - Use CSS Variables */
+  hr,
+  [class*="divider"],
+  [class*="border"] {
+    border-color: var(--border-color) !important;
+  }
+  
+  /* Timeline Specific Styles - Use CSS Variables */
+  [class*="timeline"],
+  [data-timeline] {
+    background-color: var(--timeline-bg) !important;
+    border-color: var(--border-color) !important;
+  }
+  
+  /* Timeline Reservation Bars/Bubbles - Optimized Text */
+  [class*="timeline"] [class*="bar"],
+  [class*="timeline"] [class*="bubble"],
+  [class*="reservation-bar"] {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
+  }
+  
+  /* Timeline Text - Better Readability */
+  [class*="timeline"] span,
+  [class*="timeline"] p,
+  [class*="timeline"] div {
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+  }
+  
+  /* Calendar Day Cells - Use CSS Variables */
+  [class*="calendar-day"],
+  [class*="day-cell"] {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Calendar Day Cells Hover */
+  [class*="calendar-day"]:hover,
+  [class*="day-cell"]:hover {
+    background-color: var(--bg-elevated) !important;
+  }
+  
+  /* Search Bars - Use CSS Variables */
+  [class*="search"],
+  input[type="search"],
+  input[placeholder*="ara"],
+  input[placeholder*="search"] {
+    background-color: var(--input-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* List Items - Use CSS Variables */
+  [class*="list-item"],
+  [class*="listItem"],
+  li:not([class*="bg-"]):not([class*="text-"]) {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  [class*="list-item"]:hover,
+  [class*="listItem"]:hover,
+  li:hover:not([class*="bg-"]):not([class*="text-"]) {
+    background-color: var(--bg-elevated) !important;
+  }
+  
+  /* Status Badges - Use CSS Variables */
+  [class*="status"],
+  [class*="Status"],
+  [class*="badge"]:not([class*="bg-"]):not([class*="text-"]) {
+    background-color: var(--chip-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+  }
+  
+  /* Tabs - Use CSS Variables */
+  [role="tablist"],
+  [class*="tabs"],
+  [class*="Tabs"] {
+    background-color: var(--bg-elevated) !important;
+    border-color: var(--border-color) !important;
+  }
+  
+  [role="tab"]:not([class*="bg-"]):not([class*="text-"]),
+  [class*="tab"]:not([class*="bg-"]):not([class*="text-"]) {
+    color: var(--text-secondary) !important;
+  }
+  
+  [role="tab"][aria-selected="true"],
+  [class*="tab"][class*="active"] {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+  }
+  
+  /* Popovers - Use CSS Variables */
+  [data-radix-popover-content],
+  [data-radix-select-content],
+  [data-radix-dropdown-content],
+  [data-radix-menu-content] {
+    background-color: var(--popover) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Scrollbars - Use CSS Variables */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--bg-app);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-subtle);
+  }
+  
+  /* Hardcoded Color Overrides - Force CSS Variables */
+  [style*="#3EA6FF"],
+  [style*="#2D2F33"],
+  [style*="#A5A5A5"],
+  [style*="#25272A"],
+  [style*="#1E1E1E"] {
+    /* These will be overridden by more specific rules below */
+  }
+  
+  /* Replace hardcoded accent colors - Class-based */
+  .text-\[#3EA6FF\],
+  [class*="text-[#3EA6FF]"] {
+    color: var(--accent) !important;
+  }
+  
+  .bg-\[#3EA6FF\],
+  [class*="bg-[#3EA6FF]"],
+  [class*="from-[#3EA6FF]"],
+  [class*="to-[#3EA6FF]"] {
+    background-color: var(--accent) !important;
+  }
+  
+  /* Replace hardcoded border colors - Class-based */
+  .border-\[#2D2F33\],
+  [class*="border-[#2D2F33]"] {
+    border-color: var(--border-color) !important;
+  }
+  
+  .bg-\[#2D2F33\],
+  [class*="bg-[#2D2F33]"] {
+    background-color: var(--bg-elevated) !important;
+  }
+  
+  /* Replace hardcoded text colors - Class-based */
+  .text-\[#A5A5A5\],
+  [class*="text-[#A5A5A5]"] {
+    color: var(--text-secondary) !important;
+  }
+  
+  .bg-\[#25272A\],
+  [class*="bg-[#25272A]"] {
+    background-color: var(--bg-card) !important;
+  }
+  
+  .bg-\[#1E1E1E\],
+  [class*="bg-[#1E1E1E]"] {
+    background-color: var(--bg-app) !important;
+  }
+  
+  /* Placeholder colors */
+  .placeholder-\[#A5A5A5\],
+  [class*="placeholder-[#A5A5A5]"]::placeholder {
+    color: var(--placeholder) !important;
+  }
+  
+  /* Focus border colors */
+  [class*="focus:border-[#3EA6FF]"]:focus {
+    border-color: var(--accent) !important;
+  }
+  
+  /* Hover background colors */
+  [class*="hover:bg-[#2D2F33]"]:hover {
+    background-color: var(--bg-elevated) !important;
+  }
+  
+  [class*="hover:bg-[#3EA6FF]"]:hover {
+    background-color: var(--accent) !important;
+  }
+  
+  /* Shadow colors */
+  [class*="shadow-[#3EA6FF]"],
+  [class*="hover:shadow-[#3EA6FF]"] {
+    box-shadow: 0 0 20px var(--accent) !important;
+  }
+  
+  /* Timeline Specific Styles - Use CSS Variables */
+  [class*="timeline"],
+  [data-timeline] {
+    background-color: var(--timeline-bg) !important;
+  }
+  
+  /* Timeline Balloons/Bars - Optimized Font & Colors */
+  [class*="reservation-bar"],
+  [class*="timeline-bar"],
+  [style*="backgroundColor"][style*="reservation"] {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.025em !important;
+  }
+  
+  /* Badge/Pill Styles - Use CSS Variables */
+  [class*="badge"],
+  [class*="pill"],
+  [class*="chip"],
+  [class*="tag"],
+  span[class*="rounded-full"]:not([class*="button"]):not([class*="avatar"]) {
+    background-color: var(--chip-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+  }
+  
+  /* Status Badges - Use CSS Variables */
+  [class*="status"],
+  [class*="durum"],
+  [class*="aktif"],
+  [class*="tamamlandı"] {
+    background-color: var(--chip-bg) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* List Items - Use CSS Variables */
+  li,
+  [class*="list-item"],
+  [class*="listItem"] {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+  }
+  
+  /* Search Bars - Use CSS Variables */
+  [class*="search"],
+  [type="search"],
+  [placeholder*="ara"],
+  [placeholder*="search"] {
+    background-color: var(--input-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Dropdown Menus - Use CSS Variables */
+  [role="menu"],
+  [role="menuitem"],
+  [class*="dropdown"],
+  [class*="menu-item"] {
+    background-color: var(--popover) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+  }
+  
+  [role="menuitem"]:hover,
+  [class*="menu-item"]:hover {
+    background-color: var(--bg-elevated) !important;
+  }
+  
+  /* Progress Bars - Use CSS Variables */
+  [role="progressbar"],
+  [class*="progress"],
+  [class*="bar"]:not([class*="button"]):not([class*="nav"]) {
+    background-color: var(--bg-elevated) !important;
+    color: var(--accent) !important;
+  }
+  
+  /* Scrollbars - Use CSS Variables */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--bg-app) !important;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-color) !important;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--bg-elevated) !important;
+  }
+  
+  /* Override all hardcoded dark mode colors with CSS variables */
+  [class*="bg-\[#1E1E1E\]"],
+  [class*="bg-\[#25272A\]"],
+  [class*="bg-\[#2D2F33\]"] {
+    background-color: var(--bg-card) !important;
+  }
+  
+  [class*="text-\[#A5A5A5\]"],
+  [class*="text-\[#FFFFFF\]"]:not([class*="bg-"]) {
+    color: var(--text-primary) !important;
+  }
+  
+  [class*="text-\[#3EA6FF\]"],
+  [class*="text-blue"]:not([class*="bg-"]) {
+    color: var(--accent) !important;
+  }
+  
+  [class*="border-\[#2D2F33\]"],
+  [class*="border-\[#3EA6FF\]"] {
+    border-color: var(--border-color) !important;
+  }
+  
+  /* Stat Cards - Use CSS Variables */
+  [class*="stat-card"],
+  [class*="statCard"] {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+    box-shadow: var(--card-shadow) !important;
+  }
+  
+  /* Completed Tour Cards - Use CSS Variables */
+  [class*="completed"],
+  [class*="tamamlanan"] {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Active Tour Cards - Use CSS Variables */
+  [class*="active"],
+  [class*="aktif"]:not([class*="button"]) {
+    background-color: var(--bg-elevated) !important;
+    border-color: var(--accent) !important;
+  }
+  
+  /* Pending Reservation Cards - Use CSS Variables */
+  [class*="pending"],
+  [class*="bekleyen"] {
+    background-color: var(--bg-elevated) !important;
+    border-color: var(--accent) !important;
+  }
   .stat-card {
     background: var(--bg-elevated);
     backdrop-filter: blur(10px);
@@ -300,38 +1038,40 @@
 
   /* ========== LIGHT MODE - SADECE RENK OVERRIDE'LARI ========== */
   
-  /* Sidebar background */
+  /* Sidebar background - Warm Minimalism: Warm charcoal sidebar */
   [data-theme="light"] .sidebar,
   [data-theme="light"] aside {
-    background-color: var(--sidebar-bg) !important;
-    border-right: 1px solid var(--sidebar-divider) !important;
+    background-color: #1C1917 !important; /* Stone-900 - Warm charcoal */
+    border-right: none !important; /* No border */
   }
 
-  /* Sidebar içindeki tüm yazılar için - default */
+  /* Sidebar içindeki tüm yazılar için - Warm Minimalism: Stone-200 */
   [data-theme="light"] .sidebar,
   [data-theme="light"] aside {
-    color: var(--sidebar-text) !important;
+    color: #E7E5E4 !important; /* Stone-200 - Warm light grey */
   }
 
-  /* Sidebar nav items - default */
+  /* Sidebar nav items - default - Warm Minimalism */
   [data-theme="light"] .sidebar .nav-item,
   [data-theme="light"] aside .nav-item {
-    color: var(--sidebar-text) !important;
+    color: #E7E5E4 !important; /* Stone-200 */
   }
 
-  /* Sidebar nav items - hover */
+  /* Sidebar nav items - hover - Warm Minimalism */
   [data-theme="light"] .sidebar .nav-item:hover,
   [data-theme="light"] aside .nav-item:hover {
-    color: var(--sidebar-text-hover) !important;
-    background-color: var(--sidebar-selected-bg) !important;
+    color: #FFFFFF !important; /* white */
+    background-color: #292524 !important; /* Stone-800 */
   }
 
-  /* Sidebar nav items - active */
+  /* Sidebar nav items - active - Warm Minimalism: Stone-800 + Orange accent */
   [data-theme="light"] .sidebar .nav-item.active,
   [data-theme="light"] aside .nav-item.active {
-    color: var(--sidebar-text-active) !important;
+    color: #FFFFFF !important; /* white */
     font-weight: 600 !important;
-    background-color: var(--sidebar-selected-bg) !important;
+    background-color: #292524 !important; /* Stone-800 */
+    border-left: 4px solid #FB923C !important; /* border-l-4 border-orange-400 - Warm pop */
+    border-radius: 0.5rem !important; /* rounded-lg */
   }
 
   /* Sidebar içindeki hardcoded renkleri override et */
@@ -422,10 +1162,15 @@
 
   /* ========== LIGHT MODE HEADER YAZI VE İKONLARI ========== */
   
-  /* Header içindeki tüm yazılar için - sadece renk */
+  /* Header - Warm Minimalism: Blurred glass effect */
   [data-theme="light"] .header-gradient,
   [data-theme="light"] header {
-    color: var(--header-text) !important;
+    background-color: rgba(255, 255, 255, 0.8) !important; /* bg-white/80 */
+    backdrop-filter: blur(12px) !important; /* backdrop-blur-md */
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: none !important; /* Remove borders */
+    box-shadow: 0 1px 2px 0 rgba(120, 113, 108, 0.05) !important; /* Warm shadow */
+    color: #292524 !important; /* stone-800 */
   }
 
   /* Header içindeki hardcoded renkleri override et - sadece renk */
@@ -500,16 +1245,44 @@
     color: var(--header-text) !important;
   }
 
-  /* ========== LIGHT MODE BUTONLAR (Header ve Sidebar dışı) ========== */
+  /* ========== LIGHT MODE BUTONLAR - Material Design 3 ========== */
   
-  /* Main content alanındaki tüm butonlar */
-  [data-theme="light"] main button,
-  [data-theme="light"] .main-content button,
-  [data-theme="light"] .page-content button,
-  [data-theme="light"] [class*="content"] button:not(.header-gradient button):not(.sidebar button):not(header button):not(aside button) {
-    background-color: var(--button-bg) !important;
-    color: var(--button-text) !important;
-    border-color: var(--button-bg) !important;
+  /* Primary Buttons - Warm Minimalism: Deep Indigo/Warm Charcoal */
+  [data-theme="light"] main button[class*="bg-blue"],
+  [data-theme="light"] .main-content button[class*="bg-blue"],
+  [data-theme="light"] .page-content button[class*="bg-blue"],
+  [data-theme="light"] [class*="content"] button[class*="bg-blue"]:not(.header-gradient button):not(.sidebar button):not(header button):not(aside button),
+  [data-theme="light"] button[type="submit"]:not(.header-gradient button):not(.sidebar button):not(header button):not(aside button) {
+    background-color: #292524 !important; /* stone-900 - Warm charcoal */
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 9999px !important; /* rounded-full */
+    box-shadow: 0 4px 6px -1px rgba(120, 113, 108, 0.1), 0 2px 4px -1px rgba(120, 113, 108, 0.06) !important; /* Warm shadow */
+    transition: all 0.2s ease !important;
+  }
+
+  [data-theme="light"] main button[class*="bg-blue"]:hover,
+  [data-theme="light"] .main-content button[class*="bg-blue"]:hover,
+  [data-theme="light"] .page-content button[class*="bg-blue"]:hover,
+  [data-theme="light"] button[type="submit"]:hover:not(.header-gradient button):not(.sidebar button):not(header button):not(aside button) {
+    background-color: #1C1917 !important; /* stone-950 - Darker on hover */
+    transform: translateY(-2px) !important; /* hover:-translate-y-0.5 */
+    box-shadow: 0 10px 15px -3px rgba(120, 113, 108, 0.1), 0 4px 6px -2px rgba(120, 113, 108, 0.05) !important;
+  }
+
+  /* Secondary Buttons */
+  [data-theme="light"] button[class*="bg-white"]:not(.header-gradient button):not(.sidebar button):not(header button):not(aside button),
+  [data-theme="light"] button[variant="outline"]:not(.header-gradient button):not(.sidebar button):not(header button):not(aside button) {
+    background-color: #FFFFFF !important; /* bg-white */
+    color: rgb(51, 65, 85) !important; /* text-slate-700 */
+    border: 1px solid rgb(226, 232, 240) !important; /* border border-slate-200 */
+    border-radius: 0.5rem !important; /* rounded-lg */
+    transition: all 0.2s ease !important;
+  }
+
+  [data-theme="light"] button[class*="bg-white"]:hover:not(.header-gradient button):not(.sidebar button):not(header button):not(aside button),
+  [data-theme="light"] button[variant="outline"]:hover:not(.header-gradient button):not(.sidebar button):not(header button):not(aside button) {
+    background-color: rgb(248, 250, 252) !important; /* hover:bg-slate-50 */
   }
 
   /* Main content alanındaki butonların içindeki yazılar */
@@ -536,12 +1309,30 @@
     opacity: 0.9 !important;
   }
 
-  /* Genel buton class'ları (header ve sidebar dışı) */
-  [data-theme="light"] .btn-primary:not(.header-gradient .btn-primary):not(.sidebar .btn-primary):not(header .btn-primary):not(aside .btn-primary),
-  [data-theme="light"] .btn:not(.header-gradient .btn):not(.sidebar .btn):not(header .btn):not(aside .btn) {
-    background-color: var(--button-bg) !important;
-    color: var(--button-text) !important;
-    border-color: var(--button-bg) !important;
+  /* Genel buton class'ları - Warm Minimalism (header ve sidebar dışı) */
+  [data-theme="light"] .btn-primary:not(.header-gradient .btn-primary):not(.sidebar .btn-primary):not(header .btn-primary):not(aside .btn-primary) {
+    background-color: #292524 !important; /* stone-900 - Warm charcoal */
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 9999px !important; /* rounded-full */
+    box-shadow: 0 4px 6px -1px rgba(120, 113, 108, 0.1), 0 2px 4px -1px rgba(120, 113, 108, 0.06) !important; /* Warm shadow */
+    transition: all 0.2s ease !important;
+  }
+
+  [data-theme="light"] .btn-primary:hover:not(.header-gradient .btn-primary):not(.sidebar .btn-primary):not(header .btn-primary):not(aside .btn-primary) {
+    background-color: #1C1917 !important; /* stone-950 - Darker on hover */
+    transform: translateY(-2px) !important; /* hover:-translate-y-0.5 */
+  }
+
+  [data-theme="light"] .btn:not(.header-gradient .btn):not(.sidebar .btn):not(header .btn):not(aside .btn):not(.btn-primary) {
+    background-color: #FFFFFF !important; /* bg-white */
+    color: rgb(51, 65, 85) !important; /* text-slate-700 */
+    border: 1px solid rgb(226, 232, 240) !important; /* border border-slate-200 */
+    border-radius: 0.5rem !important; /* rounded-lg */
+  }
+
+  [data-theme="light"] .btn:hover:not(.header-gradient .btn):not(.sidebar .btn):not(header .btn):not(aside .btn):not(.btn-primary) {
+    background-color: rgb(248, 250, 252) !important; /* hover:bg-slate-50 */
   }
 
   [data-theme="light"] .btn-primary:not(.header-gradient .btn-primary):not(.sidebar .btn-primary):not(header .btn-primary):not(aside .btn-primary) *,
@@ -549,7 +1340,16 @@
     color: var(--button-text) !important;
   }
 
-  /* ========== LIGHT MODE MODAL VE POPUP ========== */
+  /* ========== LIGHT MODE MODAL VE POPUP - Material Design 3 ========== */
+  
+  /* Modal Overlay - Frosted Glass */
+  [data-theme="light"] [data-radix-dialog-overlay],
+  [data-theme="light"] .modal-overlay,
+  [data-theme="light"] [class*="overlay"] {
+    background-color: rgba(15, 23, 42, 0.4) !important; /* bg-slate-900/40 */
+    backdrop-filter: blur(4px) !important; /* backdrop-blur-sm */
+    -webkit-backdrop-filter: blur(4px) !important;
+  }
   
   /* Tüm modallar, popup'lar, dropdown'lar ve açılır ekranlar */
   [data-theme="light"] [role="dialog"],
@@ -574,8 +1374,33 @@
   [data-theme="light"] [role="listbox"],
   [data-theme="light"] [role="menu"],
   [data-theme="light"] [role="tooltip"] {
-    background-color: var(--modal-bg) !important;
-    color: var(--text-secondary) !important;
+    background-color: #FFFFFF !important; /* bg-white */
+    border-radius: 1rem !important; /* rounded-2xl */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; /* shadow-2xl */
+    border: none !important; /* border-0 */
+    animation: scaleIn 0.2s ease-out !important; /* Scale-in animation */
+  }
+
+  @keyframes scaleIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* Modal Header - Hybrid Premium: Off-white background */
+  [data-theme="light"] [data-radix-dialog-content] > header,
+  [data-theme="light"] [data-radix-dialog-content] > div:first-child,
+  [data-theme="light"] [role="dialog"] > header,
+  [data-theme="light"] .modal > header,
+  [data-theme="light"] [class*="DialogHeader"],
+  [data-theme="light"] [class*="dialog-header"] {
+    background-color: rgb(248, 250, 252) !important; /* slate-50 */
+    border-bottom: 1px solid rgb(226, 232, 240) !important; /* slate-200 */
   }
 
   /* Modal, popup ve açılır ekranlar içindeki genel text (body) */
@@ -881,32 +1706,33 @@
     color: var(--modal-input-text) !important;
   }
 
-  /* ========== LIGHT MODE TYPOGRAPHY ========== */
+  /* ========== LIGHT MODE TYPOGRAPHY - Warm Inversion ========== */
   
-  /* Primary Text (Headings H1-H3) - #282828 */
+  /* Primary Text (Headings H1-H3) - Warm Stone-900 */
   [data-theme="light"] h1,
   [data-theme="light"] h2,
   [data-theme="light"] h3 {
-    color: var(--text-primary) !important;
+    color: #1c1917 !important; /* Stone-900 - Very deep charcoal */
     font-weight: 600 !important;
     text-shadow: none !important;
+    letter-spacing: -0.025em !important; /* tracking-tight */
   }
 
-  /* Secondary Text (Body, Labels) - #4A4A4A */
+  /* Secondary Text (Body, Labels) - Warm Stone-600 */
   [data-theme="light"] p,
   [data-theme="light"] span:not(h1 span):not(h2 span):not(h3 span),
   [data-theme="light"] div:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6),
   [data-theme="light"] label {
-    color: var(--text-secondary) !important;
+    color: #57534e !important; /* Stone-600 - Body text & labels */
     text-shadow: none !important;
   }
 
-  /* Tertiary/Helper Text - #8585B8 */
+  /* Tertiary/Helper Text - Warm Stone-400 */
   [data-theme="light"] .text-muted,
   [data-theme="light"] .text-tertiary,
   [data-theme="light"] [class*="helper"],
   [data-theme="light"] [class*="description"] {
-    color: var(--text-tertiary) !important;
+    color: #a8a29e !important; /* Stone-400 - Inactive/Subtle text */
   }
 
   /* Links */
@@ -919,27 +1745,40 @@
     color: var(--link-hover) !important;
   }
 
-  /* ========== LIGHT MODE INPUTS (Forms) ========== */
+  /* ========== LIGHT MODE INPUTS (Forms) - Material Design 3 Filled Style ========== */
   
+  /* Material Design 3: Filled inputs with slate-50 background */
   [data-theme="light"] input:not([role="dialog"] input):not(.modal input):not(.popup input),
   [data-theme="light"] textarea:not([role="dialog"] textarea):not(.modal textarea):not(.popup textarea),
   [data-theme="light"] select:not([role="dialog"] select):not(.modal select):not(.popup select) {
-    background-color: var(--input-bg) !important;
-    color: var(--input-text) !important;
-    border-color: var(--input-border) !important;
+    background-color: rgb(248, 250, 252) !important; /* slate-50 - Filled style */
+    color: rgb(15, 23, 42) !important; /* slate-900 */
+    border: none !important; /* No border - Filled style */
+    border-radius: 0.5rem !important; /* rounded-lg */
+  }
+
+  [data-theme="light"] input:not([role="dialog"] input):not(.modal input):not(.popup input):hover,
+  [data-theme="light"] textarea:not([role="dialog"] textarea):not(.modal textarea):not(.popup textarea):hover,
+  [data-theme="light"] select:not([role="dialog"] select):not(.modal select):not(.popup select):hover {
+    background-color: rgb(241, 245, 249) !important; /* slate-100 - Hover state */
   }
 
   [data-theme="light"] input:not([role="dialog"] input):not(.modal input):not(.popup input):focus,
   [data-theme="light"] textarea:not([role="dialog"] textarea):not(.modal textarea):not(.popup textarea):focus,
   [data-theme="light"] select:not([role="dialog"] select):not(.modal select):not(.popup select):focus {
-    border-color: var(--input-border-focus) !important;
+    background-color: #FFFFFF !important; /* White on focus */
     outline: none !important;
-    box-shadow: 0 0 0 3px rgba(22, 150, 240, 0.1) !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important; /* ring-2 ring-blue-500/20 */
   }
 
   [data-theme="light"] input::placeholder,
   [data-theme="light"] textarea::placeholder {
-    color: var(--input-placeholder) !important;
+    color: rgb(148, 163, 184) !important; /* slate-400 */
+  }
+
+  [data-theme="light"] input::placeholder,
+  [data-theme="light"] textarea::placeholder {
+    color: rgb(148, 163, 184) !important; /* text-slate-400 */
   }
 
   [data-theme="light"] label:not([role="dialog"] label):not(.modal label):not(.popup label) {
@@ -953,14 +1792,24 @@
     color: var(--disabled-text) !important;
   }
 
-  /* ========== LIGHT MODE CARDS ========== */
+  /* ========== LIGHT MODE CARDS - Warm Inversion ========== */
   
+  /* Cards must be pure white to pop off the warm stone background */
   [data-theme="light"] .card,
   [data-theme="light"] [class*="card"],
-  [data-theme="light"] [class*="Card"] {
-    background-color: var(--bg-surface) !important;
-    border: 1px solid var(--card-border) !important;
-    box-shadow: var(--card-shadow) !important;
+  [data-theme="light"] [class*="Card"],
+  [data-theme="light"] .stat-card {
+    background-color: #ffffff !important; /* Pure white - Cleaner to pop off warm background */
+    border: none !important; /* No borders */
+    box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04), 0 0 1px 0 rgba(0,0,0,0.1) !important; /* Google Shadow - Soft, warm shadow for separation */
+    border-radius: 1rem !important; /* rounded-2xl (16px) */
+  }
+  
+  /* Card headers with subtle border */
+  [data-theme="light"] .card-header,
+  [data-theme="light"] [class*="card"] > div:first-child,
+  [data-theme="light"] [class*="Card"] > div:first-child {
+    border-bottom: 1px solid #f5f5f4 !important; /* border-stone-100 */
   }
 
   [data-theme="light"] .card h1,
@@ -984,31 +1833,38 @@
     color: var(--text-tertiary) !important;
   }
 
-  /* ========== LIGHT MODE TABLES ========== */
+  /* ========== LIGHT MODE TABLES - Material Design 3 ========== */
   
   [data-theme="light"] table thead,
   [data-theme="light"] table thead tr,
   [data-theme="light"] table thead th {
-    background-color: var(--table-header-bg) !important;
-    color: var(--table-header-text) !important;
+    background-color: transparent !important; /* bg-transparent */
+    color: rgb(100, 116, 139) !important; /* text-slate-500 */
+    font-size: 0.75rem !important; /* text-xs */
+    text-transform: uppercase !important; /* uppercase */
+    font-weight: 700 !important; /* font-bold */
+    letter-spacing: 0.05em !important; /* tracking-wider */
   }
 
   [data-theme="light"] table tbody tr {
-    background-color: var(--table-row-bg) !important;
+    background-color: #FFFFFF !important; /* bg-white */
+    border-bottom: 1px solid rgb(241, 245, 249) !important; /* border-b border-slate-100 */
   }
 
   [data-theme="light"] table tbody tr:hover {
-    background-color: var(--table-row-hover) !important;
+    background-color: rgb(248, 250, 252) !important; /* hover:bg-slate-50 */
   }
 
   [data-theme="light"] table td,
   [data-theme="light"] table th {
-    border-color: var(--table-border) !important;
+    padding-top: 1rem !important; /* py-4 */
+    padding-bottom: 1rem !important;
+    border-color: rgb(241, 245, 249) !important; /* border-slate-100 */
     color: var(--text-secondary) !important;
   }
 
   [data-theme="light"] table th {
-    color: var(--table-header-text) !important;
+    color: rgb(100, 116, 139) !important; /* text-slate-500 */
   }
 
   /* Table Pagination */
@@ -1173,5 +2029,53 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* ========== SCROLLBAR STYLING (Warm Minimalism - Minimal) ========== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #A8A29E; /* stone-400 - Warm grey */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #78716C; /* stone-500 */
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #A8A29E transparent;
+}
+
+/* Dark mode scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #57534E; /* stone-600 */
+}
+
+[data-theme="dark"] * {
+  scrollbar-color: #57534E transparent;
+}
+
+/* ========== NO SCROLLBAR UTILITY (Warm Minimalism) ========== */
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
 }

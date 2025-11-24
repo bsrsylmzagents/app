@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-    darkMode: ["class"],
+    // Dark mode only - no darkMode config needed
     content: [
     "./src/**/*.{js,jsx,ts,tsx}",
     "./public/index.html"
@@ -13,6 +13,7 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
+  			// Semantic colors mapped to CSS variables for contrast system
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -53,13 +54,23 @@ module.exports = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			},
-  			// VSCode/Cursor benzeri tema renkleri
-  			theme: {
-  				sidebar: 'hsl(var(--sidebar-bg))',
-  				panel: 'hsl(var(--panel-bg))',
-  				'text-primary': 'hsl(var(--text-primary))',
-  				'text-secondary': 'hsl(var(--text-secondary))'
+  			// Semantic colors for contrast system
+  			surface: {
+  				DEFAULT: 'var(--bg-card)',
+  				elevated: 'var(--bg-elevated)'
+  			},
+  			app: {
+  				DEFAULT: 'var(--bg-app)'
   			}
+  		},
+  		backgroundColor: {
+  			'background': 'var(--bg-app)',
+  			'surface': 'var(--bg-card)',
+  			'elevated': 'var(--bg-elevated)'
+  		},
+  		borderColor: {
+  			'border': 'var(--border-color)',
+  			'border-subtle': 'var(--border-subtle)'
   		},
   		keyframes: {
   			'accordion-down': {
@@ -82,6 +93,10 @@ module.exports = {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
+  		},
+  		fontFamily: {
+  			sans: ['Inter', 'sans-serif'],
+  			display: ['Outfit', 'sans-serif']
   		}
   	}
   },
