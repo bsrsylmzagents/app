@@ -1380,7 +1380,7 @@ class Reservation(BaseModel):
     customer_contact: Optional[str] = None
     customer_details: Optional[CustomerDetail] = None  # Müşteri detay bilgileri
     person_count: int
-    atv_count: int
+    vehicle_count: int  # Araç sayısı (eski adı: atv_count)
     pickup_location: Optional[str] = None
     pickup_maps_link: Optional[str] = None
     pickup_time: Optional[str] = None  # Pick-up saati (HH:MM formatında)
@@ -1576,9 +1576,9 @@ class SeasonalPrice(BaseModel):
     start_date: str
     end_date: str
     currency: str = "TRY"
-    price_per_atv: Optional[float] = None  # Genel sezonluk fiyat
+    price_per_vehicle: Optional[float] = None  # Genel sezonluk fiyat (araç başına)
     tour_type_ids: List[str] = Field(default_factory=list)  # Birden fazla tur tipi
-    cari_prices: Dict[str, float] = Field(default_factory=dict)  # Cari ID -> Fiyat mapping
+    cari_prices: Dict[str, float] = Field(default_factory=dict)  # Cari ID -> Fiyat mapping (araç başına)
     apply_to_new_caris: bool = False
     created_by: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -1857,7 +1857,7 @@ class ReservationCreate(BaseModel):
     customer_contact: Optional[str] = None
     customer_details: Optional[Dict[str, Any]] = None  # Müşteri detay bilgileri
     person_count: int
-    atv_count: int
+    vehicle_count: int  # Araç sayısı (eski adı: atv_count)
     pickup_location: Optional[str] = None
     pickup_maps_link: Optional[str] = None
     price: float
@@ -3835,7 +3835,7 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
         customer_contact=data.customer_contact,
         customer_details=customer_details_obj,
         person_count=data.person_count,
-        atv_count=data.atv_count,
+        vehicle_count=data.vehicle_count if hasattr(data, 'vehicle_count') else (data.atv_count if hasattr(data, 'atv_count') else 1),
         pickup_location=data.pickup_location or cari.get("pickup_location"),
         pickup_maps_link=data.pickup_maps_link or cari.get("pickup_maps_link"),
         price=data.price,
@@ -4250,7 +4250,7 @@ class CariReservationCreate(BaseModel):
     time: str
     tour_id: str  # tour_type_id
     person_count: int = 1
-    atv_count: int = 1
+    vehicle_count: int  # Araç sayısı (eski adı: atv_count) = 1
     extras: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
     # Price ve cari_name alanları KABUL EDİLMEZ - server-side hesaplanacak
@@ -4260,10 +4260,10 @@ async def calculate_reservation_price(
     cari_id: Optional[str],
     tour_type_id: str,
     date: str,
-    atv_count: int,
+    vehicle_count: int,
     person_count: int = 1
 ):
-    """Rezervasyon fiyatını hesapla - seasonal prices ve cari özel fiyatları kontrol et"""
+    """Rezervasyon fiyatını hesapla - seasonal prices ve cari özel fiyatları kontrol et (araç sayısı üzerine)"""
     # Company kurlarını al
     company = await db.companies.find_one({"id": company_id}, {"_id": 0})
     rates = company.get("currency_rates", {}) if company else {"EUR": 1.0, "USD": 1.0, "TRY": 1.0}
@@ -4282,12 +4282,12 @@ async def calculate_reservation_price(
         "is_active": True
     }, {"_id": 0}).to_list(100)
     
-    logger.info(f"Fiyat hesaplama başladı: company_id={company_id}, cari_id={cari_id}, tour_type_id={tour_type_id}, date={date}, atv_count={atv_count}")
+    logger.info(f"Fiyat hesaplama başladı: company_id={company_id}, cari_id={cari_id}, tour_type_id={tour_type_id}, date={date}, vehicle_count={vehicle_count}")
     logger.info(f"Seasonal prices bulundu: {len(seasonal_prices)} adet")
     
     # Debug: Tüm seasonal prices'ları logla
     for idx, sp in enumerate(seasonal_prices):
-        logger.info(f"Seasonal price #{idx+1}: id={sp.get('id')}, start={sp.get('start_date')}, end={sp.get('end_date')}, tour_type_ids={sp.get('tour_type_ids')}, price_per_atv={sp.get('price_per_atv')}, currency={sp.get('currency')}, cari_prices_count={len(sp.get('cari_prices', {}))}")
+        logger.info(f"Seasonal price #{idx+1}: id={sp.get('id')}, start={sp.get('start_date')}, end={sp.get('end_date')}, tour_type_ids={sp.get('tour_type_ids')}, price_per_vehicle={sp.get('price_per_vehicle')}, currency={sp.get('currency')}, cari_prices_count={len(sp.get('cari_prices', {}))}")
     
     reservation_date = datetime.strptime(date, "%Y-%m-%d").date()
     matching_seasonal = None
@@ -4310,11 +4310,11 @@ async def calculate_reservation_price(
         
         if start_date <= reservation_date <= end_date and tour_type_match:
             matching_seasonal = sp
-            logger.info(f"Matching seasonal price bulundu: price_per_atv={sp.get('price_per_atv')}, currency={sp.get('currency')}, cari_prices keys={list(sp.get('cari_prices', {}).keys())}, cari_prices={sp.get('cari_prices', {})}")
+            logger.info(f"Matching seasonal price bulundu: price_per_vehicle={sp.get('price_per_vehicle')}, currency={sp.get('currency')}, cari_prices keys={list(sp.get('cari_prices', {}).keys())}, cari_prices={sp.get('cari_prices', {})}")
             break
     
-    # Fiyat hesaplama - artık sadece seasonal prices kullanılacak
-    price_per_atv = 0.0
+    # Fiyat hesaplama - artık sadece seasonal prices kullanılacak (araç sayısı üzerine)
+    price_per_vehicle = 0.0
     currency = "EUR"  # Varsayılan para birimi
     price_source = "seasonal"  # seasonal, cari_specific, error_fallback
     
@@ -4343,29 +4343,29 @@ async def calculate_reservation_price(
             logger.info(f"Cari özel fiyat bulundu: cari_id={cari_id}, price={cari_specific_price}, type={type(cari_specific_price)}")
             # None kontrolü ve sayısal değer kontrolü
             if cari_specific_price is not None and isinstance(cari_specific_price, (int, float)):
-                price_per_atv = float(cari_specific_price)
+                price_per_vehicle = float(cari_specific_price)
                 price_source = "cari_specific"
-                logger.info(f"Cari özel fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}, currency={currency}")
+                logger.info(f"Cari özel fiyat kullanıldı: cari_id={cari_id}, price={price_per_vehicle}, currency={currency}")
             else:
                 # Cari özel fiyat geçersiz, seasonal genel fiyatı veya cari_prices'dan ilk fiyatı kullan
-                seasonal_price = matching_seasonal.get("price_per_atv")
+                seasonal_price = matching_seasonal.get("price_per_vehicle")
                 if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
-                    price_per_atv = float(seasonal_price)
+                    price_per_vehicle = float(seasonal_price)
                     price_source = "seasonal"
-                    logger.warning(f"Cari özel fiyat geçersiz (None veya sayı değil), seasonal genel fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}")
+                    logger.warning(f"Cari özel fiyat geçersiz (None veya sayı değil), seasonal genel fiyat kullanıldı: cari_id={cari_id}, price={price_per_vehicle}")
                 elif cari_prices_str_keys and len(cari_prices_str_keys) > 0:
-                    # price_per_atv yok ama cari_prices var - ilk fiyatı kullan
+                    # price_per_vehicle yok ama cari_prices var - ilk fiyatı kullan
                     prices = list(cari_prices_str_keys.values())
                     if prices and len(prices) > 0:
-                        price_per_atv = float(prices[0])
+                        price_per_vehicle = float(prices[0])
                         price_source = "seasonal"
-                        logger.warning(f"Cari özel fiyat geçersiz, cari_prices'dan ilk fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}")
-                    else:
-                        price_per_atv = 0.0
+                        logger.warning(f"Cari özel fiyat geçersiz, cari_prices'dan ilk fiyat kullanıldı: cari_id={cari_id}, price={price_per_vehicle}")
+                else:
+                        price_per_vehicle = 0.0
                         price_source = "error_fallback"
                         logger.error(f"Cari özel fiyat geçersiz ve cari_prices boş: cari_id={cari_id}")
                 else:
-                    price_per_atv = 0.0
+                    price_per_vehicle = 0.0
                     price_source = "error_fallback"
                     logger.error(f"Cari özel fiyat geçersiz ve fiyat bulunamadı: cari_id={cari_id}")
         elif matching_seasonal.get("apply_to_new_caris", False) and cari_id:
@@ -4380,64 +4380,64 @@ async def calculate_reservation_price(
                     # İlk bulunan fiyatı kullan
                     prices = list(cari_prices.values())
                     if prices and len(prices) > 0:
-                        price_per_atv = float(prices[0])
+                        price_per_vehicle = float(prices[0])
                         price_source = "cari_specific"
-                        logger.info(f"Yeni cari için fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}, currency={currency}")
+                        logger.info(f"Yeni cari için fiyat kullanıldı: cari_id={cari_id}, price={price_per_vehicle}, currency={currency}")
                     else:
                         # Cari prices boşsa, seasonal genel fiyatı kullan
-                        seasonal_price = matching_seasonal.get("price_per_atv")
+                        seasonal_price = matching_seasonal.get("price_per_vehicle")
                         if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
-                            price_per_atv = float(seasonal_price)
-                            price_source = "seasonal"
-                            logger.info(f"Seasonal genel fiyat kullanıldı (yeni cari için, cari_prices boş): price={price_per_atv}, currency={currency}")
-                        else:
-                            price_per_atv = 0.0
+                            price_per_vehicle = float(seasonal_price)
+                price_source = "seasonal"
+                            logger.info(f"Seasonal genel fiyat kullanıldı (yeni cari için, cari_prices boş): price={price_per_vehicle}, currency={currency}")
+        else:
+                            price_per_vehicle = 0.0
                             price_source = "error_fallback"
-                            logger.warning(f"Seasonal price'da fiyat bulunamadı (yeni cari için): price_per_atv=None, cari_prices boş")
+                            logger.warning(f"Seasonal price'da fiyat bulunamadı (yeni cari için): price_per_vehicle=None, cari_prices boş")
                 else:
                     # Cari oluşturulma tarihi aralık dışında, seasonal genel fiyatı kullan
-                    seasonal_price = matching_seasonal.get("price_per_atv")
-                    if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
-                        price_per_atv = float(seasonal_price)
+                    seasonal_price = matching_seasonal.get("price_per_vehicle")
+            if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
+                        price_per_vehicle = float(seasonal_price)
                         price_source = "seasonal"
-                        logger.info(f"Seasonal genel fiyat kullanıldı (cari tarih aralık dışında): price={price_per_atv}, currency={currency}")
+                        logger.info(f"Seasonal genel fiyat kullanıldı (cari tarih aralık dışında): price={price_per_vehicle}, currency={currency}")
                     elif cari_prices and len(cari_prices) > 0:
-                        # price_per_atv yok ama cari_prices var - ilk fiyatı kullan
+                        # price_per_vehicle yok ama cari_prices var - ilk fiyatı kullan
                         prices = list(cari_prices.values())
                         if prices and len(prices) > 0:
-                            price_per_atv = float(prices[0])
+                            price_per_vehicle = float(prices[0])
                             price_source = "seasonal"
-                            logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan, tarih aralık dışında): price={price_per_atv}, currency={currency}")
-                        else:
-                            price_per_atv = 0.0
+                            logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan, tarih aralık dışında): price={price_per_vehicle}, currency={currency}")
+            else:
+                            price_per_vehicle = 0.0
                             price_source = "error_fallback"
-                            logger.warning(f"Seasonal price'da fiyat bulunamadı (cari tarih aralık dışında): price_per_atv=None, cari_prices boş")
+                            logger.warning(f"Seasonal price'da fiyat bulunamadı (cari tarih aralık dışında): price_per_vehicle=None, cari_prices boş")
                     else:
-                        price_per_atv = 0.0
+                        price_per_vehicle = 0.0
                         price_source = "error_fallback"
-                        logger.warning(f"Seasonal price'da fiyat bulunamadı (cari tarih aralık dışında): price_per_atv=None, cari_prices yok")
+                        logger.warning(f"Seasonal price'da fiyat bulunamadı (cari tarih aralık dışında): price_per_vehicle=None, cari_prices yok")
             else:
                 # Cari bulunamadı veya created_at yok, seasonal genel fiyatı kullan
-                seasonal_price = matching_seasonal.get("price_per_atv")
+                seasonal_price = matching_seasonal.get("price_per_vehicle")
                 if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
-                    price_per_atv = float(seasonal_price)
-                    price_source = "seasonal"
-                    logger.info(f"Seasonal genel fiyat kullanıldı (cari bilgisi yok): price={price_per_atv}, currency={currency}")
+                    price_per_vehicle = float(seasonal_price)
+            price_source = "seasonal"
+                    logger.info(f"Seasonal genel fiyat kullanıldı (cari bilgisi yok): price={price_per_vehicle}, currency={currency}")
                 elif cari_prices and len(cari_prices) > 0:
-                    # price_per_atv yok ama cari_prices var - ilk fiyatı kullan
+                    # price_per_vehicle yok ama cari_prices var - ilk fiyatı kullan
                     prices = list(cari_prices.values())
                     if prices and len(prices) > 0:
-                        price_per_atv = float(prices[0])
+                        price_per_vehicle = float(prices[0])
                         price_source = "seasonal"
-                        logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan, cari bilgisi yok): price={price_per_atv}, currency={currency}")
-                    else:
-                        price_per_atv = 0.0
+                        logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan, cari bilgisi yok): price={price_per_vehicle}, currency={currency}")
+    else:
+                        price_per_vehicle = 0.0
                         price_source = "error_fallback"
-                        logger.warning(f"Seasonal price'da fiyat bulunamadı (cari bilgisi yok): price_per_atv=None, cari_prices boş")
-                else:
-                    price_per_atv = 0.0
+                        logger.warning(f"Seasonal price'da fiyat bulunamadı (cari bilgisi yok): price_per_vehicle=None, cari_prices boş")
+        else:
+                    price_per_vehicle = 0.0
                     price_source = "error_fallback"
-                    logger.warning(f"Seasonal price'da fiyat bulunamadı (cari bilgisi yok): price_per_atv=None, cari_prices yok")
+                    logger.warning(f"Seasonal price'da fiyat bulunamadı (cari bilgisi yok): price_per_vehicle=None, cari_prices yok")
         else:
             # Cari ID yok veya eşleşmedi - ÖNCE cari_prices'dan bir fiyat kullanmayı dene
             # Çünkü cari_prices varsa, bu fiyatlar tanımlı demektir ve kullanılmalı
@@ -4447,65 +4447,65 @@ async def calculate_reservation_price(
                     # Cari ID var ama yukarıdaki kontrol geçmedi (belki başka bir sorun var) - tekrar dene
                     cari_specific_price = cari_prices_str_keys[cari_id_str]
                     if cari_specific_price is not None and isinstance(cari_specific_price, (int, float)):
-                        price_per_atv = float(cari_specific_price)
+                        price_per_vehicle = float(cari_specific_price)
                         price_source = "cari_specific"
-                        logger.info(f"Cari özel fiyat kullanıldı (else bloğunda, tekrar kontrol): cari_id={cari_id}, price={price_per_atv}, currency={currency}")
+                        logger.info(f"Cari özel fiyat kullanıldı (else bloğunda, tekrar kontrol): cari_id={cari_id}, price={price_per_vehicle}, currency={currency}")
                     else:
                         # Cari fiyat geçersiz, ilk fiyatı kullan
                         prices = list(cari_prices_str_keys.values())
                         if prices and len(prices) > 0:
-                            price_per_atv = float(prices[0])
+                            price_per_vehicle = float(prices[0])
                             price_source = "seasonal"
-                            logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan ilk fiyat, cari fiyat geçersiz): price={price_per_atv}, currency={currency}")
+                            logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan ilk fiyat, cari fiyat geçersiz): price={price_per_vehicle}, currency={currency}")
                         else:
-                            price_per_atv = 0.0
+                            price_per_vehicle = 0.0
                             price_source = "error_fallback"
                             logger.warning(f"Seasonal price'da fiyat bulunamadı: cari_prices boş")
                 else:
                     # Cari ID yok veya eşleşmedi - ilk fiyatı kullan (genel fiyat olarak)
                     prices = list(cari_prices_str_keys.values())
                     if prices and len(prices) > 0:
-                        price_per_atv = float(prices[0])
+                        price_per_vehicle = float(prices[0])
                         price_source = "seasonal"
-                        logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan ilk fiyat, cari_id yok/eşleşmedi): price={price_per_atv}, currency={currency}, cari_id={cari_id_str}")
+                        logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan ilk fiyat, cari_id yok/eşleşmedi): price={price_per_vehicle}, currency={currency}, cari_id={cari_id_str}")
                     else:
-                        price_per_atv = 0.0
+                        price_per_vehicle = 0.0
                         price_source = "error_fallback"
-                        logger.warning(f"Seasonal price'da fiyat bulunamadı: price_per_atv=None, cari_prices boş")
-            elif matching_seasonal.get("price_per_atv") is not None:
-                # cari_prices yok ama price_per_atv var - genel fiyatı kullan
-                seasonal_price = matching_seasonal.get("price_per_atv")
+                        logger.warning(f"Seasonal price'da fiyat bulunamadı: price_per_vehicle=None, cari_prices boş")
+            elif matching_seasonal.get("price_per_vehicle") is not None:
+                # cari_prices yok ama price_per_vehicle var - genel fiyatı kullan
+                seasonal_price = matching_seasonal.get("price_per_vehicle")
                 if isinstance(seasonal_price, (int, float)):
-                    price_per_atv = float(seasonal_price)
+                    price_per_vehicle = float(seasonal_price)
                     price_source = "seasonal"
-                    logger.info(f"Seasonal genel fiyat kullanıldı (cari özel fiyat yok, cari_prices yok): price={price_per_atv}, currency={currency}")
+                    logger.info(f"Seasonal genel fiyat kullanıldı (cari özel fiyat yok, cari_prices yok): price={price_per_vehicle}, currency={currency}")
                 else:
-                    price_per_atv = 0.0
+                    price_per_vehicle = 0.0
                     price_source = "error_fallback"
-                    logger.warning(f"Seasonal price'da fiyat bulunamadı: price_per_atv geçersiz")
+                    logger.warning(f"Seasonal price'da fiyat bulunamadı: price_per_vehicle geçersiz")
             else:
-                price_per_atv = 0.0
+                price_per_vehicle = 0.0
                 price_source = "error_fallback"
-                logger.warning(f"Seasonal price'da fiyat bulunamadı: price_per_atv=None, cari_prices yok")
+                logger.warning(f"Seasonal price'da fiyat bulunamadı: price_per_vehicle=None, cari_prices yok")
         
         currency = matching_seasonal.get("currency", "EUR")
     else:
         # Seasonal price yok - fiyat yönetiminden fiyat tanımlanmamış
-        price_per_atv = 0.0
+        price_per_vehicle = 0.0
         price_source = "error_fallback"
         logger.warning(f"Seasonal price bulunamadı - fiyat yönetiminden fiyat tanımlanmalı: tour_type_id={tour_type_id}, date={date}")
     
-    # Güvenlik kontrolü: price_per_atv mutlaka sayısal olmalı
-    if price_per_atv is None or not isinstance(price_per_atv, (int, float)):
-        logger.error(f"Fiyat hesaplama hatası: price_per_atv={price_per_atv}, tour_type_id={tour_type_id}")
-        price_per_atv = 0.0
+    # Güvenlik kontrolü: price_per_vehicle mutlaka sayısal olmalı
+    if price_per_vehicle is None or not isinstance(price_per_vehicle, (int, float)):
+        logger.error(f"Fiyat hesaplama hatası: price_per_vehicle={price_per_vehicle}, tour_type_id={tour_type_id}")
+        price_per_vehicle = 0.0
         price_source = "error_fallback"
     
-    # Toplam fiyat = ATV sayısı * ATV başına fiyat
-    total_price = float(price_per_atv) * int(atv_count)
+    # Toplam fiyat = Araç sayısı * Araç başına fiyat
+    total_price = float(price_per_vehicle) * int(vehicle_count)
     
     logger.info(f"Fiyat hesaplandı: cari_id={cari_id}, tour_type_id={tour_type_id}, date={date}, "
-                f"atv_count={atv_count}, price_per_atv={price_per_atv}, total_price={total_price}, "
+                f"vehicle_count={vehicle_count}, price_per_vehicle={price_per_vehicle}, total_price={total_price}, "
                 f"currency={currency}, source={price_source}")
     
     return total_price, currency
@@ -4514,12 +4514,12 @@ async def calculate_reservation_price(
 async def calculate_price(
     tour_type_id: str,
     date: str,
-    atv_count: int,
+    vehicle_count: int,
     cari_id: Optional[str] = None,
     person_count: int = 1,
     current_user: dict = Depends(get_current_user)
 ):
-    """Rezervasyon fiyatını hesapla - frontend için"""
+    """Rezervasyon fiyatını hesapla - frontend için (araç sayısı üzerine)"""
     try:
         # Boş string'i None'a çevir
         if cari_id == "" or cari_id is None:
@@ -4530,7 +4530,7 @@ async def calculate_price(
             cari_id=cari_id,
             tour_type_id=tour_type_id,
             date=date,
-            atv_count=atv_count,
+            vehicle_count=vehicle_count,
             person_count=person_count
         )
         return {
@@ -4589,14 +4589,14 @@ async def cari_create_reservation(
         raise HTTPException(status_code=404, detail="Tour type not found")
     
     # Fiyatı server-side hesapla
-    atv_count = getattr(data, 'atv_count', 1)
+    vehicle_count = getattr(data, 'vehicle_count', None) or getattr(data, 'atv_count', 1)  # Backward compatibility
     person_count = getattr(data, 'person_count', 1)
     price, currency = await calculate_reservation_price(
         company_id=current_cari["company_id"],
         cari_id=cari_account["id"],
         tour_type_id=tour_type_id,
         date=getattr(data, 'date'),
-        atv_count=atv_count,
+        vehicle_count=vehicle_count,
         person_count=person_count
     )
     

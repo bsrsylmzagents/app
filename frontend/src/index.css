@@ -474,32 +474,32 @@
     letter-spacing: -0.025em; /* tracking-tight */
   }
   
-  /* Dynamic Theme Typography - Use Outfit for headings */
-  :root[data-theme="dynamic"] h1,
-  :root[data-theme="dynamic"] h2,
-  :root[data-theme="dynamic"] h3,
-  :root[data-theme="dynamic"] h4,
-  :root[data-theme="dynamic"] h5,
-  :root[data-theme="dynamic"] h6,
-  :root[data-theme="dynamic"] [class*="heading"],
-  :root[data-theme="dynamic"] [class*="title"],
-  :root[data-theme="dynamic"] h1[class*="text-"],
-  :root[data-theme="dynamic"] h2[class*="text-"],
-  :root[data-theme="dynamic"] h3[class*="text-"] {
+  /* Dynamic Theme Typography - Use Outfit for headings - BELİRGİN */
+  :root[data-theme="dynamic"] h1:not(.sidebar h1),
+  :root[data-theme="dynamic"] h2:not(.sidebar h2),
+  :root[data-theme="dynamic"] h3:not(.sidebar h3),
+  :root[data-theme="dynamic"] h4:not(.sidebar h4),
+  :root[data-theme="dynamic"] h5:not(.sidebar h5),
+  :root[data-theme="dynamic"] h6:not(.sidebar h6),
+  :root[data-theme="dynamic"] [class*="heading"]:not(.sidebar [class*="heading"]),
+  :root[data-theme="dynamic"] [class*="title"]:not(.sidebar [class*="title"]),
+  :root[data-theme="dynamic"] h1[class*="text-"]:not(.sidebar h1),
+  :root[data-theme="dynamic"] h2[class*="text-"]:not(.sidebar h2),
+  :root[data-theme="dynamic"] h3[class*="text-"]:not(.sidebar h3) {
     font-family: var(--font-heading) !important; /* Outfit font */
-    font-weight: 800; /* Extra bold for magazine look */
+    font-weight: 800 !important; /* Extra bold for magazine look */
     letter-spacing: -0.02em;
-    color: var(--text-primary) !important; /* Dark charcoal */
+    color: #1c1917 !important; /* Stone-900 - BELİRGİN Dark charcoal */
   }
   
-  /* Dynamic Theme Page Titles - Large, Bold, Outfit */
+  /* Dynamic Theme Page Titles - Large, Bold, Outfit - BELİRGİN */
   :root[data-theme="dynamic"] h1.text-3xl,
   :root[data-theme="dynamic"] h1.text-4xl,
   :root[data-theme="dynamic"] h2.text-3xl,
   :root[data-theme="dynamic"] h2.text-2xl {
     font-family: var(--font-heading) !important;
     font-weight: 800 !important;
-    color: #1c1917 !important; /* Stone-900 - Dark charcoal */
+    color: #1c1917 !important; /* Stone-900 - BELİRGİN Dark charcoal */
   }
   
   /* Dark Mode Only Typography */
@@ -510,6 +510,31 @@
   
   p, span, div:not(button):not([class*="text-"]) {
     color: var(--text-secondary) !important;
+  }
+  
+  /* Dynamic Theme - Ana içerik alanı yazıları belirgin */
+  :root[data-theme="dynamic"] body,
+  :root[data-theme="dynamic"] main {
+    background-color: #fafaf9 !important; /* Stone-50 */
+    color: #1c1917 !important; /* Stone-900 - Dark charcoal for readability */
+  }
+  
+  /* Dynamic Theme - Başlıklar belirgin */
+  :root[data-theme="dynamic"] main h1,
+  :root[data-theme="dynamic"] main h2,
+  :root[data-theme="dynamic"] main h3,
+  :root[data-theme="dynamic"] main h4,
+  :root[data-theme="dynamic"] main h5,
+  :root[data-theme="dynamic"] main h6 {
+    color: #1c1917 !important; /* Stone-900 */
+    font-weight: 800 !important;
+  }
+  
+  /* Dynamic Theme - Paragraflar ve metin belirgin */
+  :root[data-theme="dynamic"] main p:not(.sidebar p),
+  :root[data-theme="dynamic"] main span:not(button span):not(a span):not(.sidebar span),
+  :root[data-theme="dynamic"] main div:not(button):not(a):not([class*="card"]):not([class*="Card"]):not(.sidebar):not(.sidebar *) {
+    color: #57534e !important; /* Stone-600 - Readable body text */
   }
   
   .text-muted,
@@ -697,35 +722,64 @@
     z-index: 1;
   }
   
-  /* Dynamic Theme Sidebar Text - Force White */
-  :root[data-theme="dynamic"] .sidebar,
-  :root[data-theme="dynamic"] .sidebar *,
-  :root[data-theme="dynamic"] aside[class*="sidebar"],
-  :root[data-theme="dynamic"] aside[class*="sidebar"] * {
-    color: var(--text-sidebar) !important;
+  /* Dynamic Theme Sidebar Text - Force White (daha spesifik kurallar) */
+  :root[data-theme="dynamic"] .sidebar h1,
+  :root[data-theme="dynamic"] .sidebar h2,
+  :root[data-theme="dynamic"] .sidebar h3,
+  :root[data-theme="dynamic"] .sidebar p,
+  :root[data-theme="dynamic"] .sidebar span:not(.nav-item.bg-white span),
+  :root[data-theme="dynamic"] .sidebar div:not(.nav-item.bg-white),
+  :root[data-theme="dynamic"] aside[class*="sidebar"] h1,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] h2,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] h3,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] p,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] span:not(.nav-item.bg-white span),
+  :root[data-theme="dynamic"] aside[class*="sidebar"] div:not(.nav-item.bg-white) {
+    color: #ffffff !important; /* Pure white */
   }
   
-  /* Dynamic Theme Sidebar Navigation Items */
-  :root[data-theme="dynamic"] .sidebar .nav-item:not(.active),
-  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:not(.active) {
-    color: var(--text-sidebar-muted) !important; /* 70% opacity white */
+  /* Active menu item text - Orange */
+  :root[data-theme="dynamic"] .sidebar .nav-item.bg-white span,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-white span {
+    color: #ea580c !important; /* Orange-600 */
   }
   
-  :root[data-theme="dynamic"] .sidebar .nav-item.active,
-  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.active {
-    background: rgba(255, 255, 255, 0.2) !important; /* White glassmorphism */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    color: var(--text-sidebar) !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* Dynamic Theme Sidebar Navigation Items - Inactive */
+  :root[data-theme="dynamic"] .sidebar .nav-item:not(.bg-white),
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:not(.bg-white) {
+    background: transparent !important;
+    color: #ffffff !important; /* Pure white text */
   }
   
-  /* Dynamic Theme Sidebar Icons - Force White */
-  :root[data-theme="dynamic"] .sidebar svg,
-  :root[data-theme="dynamic"] aside[class*="sidebar"] svg {
-    color: var(--text-sidebar) !important;
-    fill: var(--text-sidebar) !important;
-    stroke: var(--text-sidebar) !important;
+  /* Dynamic Theme Sidebar Navigation Items - Active (white pill) */
+  :root[data-theme="dynamic"] .sidebar .nav-item.bg-white,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-white {
+    background: #ffffff !important; /* Solid white */
+    color: #ea580c !important; /* Orange-600 text */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; /* shadow-md */
+    font-weight: 700 !important; /* font-bold */
+  }
+  
+  /* Dynamic Theme Sidebar Navigation Items - Hover (inactive) */
+  :root[data-theme="dynamic"] .sidebar .nav-item:not(.bg-white):hover,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:not(.bg-white):hover {
+    background: rgba(255, 255, 255, 0.1) !important; /* hover:bg-white/10 */
+  }
+  
+  /* Dynamic Theme Sidebar Icons - Inactive items */
+  :root[data-theme="dynamic"] .sidebar .nav-item:not(.bg-white) svg,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:not(.bg-white) svg {
+    color: rgba(255, 255, 255, 0.9) !important; /* text-white/90 */
+    fill: rgba(255, 255, 255, 0.9) !important;
+    stroke: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  /* Dynamic Theme Sidebar Icons - Active items */
+  :root[data-theme="dynamic"] .sidebar .nav-item.bg-white svg,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-white svg {
+    color: #ea580c !important; /* Orange-600 */
+    fill: #ea580c !important;
+    stroke: #ea580c !important;
   }
   
   .sidebar a:hover,
@@ -735,12 +789,7 @@
     background-color: var(--sidebar-hover) !important;
   }
   
-  /* Dynamic Theme Sidebar Hover */
-  :root[data-theme="dynamic"] .sidebar .nav-item:hover,
-  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: var(--text-sidebar) !important;
-  }
+  /* Dynamic Theme Sidebar Hover - Removed duplicate, already handled above */
   
   /* Header - Use CSS Variables */
   header,
@@ -760,7 +809,7 @@
     box-shadow: var(--card-shadow) !important;
   }
   
-  /* Dynamic Theme Cards - Clean White Cards */
+  /* Dynamic Theme Cards - Clean White Cards with Belirgin Text */
   :root[data-theme="dynamic"] .card,
   :root[data-theme="dynamic"] [class*="card"],
   :root[data-theme="dynamic"] [class*="Card"] {
@@ -768,6 +817,59 @@
     border-color: #e7e5e4 !important; /* Stone-200 */
     border-radius: 1rem !important; /* rounded-2xl */
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important; /* Subtle shadow */
+  }
+  
+  /* Dynamic Theme - Card içindeki yazılar belirgin */
+  :root[data-theme="dynamic"] .card h1,
+  :root[data-theme="dynamic"] .card h2,
+  :root[data-theme="dynamic"] .card h3,
+  :root[data-theme="dynamic"] [class*="card"] h1,
+  :root[data-theme="dynamic"] [class*="card"] h2,
+  :root[data-theme="dynamic"] [class*="card"] h3 {
+    color: #1c1917 !important; /* Stone-900 - Belirgin başlıklar */
+  }
+  
+  :root[data-theme="dynamic"] .card p,
+  :root[data-theme="dynamic"] .card span,
+  :root[data-theme="dynamic"] .card div,
+  :root[data-theme="dynamic"] [class*="card"] p,
+  :root[data-theme="dynamic"] [class*="card"] span,
+  :root[data-theme="dynamic"] [class*="card"] div {
+    color: #57534e !important; /* Stone-600 - Belirgin metin */
+  }
+  
+  /* Dynamic Theme - Input alanları belirgin */
+  :root[data-theme="dynamic"] input,
+  :root[data-theme="dynamic"] textarea,
+  :root[data-theme="dynamic"] select {
+    background-color: #ffffff !important;
+    border-color: #e7e5e4 !important;
+    color: #1c1917 !important; /* Belirgin yazı */
+  }
+  
+  :root[data-theme="dynamic"] input::placeholder,
+  :root[data-theme="dynamic"] textarea::placeholder {
+    color: #a8a29e !important; /* Stone-400 - Belirgin placeholder */
+  }
+  
+  /* Dynamic Theme - Butonlar belirgin */
+  :root[data-theme="dynamic"] button:not(.nav-item):not(.sidebar button) {
+    color: #ffffff !important; /* Belirgin buton yazısı */
+  }
+  
+  /* Dynamic Theme - Tablolar belirgin */
+  :root[data-theme="dynamic"] table th {
+    color: #1c1917 !important; /* Belirgin başlık */
+    background-color: #fafaf9 !important;
+  }
+  
+  :root[data-theme="dynamic"] table td {
+    color: #57534e !important; /* Belirgin hücre yazısı */
+    background-color: #ffffff !important;
+  }
+  
+  :root[data-theme="dynamic"] table tbody tr:hover td {
+    background-color: #f5f5f4 !important; /* Stone-100 hover */
   }
   
   /* Tables - Use CSS Variables */

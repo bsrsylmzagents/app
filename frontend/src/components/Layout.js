@@ -25,8 +25,13 @@ import NotificationCenter from './NotificationCenter';
 import axios from 'axios';
 import { API } from '../App';
 import { format } from 'date-fns';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Layout = () => {
+  // Get theme from ThemeContext
+  const { theme } = useTheme();
+  const isDynamicTheme = theme === 'dynamic';
+  
   // Get user preferences for sidebar
   const getUserPreferences = () => {
     try {
@@ -43,6 +48,40 @@ const Layout = () => {
 
   const preferences = getUserPreferences();
   const sidebarCollapsedPref = preferences.sidebarCollapsed || false;
+  
+  // Helper function to get menu item classes based on theme and active state
+  const getMenuItemClasses = (isActive) => {
+    if (isDynamicTheme) {
+      // Dynamic Theme Styles
+      if (isActive) {
+        // Active: White background, orange text
+        return 'nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors bg-white text-orange-600 font-bold shadow-md';
+      } else {
+        // Inactive: Transparent background, white text
+        return 'nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors bg-transparent text-white hover:bg-white/10';
+      }
+    } else {
+      // Classic/Dark Theme Styles (original)
+      if (isActive) {
+        return 'nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors active text-white bg-elevated border-l-4 border-orange-400';
+      } else {
+        return 'nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors text-foreground/70 hover:text-white hover:bg-elevated';
+      }
+    }
+  };
+  
+  // Helper function to get icon color classes based on theme and active state
+  const getIconColor = (isActive) => {
+    if (isDynamicTheme) {
+      if (isActive) {
+        return 'text-orange-600';
+      } else {
+        return 'text-white/90';
+      }
+    }
+    // Classic theme uses default icon colors
+    return '';
+  };
   
   // Sidebar: closed on mobile by default, open on desktop
   // On desktop, respect user preference for collapsed state
@@ -386,14 +425,14 @@ const Layout = () => {
       }`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between px-6 py-6 border-b border-border">
+          <div className={`flex items-center justify-between px-6 py-6 border-b ${isDynamicTheme ? 'border-white/20' : 'border-border'}`}>
             <div>
-              <h1 className="text-2xl font-bold text-foreground" data-testid="app-logo">TourCast</h1>
-              <p className="text-xs text-muted-foreground mt-1">{company.name}</p>
+              <h1 className={`text-2xl font-bold ${isDynamicTheme ? 'text-white' : 'text-foreground'}`} data-testid="app-logo">TourCast</h1>
+              <p className={`text-xs mt-1 ${isDynamicTheme ? 'text-orange-100' : 'text-muted-foreground'}`}>{company.name}</p>
             </div>
             <button 
               onClick={() => setSidebarOpen(false)} 
-              className="md:hidden text-foreground/70 hover:text-white"
+              className={`md:hidden ${isDynamicTheme ? 'text-white hover:text-white/80' : 'text-foreground/70 hover:text-white'}`}
               data-testid="close-sidebar-btn"
             >
               <X size={24} />
@@ -403,239 +442,81 @@ const Layout = () => {
           {/* Navigation */}
           <nav className="flex-1 px-4 md:px-6 py-6 overflow-y-auto">
             <ul className="space-y-3">
-              {/* Admin Panel Menüsü */}
-              {adminMenuItems.length > 0 && (
-                <>
-                  <li className="px-4 md:px-6 py-2">
-                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Panel</div>
-                  </li>
-                  {adminMenuItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <li key={item.path}>
-                        <Link
-                          to={item.path}
-                          data-testid={item.testId}
-                          className={`nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors ${
-                            isActive ? 'active text-white bg-elevated border-l-4 border-orange-400' : 'text-foreground/70 hover:text-white hover:bg-elevated'
-                          }`}
-                        >
-                          {isActive ? (
-                            <Icon weight="fill" size={22} />
-                          ) : (
-                            <Icon weight="duotone" size={22} />
-                          )}
-                          <span>{item.label}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                  <li className="px-4 md:px-6 py-2 mt-4">
-                    <div className="border-t border-slate-800 dark:border-[#2D2F33]"></div>
-                  </li>
-                </>
-              )}
-              {/* Normal Menü */}
-              {(() => {
-                // Group menu items by category for section headers
-                const operationItems = filteredMenuItems.filter(item => 
-                  ['/', '/reservations', '/calendar', '/customers', '/cari-accounts'].includes(item.path)
-                );
-                const financeItems = filteredMenuItems.filter(item => 
-                  ['/seasonal-prices', '/extra-sales', '/service-purchases', '/cash'].includes(item.path)
-                );
-                const reportsItems = filteredMenuItems.filter(item => 
-                  item.path === '/reports'
-                );
-                const inventoryItems = filteredMenuItems.filter(item => 
-                  item.path === '/inventory'
-                );
-                const settingsItems = filteredMenuItems.filter(item => 
-                  item.path === '/settings'
-                );
-
+              {/* Admin Panel Menüsü - Kategorizasyon olmadan */}
+              {adminMenuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
                 return (
-                  <>
-                    {/* OPERASYON Section */}
-                    {operationItems.length > 0 && (
-                      <>
-                        {operationItems.map((item) => {
-                          const Icon = item.icon;
-                          const isActive = location.pathname === item.path || 
-                            (item.path === '/customers' && location.pathname.startsWith('/customers'));
-                          
-                          return (
-                            <li key={item.path}>
-                              <Link
-                                to={item.path}
-                                data-testid={item.testId}
-                                className={`nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors ${
-                                  isActive ? 'active text-white bg-elevated border-l-4 border-orange-400' : 'text-foreground/70 hover:text-white hover:bg-elevated'
-                                }`}
-                              >
-                                {isActive ? (
-                                  <Icon weight="fill" size={22} />
-                                ) : (
-                                  <Icon weight="duotone" size={22} />
-                                )}
-                                <span>{item.label}</span>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </>
-                    )}
-
-                    {/* FİNANS Section */}
-                    {financeItems.length > 0 && (
-                      <>
-                        {financeItems.map((item) => {
-                          const Icon = item.icon;
-                          const isActive = location.pathname === item.path || 
-                            (item.path === '/cash' && location.pathname.startsWith('/cash'));
-                          
-                          return (
-                            <li key={item.path}>
-                              <Link
-                                to={item.path}
-                                data-testid={item.testId}
-                                className={`nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors ${
-                                  isActive ? 'active text-white bg-elevated border-l-4 border-orange-400' : 'text-foreground/70 hover:text-white hover:bg-elevated'
-                                }`}
-                              >
-                                {isActive ? (
-                                  <Icon weight="fill" size={22} />
-                                ) : (
-                                  <Icon weight="duotone" size={22} />
-                                )}
-                                <span>{item.label}</span>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </>
-                    )}
-
-                    {/* RAPORLAR Section */}
-                    {reportsItems.length > 0 && (
-                      <>
-                        {reportsItems.map((item) => {
-                          const Icon = item.icon;
-                          const isActive = location.pathname === item.path;
-                          
-                          return (
-                            <li key={item.path}>
-                              <Link
-                                to={item.path}
-                                data-testid={item.testId}
-                                className={`nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors ${
-                                  isActive ? 'active text-white bg-elevated border-l-4 border-orange-400' : 'text-foreground/70 hover:text-white hover:bg-elevated'
-                                }`}
-                              >
-                                {isActive ? (
-                                  <Icon weight="fill" size={22} />
-                                ) : (
-                                  <Icon weight="duotone" size={22} />
-                                )}
-                                <span>{item.label}</span>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </>
-                    )}
-
-                    {/* ENVANTER Section */}
-                    {inventoryItems.length > 0 && (
-                      <>
-                        {inventoryItems.map((item) => {
-                          const Icon = item.icon;
-                          const isActive = location.pathname === item.path;
-                          
-                          return (
-                            <li key={item.path}>
-                              <Link
-                                to={item.path}
-                                data-testid={item.testId}
-                                className={`nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors ${
-                                  isActive ? 'active text-white bg-elevated border-l-4 border-orange-400' : 'text-foreground/70 hover:text-white hover:bg-elevated'
-                                }`}
-                              >
-                                {isActive ? (
-                                  <Icon weight="fill" size={22} />
-                                ) : (
-                                  <Icon weight="duotone" size={22} />
-                                )}
-                                <span>{item.label}</span>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </>
-                    )}
-
-                    {/* AYARLAR Section */}
-                    {settingsItems.length > 0 && (
-                      <>
-                        {settingsItems.map((item) => {
-                          const Icon = item.icon;
-                          const isActive = location.pathname === item.path || 
-                            (item.path === '/settings' && location.pathname.startsWith('/settings'));
-                          
-                          return (
-                            <li key={item.path}>
-                              <Link
-                                to={item.path}
-                                data-testid={item.testId}
-                                className={`nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors ${
-                                  isActive ? 'active text-white bg-elevated border-l-4 border-orange-400' : 'text-foreground/70 hover:text-white hover:bg-elevated'
-                                }`}
-                              >
-                                {isActive ? (
-                                  <Icon weight="fill" size={22} />
-                                ) : (
-                                  <Icon weight="duotone" size={22} />
-                                )}
-                                <span>{item.label}</span>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </>
-                    )}
-                  </>
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      data-testid={item.testId}
+                      className={getMenuItemClasses(isActive)}
+                    >
+                      <Icon 
+                        weight={isActive ? "fill" : "duotone"} 
+                        size={22} 
+                        className={isDynamicTheme ? getIconColor(isActive) : ''}
+                      />
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
                 );
-              })()}
+              })}
+              {/* Normal Menü - Tüm öğeler tek listede, kategorizasyon yok */}
+              {filteredMenuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path || 
+                  (item.path === '/customers' && location.pathname.startsWith('/customers')) ||
+                  (item.path === '/cash' && location.pathname.startsWith('/cash')) ||
+                  (item.path === '/settings' && location.pathname.startsWith('/settings'));
+                
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      data-testid={item.testId}
+                      className={getMenuItemClasses(isActive)}
+                    >
+                      <Icon 
+                        weight={isActive ? "fill" : "duotone"} 
+                        size={22} 
+                        className={isDynamicTheme ? getIconColor(isActive) : ''}
+                      />
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
 
           {/* User Profile */}
-          <div className="px-4 md:px-6 py-4 border-t border-slate-800 dark:border-[#2D2F33] relative z-[10001]" ref={profileDropdownRef}>
+          <div className={`px-4 md:px-6 py-4 border-t ${isDynamicTheme ? 'border-white/20' : 'border-slate-800 dark:border-[#2D2F33]'} relative z-[10001]`} ref={profileDropdownRef}>
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-3 hover:bg-elevated p-2 rounded-lg transition-colors cursor-pointer flex-1"
+                className={`flex items-center gap-3 ${isDynamicTheme ? 'hover:bg-white/10' : 'hover:bg-elevated'} p-2 rounded-lg transition-colors cursor-pointer flex-1`}
               >
-                <div className="w-10 h-10 rounded-full bg-indigo-600 dark:bg-[#3EA6FF] flex items-center justify-center text-white font-semibold">
+                <div className={`w-10 h-10 rounded-full ${isDynamicTheme ? 'bg-white/20' : 'bg-indigo-600 dark:bg-[#3EA6FF]'} flex items-center justify-center text-white font-semibold`}>
                   {user.full_name?.charAt(0).toUpperCase() || company.name?.charAt(0).toUpperCase() || 'F'}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium text-white dark:text-white truncate" data-testid="user-name">
+                  <p className={`text-sm font-medium truncate ${isDynamicTheme ? 'text-white' : 'text-white dark:text-white'}`} data-testid="user-name">
                     {user.full_name || user.username}
                   </p>
-                  <p className="text-xs text-slate-300 dark:text-[#A5A5A5] truncate">
+                  <p className={`text-xs truncate ${isDynamicTheme ? 'text-orange-100' : 'text-slate-300 dark:text-[#A5A5A5]'}`}>
                     {company.name || 'Firma Profili'}
                   </p>
                 </div>
                 <ChevronDown 
                   size={16} 
-                  className={`text-slate-300 dark:text-[#A5A5A5] transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`}
+                  className={`${isDynamicTheme ? 'text-white' : 'text-slate-300 dark:text-[#A5A5A5]'} transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`}
                 />
               </button>
               <button 
                 onClick={handleLogout} 
-                className="text-slate-300 dark:text-[#A5A5A5] hover:text-red-400 dark:hover:text-red-400 transition-colors ml-2"
+                className={`${isDynamicTheme ? 'text-white hover:text-red-300' : 'text-slate-300 dark:text-[#A5A5A5] hover:text-red-400 dark:hover:text-red-400'} transition-colors ml-2`}
                 data-testid="logout-btn"
               >
                 <LogOut size={20} />

@@ -61,7 +61,7 @@ const Reservations = () => {
     customer_contact: '',
     customer_details: null,
     person_count: 1,
-    atv_count: 1,
+    vehicle_count: 1,
     pickup_location: '',
     pickup_maps_link: '',
     price: 0,
@@ -88,7 +88,7 @@ const Reservations = () => {
     check_number: '',
     bank_name: ''
   });
-  const [basePricePerAtv, setBasePricePerAtv] = useState(null); // 1 ATV için dönemsel fiyat
+  const [basePricePerAtv, setBasePricePerAtv] = useState(null); // 1 araç için dönemsel fiyat
   const [seasonalPriceCurrency, setSeasonalPriceCurrency] = useState(null); // Dönemsel fiyat döviz tipi
   const [customerDetails, setCustomerDetails] = useState({
     phone: '',
@@ -137,14 +137,14 @@ const Reservations = () => {
   // Dönemsel fiyat kontrolü - rezervasyon formunda cari, tur tipi ve tarih seçildiğinde
   useEffect(() => {
     const checkSeasonalPrice = async () => {
-      // Tur tipi, tarih ve ATV sayısı zorunlu
-      if (formData.tour_type_id && formData.date && formData.atv_count && formData.atv_count > 0 && dialogOpen) {
+      // Tur tipi, tarih ve araç sayısı zorunlu
+      if (formData.tour_type_id && formData.date && formData.vehicle_count && formData.vehicle_count > 0 && dialogOpen) {
         try {
           // Backend'den fiyat hesapla (cari_id opsiyonel - münferit rezervasyonlar için None olabilir)
           const params = {
             tour_type_id: formData.tour_type_id,
             date: formData.date,
-            atv_count: formData.atv_count,
+            vehicle_count: formData.vehicle_count,
             person_count: formData.person_count || 1
           };
           
@@ -164,10 +164,10 @@ const Reservations = () => {
             if (totalPrice > 0) {
               const exchangeRate = rates[currency] || 1.0;
               
-              // ATV başına fiyatı hesapla (gösterim için)
-              const pricePerAtv = totalPrice / formData.atv_count;
+              // Araç başına fiyatı hesapla (gösterim için)
+              const pricePerVehicle = totalPrice / formData.vehicle_count;
               
-              setBasePricePerAtv(pricePerAtv);
+              setBasePricePerAtv(pricePerVehicle);
               setSeasonalPriceCurrency(currency);
               
               setFormData(prev => ({
@@ -208,12 +208,12 @@ const Reservations = () => {
     };
 
     checkSeasonalPrice();
-  }, [formData.cari_id, formData.tour_type_id, formData.date, formData.atv_count, dialogOpen, rates]);
+  }, [formData.cari_id, formData.tour_type_id, formData.date, formData.vehicle_count, dialogOpen, rates]);
 
-  // ATV sayısı değiştiğinde fiyatı güncelle (dönemsel fiyat varsa)
+  // Araç sayısı değiştiğinde fiyatı güncelle (dönemsel fiyat varsa)
   useEffect(() => {
     if (basePricePerAtv !== null && dialogOpen) {
-      const totalPrice = basePricePerAtv * formData.atv_count;
+      const totalPrice = basePricePerAtv * formData.vehicle_count;
       const currency = seasonalPriceCurrency || formData.currency;
       const exchangeRate = rates[currency] || 1.0;
       
@@ -224,7 +224,7 @@ const Reservations = () => {
         exchange_rate: exchangeRate
       }));
     }
-  }, [formData.atv_count, basePricePerAtv, seasonalPriceCurrency, rates, dialogOpen]);
+  }, [formData.vehicle_count, basePricePerAtv, seasonalPriceCurrency, rates, dialogOpen]);
 
   const fetchReservations = async (status = null) => {
     try {
@@ -687,7 +687,7 @@ const Reservations = () => {
       customer_contact: reservation.customer_contact || '',
       customer_details: reservation.customer_details || null,
       person_count: reservation.person_count,
-      atv_count: reservation.atv_count,
+      vehicle_count: reservation.vehicle_count || reservation.atv_count, // Backward compatibility
       pickup_location: reservation.pickup_location || '',
       pickup_maps_link: reservation.pickup_maps_link || '',
       price: reservation.price,
@@ -745,7 +745,7 @@ const Reservations = () => {
       customer_contact: '',
       customer_details: null,
       person_count: 1,
-      atv_count: 1,
+      vehicle_count: 1,
       pickup_location: '',
       pickup_maps_link: '',
       price: 0,
@@ -891,7 +891,7 @@ const Reservations = () => {
           (reservation.pickup_location || '').toLowerCase().includes(query) ||
           String(reservation.price || '').includes(query) ||
           (reservation.currency || '').toLowerCase().includes(query) ||
-          String(reservation.atv_count || '').includes(query) ||
+          String(reservation.vehicle_count || reservation.atv_count || '').includes(query) ||
           String(reservation.person_count || '').includes(query)
         );
       });
@@ -1133,23 +1133,23 @@ const Reservations = () => {
                     <label className="block text-sm font-medium mb-2">Araç Sayısı</label>
                     <input
                       type="number"
-                      value={formData.atv_count}
+                      value={formData.vehicle_count}
                       onChange={(e) => {
-                        const newAtvCount = parseInt(e.target.value) || 1;
+                        const newVehicleCount = parseInt(e.target.value) || 1;
                         // Dönemsel fiyat varsa, fiyatı anında hesapla
                         if (basePricePerAtv !== null) {
-                          const totalPrice = basePricePerAtv * newAtvCount;
+                          const totalPrice = basePricePerAtv * newVehicleCount;
                           const currency = seasonalPriceCurrency || formData.currency;
                           const exchangeRate = rates[currency] || 1.0;
                           setFormData(prev => ({
                             ...prev,
-                            atv_count: newAtvCount,
+                            vehicle_count: newVehicleCount,
                             price: totalPrice,
                             currency: currency,
                             exchange_rate: exchangeRate
                           }));
                         } else {
-                          setFormData({ ...formData, atv_count: newAtvCount });
+                          setFormData({ ...formData, vehicle_count: newVehicleCount });
                         }
                       }}
                       className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
@@ -1758,7 +1758,7 @@ const Reservations = () => {
                     {reservation.cari_name}
                   </td>
                   <td className={`px-6 py-4 text-sm font-semibold ${reservation.status === 'cancelled' ? 'text-red-400 line-through' : 'text-[#3EA6FF]'}`}>
-                    {reservation.atv_count}
+                    {reservation.vehicle_count || reservation.atv_count}
                   </td>
                   <td className={`px-6 py-4 text-sm ${reservation.status === 'cancelled' ? 'text-red-400 line-through' : 'text-white'}`}>
                     {reservation.price} {reservation.currency}
