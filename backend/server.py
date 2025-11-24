@@ -4124,11 +4124,11 @@ class CariReservationCreate(BaseModel):
 
 async def calculate_reservation_price(
     company_id: str,
-    cari_id: str,
+    cari_id: Optional[str],
     tour_type_id: str,
     date: str,
     atv_count: int,
-    person_count: int
+    person_count: int = 1
 ):
     """Rezervasyon fiyatını hesapla - seasonal prices ve cari özel fiyatları kontrol et"""
     # Company kurlarını al
@@ -4196,6 +4196,48 @@ async def calculate_reservation_price(
                     price_per_atv = 0.0
                 price_source = "seasonal"
                 logger.warning(f"Cari özel fiyat geçersiz (None veya sayı değil), seasonal fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}")
+        elif matching_seasonal.get("apply_to_new_caris", False) and cari_id:
+            # Yeni cariler için geçerli mi kontrol et
+            cari_account = await db.cari_accounts.find_one({"id": cari_id, "company_id": company_id})
+            if cari_account and cari_account.get("created_at"):
+                cari_created = datetime.fromisoformat(cari_account["created_at"].replace('Z', '+00:00')).date()
+                price_start = datetime.strptime(matching_seasonal["start_date"], "%Y-%m-%d").date()
+                price_end = datetime.strptime(matching_seasonal["end_date"], "%Y-%m-%d").date()
+                
+                if price_start <= cari_created <= price_end:
+                    # İlk bulunan fiyatı kullan
+                    prices = list(cari_prices.values())
+                    if prices and len(prices) > 0:
+                        price_per_atv = float(prices[0])
+                        price_source = "cari_specific"
+                        logger.info(f"Yeni cari için fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}, currency={currency}")
+                    else:
+                        # Cari prices boşsa, seasonal genel fiyatı kullan
+                        seasonal_price = matching_seasonal.get("price_per_atv")
+                        if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
+                            price_per_atv = float(seasonal_price)
+                        else:
+                            price_per_atv = 0.0
+                        price_source = "seasonal"
+                        logger.info(f"Seasonal genel fiyat kullanıldı (yeni cari için): price={price_per_atv}, currency={currency}")
+                else:
+                    # Cari oluşturulma tarihi aralık dışında, seasonal genel fiyatı kullan
+                    seasonal_price = matching_seasonal.get("price_per_atv")
+                    if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
+                        price_per_atv = float(seasonal_price)
+                    else:
+                        price_per_atv = 0.0
+                    price_source = "seasonal"
+                    logger.info(f"Seasonal genel fiyat kullanıldı (cari tarih aralık dışında): price={price_per_atv}, currency={currency}")
+            else:
+                # Cari bulunamadı veya created_at yok, seasonal genel fiyatı kullan
+                seasonal_price = matching_seasonal.get("price_per_atv")
+                if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
+                    price_per_atv = float(seasonal_price)
+                else:
+                    price_per_atv = 0.0
+                price_source = "seasonal"
+                logger.info(f"Seasonal genel fiyat kullanıldı (cari bilgisi yok): price={price_per_atv}, currency={currency}")
         else:
             # Seasonal genel fiyatı kullan
             seasonal_price = matching_seasonal.get("price_per_atv")
@@ -4204,7 +4246,7 @@ async def calculate_reservation_price(
             else:
                 price_per_atv = 0.0
             price_source = "seasonal"
-            logger.info(f"Seasonal fiyat kullanıldı (cari özel fiyat yok): price={price_per_atv}, currency={currency}")
+            logger.info(f"Seasonal genel fiyat kullanıldı (cari özel fiyat yok): price={price_per_atv}, currency={currency}")
         
         currency = matching_seasonal.get("currency", "EUR")
     else:
@@ -4227,6 +4269,33 @@ async def calculate_reservation_price(
                 f"currency={currency}, source={price_source}")
     
     return total_price, currency
+
+@api_router.get("/reservations/calculate-price")
+async def calculate_price(
+    cari_id: str,
+    tour_type_id: str,
+    date: str,
+    atv_count: int,
+    person_count: int = 1,
+    current_user: dict = Depends(get_current_user)
+):
+    """Rezervasyon fiyatını hesapla - frontend için"""
+    try:
+        total_price, currency = await calculate_reservation_price(
+            company_id=current_user["company_id"],
+            cari_id=cari_id,
+            tour_type_id=tour_type_id,
+            date=date,
+            atv_count=atv_count,
+            person_count=person_count
+        )
+        return {
+            "price": total_price,
+            "currency": currency
+        }
+    except Exception as e:
+        logger.error(f"Fiyat hesaplama hatası: {e}")
+        raise HTTPException(status_code=500, detail=f"Fiyat hesaplanamadı: {str(e)}")
 
 @api_router.post("/cari/reservations")
 async def cari_create_reservation(

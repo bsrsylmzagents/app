@@ -1476,7 +1476,7 @@ const Calendar = () => {
                           className={`text-xs p-1 rounded border ${getStatusBorderColor(res.status || 'confirmed')} bg-[#2D2F33]/50 truncate`}
                           title={`${res.customer_name} - ${res.time}`}
                         >
-                          <span className="text-[#3EA6FF]">{res.time}</span> {res.customer_name}
+                          <span className="text-white">{res.time}</span> {res.customer_name}
                         </div>
                       ))}
                     </div>

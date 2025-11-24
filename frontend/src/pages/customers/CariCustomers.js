@@ -149,7 +149,7 @@ const CariCustomers = () => {
                     <td className="px-6 py-4 text-sm text-[#A5A5A5]">
                       {customer.birth_date ? new Date(customer.birth_date).toLocaleDateString('tr-TR') : '-'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#3EA6FF] font-semibold">{customer.total_reservations || 0}</td>
+                    <td className="px-6 py-4 text-sm text-white font-semibold">{customer.total_reservations || 0}</td>
                     <td className="px-6 py-4 text-sm text-[#A5A5A5]">
                       {customer.last_reservation_date ? new Date(customer.last_reservation_date).toLocaleDateString('tr-TR') : '-'}
                     </td>
@@ -244,7 +244,7 @@ const CariCustomers = () => {
                   )}
                   <div>
                     <p className="text-[#A5A5A5] text-xs mb-1">Toplam Rezervasyon</p>
-                    <p className="text-[#3EA6FF] font-semibold">{customer.total_reservations || 0}</p>
+                    <p className="text-white font-semibold">{customer.total_reservations || 0}</p>
                   </div>
                   {customer.last_reservation_date && (
                     <div>

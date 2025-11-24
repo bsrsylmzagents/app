@@ -256,12 +256,6 @@ const StaffManagement = () => {
       setRoles(response.data);
     } catch (error) {
       console.error('Roller yüklenemedi:', error);
-      // 403 hatası = yetki yok, settings'e yönlendir
-      if (error.response?.status === 403) {
-        toast.error('Bu sayfaya erişim yetkiniz yok');
-        navigate('/settings');
-        return;
-      }
     }
   };
 
@@ -1146,7 +1140,20 @@ const StaffManagement = () => {
                       id="full_name"
                       value={formData.full_name}
                       onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       required
                     />
                   </div>
@@ -1157,7 +1164,20 @@ const StaffManagement = () => {
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
@@ -1167,7 +1187,20 @@ const StaffManagement = () => {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
@@ -1176,7 +1209,20 @@ const StaffManagement = () => {
                       id="address"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
@@ -1185,7 +1231,20 @@ const StaffManagement = () => {
                       id="tc_no"
                       value={formData.tc_no}
                       onChange={(e) => setFormData({ ...formData, tc_no: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
@@ -1195,13 +1254,33 @@ const StaffManagement = () => {
                       type="date"
                       value={formData.birth_date}
                       onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
                     <Label htmlFor="gender" className="text-white">Cinsiyet</Label>
                     <Select value={formData.gender || undefined} onValueChange={(value) => setFormData({ ...formData, gender: value || null })}>
-                      <SelectTrigger className="bg-[#1E1E1E] border-[#2D2F33] text-white">
+                      <SelectTrigger 
+                        style={{
+                          backgroundColor: 'var(--input-bg)',
+                          borderColor: 'var(--border-color)',
+                          color: 'var(--text-primary)'
+                        }}
+                        className="focus:outline-none"
+                      >
                         <SelectValue placeholder="Seçiniz" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1217,7 +1296,20 @@ const StaffManagement = () => {
                       id="nationality"
                       value={formData.nationality}
                       onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                 </div>
@@ -1233,7 +1325,20 @@ const StaffManagement = () => {
                       id="emergency_contact_name"
                       value={formData.emergency_contact_name}
                       onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
@@ -1243,7 +1348,20 @@ const StaffManagement = () => {
                       type="tel"
                       value={formData.emergency_contact_phone}
                       onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                 </div>
@@ -1259,13 +1377,33 @@ const StaffManagement = () => {
                       id="employee_id"
                       value={formData.employee_id}
                       onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
                     <Label htmlFor="role_id" className="text-white">Rol</Label>
                     <Select value={formData.role_id || undefined} onValueChange={(value) => setFormData({ ...formData, role_id: value || null })}>
-                      <SelectTrigger className="bg-[#1E1E1E] border-[#2D2F33] text-white">
+                      <SelectTrigger 
+                        style={{
+                          backgroundColor: 'var(--input-bg)',
+                          borderColor: 'var(--border-color)',
+                          color: 'var(--text-primary)'
+                        }}
+                        className="focus:outline-none"
+                      >
                         <SelectValue placeholder="Rol seçiniz" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1282,7 +1420,20 @@ const StaffManagement = () => {
                       type="date"
                       value={formData.hire_date}
                       onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
@@ -1292,7 +1443,20 @@ const StaffManagement = () => {
                       type="date"
                       value={formData.termination_date}
                       onChange={(e) => setFormData({ ...formData, termination_date: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div className="flex items-center gap-3">
@@ -1320,7 +1484,20 @@ const StaffManagement = () => {
                       step="0.01"
                       value={formData.gross_salary}
                       onChange={(e) => setFormData({ ...formData, gross_salary: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
@@ -1331,13 +1508,33 @@ const StaffManagement = () => {
                       step="0.01"
                       value={formData.net_salary}
                       onChange={(e) => setFormData({ ...formData, net_salary: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
                     <Label htmlFor="salary_currency" className="text-white">Para Birimi</Label>
                     <Select value={formData.salary_currency} onValueChange={(value) => setFormData({ ...formData, salary_currency: value })}>
-                      <SelectTrigger className="bg-[#1E1E1E] border-[#2D2F33] text-white">
+                      <SelectTrigger 
+                        style={{
+                          backgroundColor: 'var(--input-bg)',
+                          borderColor: 'var(--border-color)',
+                          color: 'var(--text-primary)'
+                        }}
+                        className="focus:outline-none"
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1355,7 +1552,20 @@ const StaffManagement = () => {
                       step="0.01"
                       value={formData.advance_limit}
                       onChange={(e) => setFormData({ ...formData, advance_limit: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div>
@@ -1364,7 +1574,14 @@ const StaffManagement = () => {
                       value={formData.salary_payment_day ? formData.salary_payment_day.toString() : undefined} 
                       onValueChange={(value) => setFormData({ ...formData, salary_payment_day: value ? parseInt(value) : null })}
                     >
-                      <SelectTrigger className="bg-[#1E1E1E] border-[#2D2F33] text-white">
+                      <SelectTrigger 
+                        style={{
+                          backgroundColor: 'var(--input-bg)',
+                          borderColor: 'var(--border-color)',
+                          color: 'var(--text-primary)'
+                        }}
+                        className="focus:outline-none"
+                      >
                         <SelectValue placeholder="Seçiniz" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1394,7 +1611,20 @@ const StaffManagement = () => {
                             addLanguage();
                           }
                         }}
-                        className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                        style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                         placeholder="Dil ekle (Enter)"
                       />
                       <Button type="button" onClick={addLanguage} variant="outline" className="border-[#2D2F33] text-white">
@@ -1422,7 +1652,20 @@ const StaffManagement = () => {
                             addSkill();
                           }
                         }}
-                        className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                        style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                         placeholder="Yetenek ekle (Enter)"
                       />
                       <Button type="button" onClick={addSkill} variant="outline" className="border-[#2D2F33] text-white">
@@ -1442,7 +1685,14 @@ const StaffManagement = () => {
                     <div>
                       <Label htmlFor="education_level" className="text-white">Eğitim Seviyesi</Label>
                       <Select value={formData.education_level || undefined} onValueChange={(value) => setFormData({ ...formData, education_level: value || null })}>
-                        <SelectTrigger className="bg-[#1E1E1E] border-[#2D2F33] text-white">
+                        <SelectTrigger 
+                        style={{
+                          backgroundColor: 'var(--input-bg)',
+                          borderColor: 'var(--border-color)',
+                          color: 'var(--text-primary)'
+                        }}
+                        className="focus:outline-none"
+                      >
                           <SelectValue placeholder="Seçiniz" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1461,7 +1711,20 @@ const StaffManagement = () => {
                         id="education_field"
                         value={formData.education_field}
                         onChange={(e) => setFormData({ ...formData, education_field: e.target.value })}
-                        className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                        style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                         placeholder="Örn: Bilgisayar Mühendisliği"
                       />
                     </div>
@@ -1479,7 +1742,20 @@ const StaffManagement = () => {
                       id="driving_license_class"
                       value={formData.driving_license_class}
                       onChange={(e) => setFormData({ ...formData, driving_license_class: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       placeholder="B, C, D, vb."
                     />
                   </div>
@@ -1489,7 +1765,20 @@ const StaffManagement = () => {
                       id="driving_license_no"
                       value={formData.driving_license_no}
                       onChange={(e) => setFormData({ ...formData, driving_license_no: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div className="col-span-2">
@@ -1499,7 +1788,20 @@ const StaffManagement = () => {
                       type="date"
                       value={formData.driving_license_expiry}
                       onChange={(e) => setFormData({ ...formData, driving_license_expiry: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                 </div>
@@ -1529,7 +1831,20 @@ const StaffManagement = () => {
                             value={formData.username}
                             onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                             disabled={!!editingStaff}
-                            className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                            style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                             required={formData.web_panel_active}
                           />
                         </div>
@@ -1542,7 +1857,20 @@ const StaffManagement = () => {
                             type="password"
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                            style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                             required={formData.web_panel_active && !editingStaff}
                           />
                         </div>
@@ -1642,7 +1970,22 @@ const StaffManagement = () => {
                       id="notes"
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                      className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        color: 'var(--text-primary)'
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       rows="4"
                       placeholder="Personel hakkında notlar..."
                     />
@@ -1654,7 +1997,20 @@ const StaffManagement = () => {
                       type="url"
                       value={formData.avatar_url}
                       onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
-                      className="bg-[#1E1E1E] border-[#2D2F33] text-white"
+                      style={{
+                        backgroundColor: 'var(--input-bg)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                      className="focus:outline-none"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent)';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                       placeholder="https://example.com/avatar.jpg"
                     />
                   </div>

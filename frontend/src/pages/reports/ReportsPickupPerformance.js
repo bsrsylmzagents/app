@@ -154,7 +154,7 @@ const ReportsPickupPerformance = () => {
                   {reportData.pickup_stats.map((p, idx) => (
                     <tr key={idx} className="hover:bg-[#2D2F33]">
                       <td className="px-6 py-4 text-white text-sm font-semibold">{p.pickup_location}</td>
-                      <td className="px-6 py-4 text-[#3EA6FF] text-sm font-semibold">{p.customer_count}</td>
+                      <td className="px-6 py-4 text-white text-sm font-semibold">{p.customer_count}</td>
                       <td className="px-6 py-4 text-[#10B981] text-sm font-semibold">{p.total_atvs}</td>
                       <td className="px-6 py-4 text-[#A5A5A5] text-sm">
                         {Object.entries(p.tour_types)

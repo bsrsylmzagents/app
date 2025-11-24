@@ -157,11 +157,11 @@ const ReportsCustomers = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-[#25272A] backdrop-blur-xl border border-[#2D2F33] rounded-xl p-6">
               <h2 className="text-xl font-bold text-white mb-4">Toplam Müşteri</h2>
-              <div className="text-4xl font-bold text-[#3EA6FF]">{reportData.total_customers}</div>
+              <div className="text-4xl font-bold text-white">{reportData.total_customers}</div>
             </div>
             <div className="bg-[#25272A] backdrop-blur-xl border border-[#2D2F33] rounded-xl p-6">
               <h2 className="text-xl font-bold text-white mb-4">En Çok Rezervasyon Yapanlar</h2>
-              <div className="text-4xl font-bold text-[#3EA6FF]">{reportData.top_customers.length}</div>
+              <div className="text-4xl font-bold text-white">{reportData.top_customers.length}</div>
             </div>
           </div>
 
@@ -200,7 +200,7 @@ const ReportsCustomers = () => {
                     <tr key={idx} className="hover:bg-[#2D2F33]">
                       <td className="px-6 py-4 text-white text-sm">{customer.customer_name}</td>
                       <td className="px-6 py-4 text-[#A5A5A5] text-sm">{customer.cari_name}</td>
-                      <td className="px-6 py-4 text-[#3EA6FF] text-sm font-semibold">{customer.reservation_count}</td>
+                      <td className="px-6 py-4 text-white text-sm font-semibold">{customer.reservation_count}</td>
                       <td className="px-6 py-4 text-white text-sm">
                         {Object.entries(customer.currencies)
                           .filter(([_, v]) => v > 0)
