@@ -33,20 +33,99 @@ const NotificationCenter = ({ onClose, onNotificationUpdate }) => {
 
       const allItems = allResponse.data?.notifications || [];
       
+      // Tur başlangıcı bildirimlerini oluştur (Layout.js ile aynı mantık)
+      const today = format(new Date(), 'yyyy-MM-dd');
+      let tourStartNotifications = [];
+      
+      try {
+        const reservationsResponse = await axios.get(`${API}/reservations`, {
+          params: { 
+            date_from: today,
+            date_to: today,
+            status: 'confirmed'
+          }
+        });
+        
+        const reservations = reservationsResponse.data || [];
+        
+        // Tur başlangıcı bildirimleri oluştur (tur başlangıcından 30 dakika önce başlayarak, tur başlangıcına kadar)
+        const upcomingTours = reservations.filter(reservation => {
+          if (!reservation.date || !reservation.time) return false;
+          
+          const reservationDateTime = new Date(`${reservation.date}T${reservation.time}:00`);
+          const now = new Date();
+          const diffMinutes = (reservationDateTime - now) / (1000 * 60);
+          
+          // 30 dakika öncesinden başlayarak, tur başlangıcına kadar bildirim göster
+          return diffMinutes <= 30 && diffMinutes >= -30;
+        });
+        
+        // localStorage'dan okundu bildirimleri yükle
+        const getReadNotifications = () => {
+          try {
+            const read = localStorage.getItem('read_notifications');
+            return read ? JSON.parse(read) : [];
+          } catch (error) {
+            return [];
+          }
+        };
+        
+        const readNotifications = getReadNotifications();
+        
+        // Bildirimleri formatla
+        tourStartNotifications = upcomingTours.map(reservation => {
+          const reservationDateTime = new Date(`${reservation.date}T${reservation.time}:00`);
+          const now = new Date();
+          const diffMinutes = Math.floor((reservationDateTime - now) / (1000 * 60));
+          
+          let message = '';
+          if (diffMinutes < 0) {
+            message = `Tur başladı (${Math.abs(diffMinutes)} dakika önce)`;
+          } else if (diffMinutes === 0) {
+            message = 'Tur şimdi başlıyor';
+          } else {
+            message = `Tur ${diffMinutes} dakika sonra başlayacak`;
+          }
+          
+          // Okundu durumunu kontrol et
+          const isRead = readNotifications.includes(reservation.id);
+          
+          return {
+            id: `tour_start_${reservation.id}`,
+            type: 'info',
+            title: 'Tur Başlangıcı',
+            message: message,
+            body: `${reservation.customer_name} - ${reservation.tour_type_name} (${reservation.atv_count} ATV)`,
+            is_read: isRead,
+            created_at: new Date().toISOString(),
+            reservation: reservation
+          };
+        });
+      } catch (error) {
+        console.error('Tur başlangıcı bildirimleri yüklenemedi:', error);
+      }
+      
+      // Backend bildirimleri ile tur başlangıcı bildirimlerini birleştir
+      const combinedItems = [...allItems, ...tourStartNotifications];
+      
       // Info ve success bildirimleri (Notifications tab)
-      const allNotifications = allItems.filter(n => 
+      const allNotifications = combinedItems.filter(n => 
         n.type === 'info' || n.type === 'success' || !n.type // Backward compatibility
       );
 
       // Warning ve error bildirimleri (Warnings tab)
-      const allWarnings = allItems.filter(n => 
+      const allWarnings = combinedItems.filter(n => 
         n.type === 'warning' || n.type === 'error'
       );
 
       setNotifications(allNotifications);
       setWarnings(allWarnings);
       
-      const totalUnread = allResponse.data?.unread_count || 0;
+      // Okunmamış sayısı: backend'den gelen + tur başlangıcı bildirimlerinden okunmamış olanlar
+      const backendUnread = allResponse.data?.unread_count || 0;
+      const tourStartUnread = tourStartNotifications.filter(n => !n.is_read).length;
+      const totalUnread = backendUnread + tourStartUnread;
+      
       setUnreadCount(totalUnread);
 
       if (onNotificationUpdate) {
@@ -100,9 +179,29 @@ const NotificationCenter = ({ onClose, onNotificationUpdate }) => {
 
   const handleMarkAsRead = async (ids) => {
     try {
-      await axios.post(`${API}/notifications/mark-read`, {
-        notification_ids: ids
-      });
+      // Tur başlangıcı bildirimlerini ayır (tour_start_ prefix'i ile başlayanlar)
+      const tourStartIds = ids.filter(id => id.startsWith('tour_start_'));
+      const backendIds = ids.filter(id => !id.startsWith('tour_start_'));
+      
+      // Backend bildirimlerini okundu olarak işaretle
+      if (backendIds.length > 0) {
+        await axios.post(`${API}/notifications/mark-read`, {
+          notification_ids: backendIds
+        });
+      }
+      
+      // Tur başlangıcı bildirimlerini localStorage'a kaydet
+      if (tourStartIds.length > 0) {
+        try {
+          const read = JSON.parse(localStorage.getItem('read_notifications') || '[]');
+          const reservationIds = tourStartIds.map(id => id.replace('tour_start_', ''));
+          const newRead = [...new Set([...read, ...reservationIds])];
+          localStorage.setItem('read_notifications', JSON.stringify(newRead));
+        } catch (error) {
+          console.error('Tur başlangıcı bildirimleri kaydedilemedi:', error);
+        }
+      }
+      
       setSelectedIds([]);
       fetchNotifications();
     } catch (error) {
@@ -256,13 +355,22 @@ const NotificationCenter = ({ onClose, onNotificationUpdate }) => {
                           <span className="w-2 h-2 bg-blue-600 dark:bg-[#3EA6FF] rounded-full"></span>
                         )}
                       </div>
-                      <p className={`text-sm mb-2 ${
+                      <p className={`text-sm mb-1 ${
                         isWarningTab 
                           ? 'text-slate-700 dark:text-[#A5A5A5]' 
                           : 'text-slate-500 dark:text-[#A5A5A5]'
                       }`}>
-                        {item.message || item.body || ''}
+                        {item.message || ''}
                       </p>
+                      {item.body && (
+                        <p className={`text-xs mb-2 ${
+                          isWarningTab 
+                            ? 'text-slate-600 dark:text-[#7B7B7B]' 
+                            : 'text-slate-400 dark:text-[#7B7B7B]'
+                        }`}>
+                          {item.body}
+                        </p>
+                      )}
                       {item.created_at && (
                         <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-[#7B7B7B]">
                           <Clock size={12} />

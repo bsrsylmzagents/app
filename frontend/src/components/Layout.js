@@ -461,9 +461,6 @@ const Layout = () => {
                     {/* OPERASYON Section */}
                     {operationItems.length > 0 && (
                       <>
-                        <li className="px-4 md:px-6 py-2 mt-2">
-                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider opacity-60">OPERASYON</div>
-                        </li>
                         {operationItems.map((item) => {
                           const Icon = item.icon;
                           const isActive = location.pathname === item.path || 
@@ -494,9 +491,6 @@ const Layout = () => {
                     {/* FİNANS Section */}
                     {financeItems.length > 0 && (
                       <>
-                        <li className="px-4 md:px-6 py-2 mt-4">
-                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider opacity-60">FİNANS</div>
-                        </li>
                         {financeItems.map((item) => {
                           const Icon = item.icon;
                           const isActive = location.pathname === item.path || 
@@ -527,9 +521,6 @@ const Layout = () => {
                     {/* RAPORLAR Section */}
                     {reportsItems.length > 0 && (
                       <>
-                        <li className="px-4 md:px-6 py-2 mt-4">
-                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider opacity-60">RAPORLAR</div>
-                        </li>
                         {reportsItems.map((item) => {
                           const Icon = item.icon;
                           const isActive = location.pathname === item.path;
@@ -559,9 +550,6 @@ const Layout = () => {
                     {/* ENVANTER Section */}
                     {inventoryItems.length > 0 && (
                       <>
-                        <li className="px-4 md:px-6 py-2 mt-4">
-                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider opacity-60">ENVANTER</div>
-                        </li>
                         {inventoryItems.map((item) => {
                           const Icon = item.icon;
                           const isActive = location.pathname === item.path;
@@ -591,9 +579,6 @@ const Layout = () => {
                     {/* AYARLAR Section */}
                     {settingsItems.length > 0 && (
                       <>
-                        <li className="px-4 md:px-6 py-2 mt-4">
-                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider opacity-60">AYARLAR</div>
-                        </li>
                         {settingsItems.map((item) => {
                           const Icon = item.icon;
                           const isActive = location.pathname === item.path || 

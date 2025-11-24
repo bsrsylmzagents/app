@@ -684,7 +684,22 @@ const ExtraSales = () => {
                   placeholder="Müşteri Adı *"
                   value={formData.customer_name}
                   onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                  className="flex-1 px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                  className="flex-1 px-3 py-2 rounded-lg text-white focus:outline-none"
+                  style={{
+                    backgroundColor: 'var(--input-bg)',
+                    borderColor: 'var(--border-color)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    color: 'var(--text-primary)'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                   required
                 />
                 <Button
@@ -773,14 +788,120 @@ const ExtraSales = () => {
                 }}
               />
               <div className="grid grid-cols-2 gap-4">
-                <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] focus:border-[#3EA6FF] rounded-lg text-white" required />
-                <input type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] focus:border-[#3EA6FF] rounded-lg text-white" required />
+                <input 
+                  type="date" 
+                  value={formData.date} 
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })} 
+                  className="px-3 py-2 rounded-lg text-white focus:outline-none"
+                  style={{
+                    backgroundColor: 'var(--input-bg)',
+                    borderColor: 'var(--border-color)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    color: 'var(--text-primary)'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  required 
+                />
+                <input 
+                  type="time" 
+                  value={formData.time} 
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })} 
+                  className="px-3 py-2 rounded-lg text-white focus:outline-none"
+                  style={{
+                    backgroundColor: 'var(--input-bg)',
+                    borderColor: 'var(--border-color)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    color: 'var(--text-primary)'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  required 
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <input type="number" step="0.01" placeholder="Satış Fiyatı" value={formData.sale_price} onChange={(e) => setFormData({ ...formData, sale_price: parseFloat(e.target.value) })} className="px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] focus:border-[#3EA6FF] rounded-lg text-white" required />
-                <input type="number" step="0.01" placeholder="Alış Fiyatı" value={formData.purchase_price} onChange={(e) => setFormData({ ...formData, purchase_price: parseFloat(e.target.value) })} className="px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] focus:border-[#3EA6FF] rounded-lg text-white" />
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="Satış Fiyatı" 
+                  value={formData.sale_price} 
+                  onChange={(e) => setFormData({ ...formData, sale_price: parseFloat(e.target.value) })} 
+                  className="px-3 py-2 rounded-lg text-white focus:outline-none"
+                  style={{
+                    backgroundColor: 'var(--input-bg)',
+                    borderColor: 'var(--border-color)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    color: 'var(--text-primary)'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  required 
+                />
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="Alış Fiyatı" 
+                  value={formData.purchase_price} 
+                  onChange={(e) => setFormData({ ...formData, purchase_price: parseFloat(e.target.value) })} 
+                  className="px-3 py-2 rounded-lg text-white focus:outline-none"
+                  style={{
+                    backgroundColor: 'var(--input-bg)',
+                    borderColor: 'var(--border-color)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    color: 'var(--text-primary)'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
               </div>
-              <select value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value, exchange_rate: rates[e.target.value] })} className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] focus:border-[#3EA6FF] rounded-lg text-white">
+              <select 
+                value={formData.currency} 
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value, exchange_rate: rates[e.target.value] })} 
+                className="w-full px-3 py-2 rounded-lg text-white focus:outline-none"
+                style={{
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  color: 'var(--text-primary)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--ring)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
                 <option value="EUR">EUR</option>
                 <option value="USD">USD</option>
                 <option value="TRY">TRY</option>
@@ -906,24 +1027,39 @@ const ExtraSales = () => {
           resetCancelForm();
         }
       }}>
-        <DialogContent className="bg-[#25272A] border-[#2D2F33] text-white max-w-md">
+        <DialogContent 
+          className="max-w-md"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            borderColor: 'var(--border-color)',
+            color: 'var(--text-primary)'
+          }}
+        >
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Satışı İptal Et</DialogTitle>
+            <DialogTitle className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Satışı İptal Et</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             {/* Satış Bilgisi */}
             {selectedSaleForCancel && (
-              <div className="bg-[#2D2F33] rounded-lg p-3">
-                <p className="text-sm text-[#A5A5A5] mb-1">Müşteri:</p>
-                <p className="text-white font-semibold">{selectedSaleForCancel.customer_name}</p>
-                <p className="text-sm text-[#A5A5A5] mt-2 mb-1">Ürün:</p>
-                <p className="text-white">{selectedSaleForCancel.product_name}</p>
-                <p className="text-sm text-[#A5A5A5] mt-2 mb-1">Tarih:</p>
-                <p className="text-white">{selectedSaleForCancel.date} {selectedSaleForCancel.time}</p>
+              <div 
+                className="rounded-lg p-3"
+                style={{
+                  backgroundColor: 'var(--bg-elevated)',
+                  borderColor: 'var(--border-color)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
+              >
+                <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Müşteri:</p>
+                <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{selectedSaleForCancel.customer_name}</p>
+                <p className="text-sm mt-2 mb-1" style={{ color: 'var(--text-secondary)' }}>Ürün:</p>
+                <p style={{ color: 'var(--text-primary)' }}>{selectedSaleForCancel.product_name}</p>
+                <p className="text-sm mt-2 mb-1" style={{ color: 'var(--text-secondary)' }}>Tarih:</p>
+                <p style={{ color: 'var(--text-primary)' }}>{selectedSaleForCancel.date} {selectedSaleForCancel.time}</p>
                 {selectedSaleForCancel.cari_name && (
                   <>
-                    <p className="text-sm text-[#A5A5A5] mt-2 mb-1">Cari:</p>
-                    <p className="text-white">{selectedSaleForCancel.cari_name}</p>
+                    <p className="text-sm mt-2 mb-1" style={{ color: 'var(--text-secondary)' }}>Cari:</p>
+                    <p style={{ color: 'var(--text-primary)' }}>{selectedSaleForCancel.cari_name}</p>
                   </>
                 )}
               </div>
@@ -931,7 +1067,7 @@ const ExtraSales = () => {
             
             {/* İptal Sebebi */}
             <div>
-              <label className="block text-sm font-medium mb-2 text-white">İptal Sebebi *</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>İptal Sebebi *</label>
               <textarea
                 value={cancelFormData.cancellation_reason}
                 onChange={(e) => setCancelFormData({ ...cancelFormData, cancellation_reason: e.target.value })}
@@ -958,25 +1094,41 @@ const ExtraSales = () => {
             </div>
             
             {/* No-Show Uygula */}
-            <div className="flex items-center gap-3 p-3 bg-[#2D2F33] rounded-lg">
+            <div 
+              className="flex items-center gap-3 p-3 rounded-lg"
+              style={{
+                backgroundColor: 'var(--bg-elevated)',
+                borderColor: 'var(--border-color)',
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}
+            >
               <input
                 type="checkbox"
                 id="apply_no_show_sale"
                 checked={cancelFormData.apply_no_show}
                 onChange={(e) => setCancelFormData({ ...cancelFormData, apply_no_show: e.target.checked })}
-                className="w-4 h-4 text-[#3EA6FF] bg-[#2D2F33] border-[#2D2F33] rounded focus:ring-[#3EA6FF]"
+                className="w-4 h-4 rounded focus:ring-2"
+                style={{
+                  accentColor: 'var(--accent)',
+                  backgroundColor: 'var(--input-bg)',
+                  borderColor: 'var(--border-color)'
+                }}
               />
-              <label htmlFor="apply_no_show_sale" className="text-white cursor-pointer flex-1">
+              <label htmlFor="apply_no_show_sale" className="cursor-pointer flex-1" style={{ color: 'var(--text-primary)' }}>
                 No-show bedeli uygula
               </label>
             </div>
             
             {/* No-Show Detayları */}
             {cancelFormData.apply_no_show && (
-              <div className="space-y-3 pl-7 border-l-2 border-[#3EA6FF]/30">
+              <div 
+                className="space-y-3 pl-7 border-l-2"
+                style={{ borderColor: 'var(--accent)' + '4D' }}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-white">Tutar *</label>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Tutar *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1004,7 +1156,7 @@ const ExtraSales = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-white">Para Birimi *</label>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Para Birimi *</label>
                     <select
                       value={cancelFormData.no_show_currency}
                       onChange={(e) => setCancelFormData({ 
@@ -1052,7 +1204,18 @@ const ExtraSales = () => {
                   setSelectedSaleForCancel(null);
                   resetCancelForm();
                 }}
-                className="flex-1 border-[#2D2F33] text-[#A5A5A5] hover:bg-[#2D2F33]"
+                className="flex-1"
+                style={{
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--text-secondary)',
+                  backgroundColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
               >
                 Vazgeç
               </Button>

@@ -1129,8 +1129,6 @@ class TourType(BaseModel):
     duration_hours: float
     description: Optional[str] = None
     order: Optional[int] = 0
-    default_price: Optional[float] = None
-    default_currency: Optional[str] = "EUR"
     color: Optional[str] = None
     icon: Optional[str] = None
     is_active: Optional[bool] = True
@@ -2699,8 +2697,6 @@ async def create_tour_type(data: dict, current_user: dict = Depends(get_current_
         duration_hours=data.get("duration_hours", 0),
         description=data.get("description"),
         order=data.get("order", 0),
-        default_price=data.get("default_price"),
-        default_currency=data.get("default_currency", "EUR"),
         color=data.get("color"),
         icon=data.get("icon"),
         is_active=data.get("is_active", True)
@@ -4144,17 +4140,8 @@ async def calculate_reservation_price(
     if not tour_type:
         raise HTTPException(status_code=404, detail="Tour type not found")
     
-    # Default price ve currency güvenli şekilde al
-    default_price_raw = tour_type.get("default_price", 0)
-    if default_price_raw is None or not isinstance(default_price_raw, (int, float)):
-        default_price = 0.0
-        logger.warning(f"Tour type default_price geçersiz veya None: tour_type_id={tour_type_id}, default_price={default_price_raw}, 0.0 kullanılıyor")
-    else:
-        default_price = float(default_price_raw)
-    
-    default_currency = tour_type.get("default_currency", "EUR")
-    if not default_currency:
-        default_currency = "EUR"
+    # Varsayılan fiyatlar artık fiyat yönetiminden (seasonal prices) gelecek
+    # Default price kaldırıldı - artık sadece seasonal prices kullanılacak
     
     # Seasonal prices kontrolü
     seasonal_prices = await db.seasonal_prices.find({
@@ -4180,10 +4167,10 @@ async def calculate_reservation_price(
             logger.info(f"Matching seasonal price bulundu: price_per_atv={sp.get('price_per_atv')}, currency={sp.get('currency')}, cari_prices keys={list(sp.get('cari_prices', {}).keys())}")
             break
     
-    # Fiyat hesaplama
-    price_per_atv = default_price
-    currency = default_currency
-    price_source = "default"  # default, seasonal, cari_specific
+    # Fiyat hesaplama - artık sadece seasonal prices kullanılacak
+    price_per_atv = 0.0
+    currency = "EUR"  # Varsayılan para birimi
+    price_source = "seasonal"  # seasonal, cari_specific, error_fallback
     
     if matching_seasonal:
         # Cari özel fiyatı var mı? (cari_prices dict'inde cari_id key olarak saklanır)
@@ -4206,7 +4193,7 @@ async def calculate_reservation_price(
                 if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
                     price_per_atv = float(seasonal_price)
                 else:
-                    price_per_atv = float(default_price) if default_price else 0.0
+                    price_per_atv = 0.0
                 price_source = "seasonal"
                 logger.warning(f"Cari özel fiyat geçersiz (None veya sayı değil), seasonal fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}")
         else:
@@ -4215,22 +4202,20 @@ async def calculate_reservation_price(
             if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
                 price_per_atv = float(seasonal_price)
             else:
-                price_per_atv = float(default_price) if default_price else 0.0
+                price_per_atv = 0.0
             price_source = "seasonal"
             logger.info(f"Seasonal fiyat kullanıldı (cari özel fiyat yok): price={price_per_atv}, currency={currency}")
         
-        currency = matching_seasonal.get("currency", default_currency)
+        currency = matching_seasonal.get("currency", "EUR")
     else:
-        # Default fiyat kullan
-        if default_price is not None and isinstance(default_price, (int, float)):
-            price_per_atv = float(default_price)
-        else:
-            price_per_atv = 0.0
-        logger.info(f"Default fiyat kullanıldı (seasonal price yok): price={price_per_atv}, currency={currency}")
+        # Seasonal price yok - fiyat yönetiminden fiyat tanımlanmamış
+        price_per_atv = 0.0
+        price_source = "error_fallback"
+        logger.warning(f"Seasonal price bulunamadı - fiyat yönetiminden fiyat tanımlanmalı: tour_type_id={tour_type_id}, date={date}")
     
     # Güvenlik kontrolü: price_per_atv mutlaka sayısal olmalı
     if price_per_atv is None or not isinstance(price_per_atv, (int, float)):
-        logger.error(f"Fiyat hesaplama hatası: price_per_atv={price_per_atv}, default_price={default_price}, tour_type_id={tour_type_id}")
+        logger.error(f"Fiyat hesaplama hatası: price_per_atv={price_per_atv}, tour_type_id={tour_type_id}")
         price_per_atv = 0.0
         price_source = "error_fallback"
     
@@ -8979,12 +8964,12 @@ async def create_user(data: dict, current_user: dict = Depends(get_current_user)
 # ==================== STAFF MANAGEMENT (ADMIN ONLY) ====================
 
 @api_router.post("/staff")
-async def create_staff(data: dict, current_user: dict = Depends(require_admin)):
+async def create_staff(data: dict, current_user: dict = Depends(get_current_user)):
     """
-    Create a new staff member (user) - Admin only.
+    Create a new staff member (user) - All authenticated users can create staff.
     Security constraints:
-    - Forces role='user' (admin cannot create super_admin or admin)
-    - Forces companyId from JWT (admin cannot assign user to different company)
+    - Forces role='user' (cannot create super_admin or admin)
+    - Forces companyId from JWT (cannot assign user to different company)
     - Allows permissions object to be set
     """
     # Validation
@@ -9079,10 +9064,10 @@ async def create_staff(data: dict, current_user: dict = Depends(require_admin)):
 async def get_staff(
     role_id: Optional[str] = None,
     is_active: Optional[bool] = None,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(get_current_user)
 ):
     """
-    Get all staff members for the admin's company - Admin only.
+    Get all staff members for the user's company - All authenticated users can view staff.
     Only returns users with role='user' (not admins or super_admins)
     """
     query = {
@@ -9117,9 +9102,9 @@ async def get_staff(
     return users
 
 @api_router.put("/staff/{staff_id}")
-async def update_staff(staff_id: str, data: dict, current_user: dict = Depends(require_admin)):
+async def update_staff(staff_id: str, data: dict, current_user: dict = Depends(get_current_user)):
     """
-    Update a staff member - Admin only.
+    Update a staff member - All authenticated users can update staff.
     Security constraints:
     - Cannot change role to 'admin' or 'super_admin'
     - Cannot change companyId
@@ -9198,11 +9183,11 @@ async def update_staff(staff_id: str, data: dict, current_user: dict = Depends(r
     return {"message": "Staff member updated successfully"}
 
 @api_router.delete("/staff/{staff_id}")
-async def delete_staff(staff_id: str, current_user: dict = Depends(require_admin)):
+async def delete_staff(staff_id: str, current_user: dict = Depends(get_current_user)):
     """
-    Delete a staff member - Admin only.
+    Delete a staff member - All authenticated users can delete staff.
     Security constraints:
-    - Can only delete users from admin's company
+    - Can only delete users from user's company
     - Can only delete users with role='user'
     """
     # Find staff member - must belong to admin's company and be a regular user
@@ -14799,8 +14784,6 @@ async def get_public_agency_tours(slug: str, request: Request):
                 "name": tour.get("name"),
                 "description": tour.get("description"),
                 "duration_hours": tour.get("duration_hours"),
-                "default_price": tour.get("default_price"),
-                "default_currency": tour.get("default_currency", "EUR"),
                 "color": tour.get("color"),
                 "icon": tour.get("icon")
             })
@@ -14872,12 +14855,23 @@ async def create_public_booking(data: PublicBookingRequest, request: Request):
             public_cari = public_cari_doc
         
         # Calculate price (use default price for now, can be enhanced with seasonal pricing)
-        default_price = tour_type.get("default_price", 0.0) or 0.0
-        default_currency = tour_type.get("default_currency", "EUR")
-        
-        # Calculate ATV count (assume 1 ATV per 2 people, minimum 1)
+        # Fiyat hesaplama - artık sadece seasonal prices kullanılacak
+        # Fiyat yönetiminden fiyat alınmalı
         atv_count = max(1, (data.pax + 1) // 2)
-        total_price = float(default_price) * atv_count
+        
+        # Fiyat hesaplama fonksiyonunu kullan
+        try:
+            total_price, currency = await calculate_reservation_price(
+                company_id=company_id,
+                cari_id=None,
+                tour_type_id=data.tourId,
+                date=data.date,
+                atv_count=atv_count
+            )
+        except Exception as e:
+            logger.error(f"Fiyat hesaplama hatası: {e}")
+            total_price = 0.0
+            currency = "EUR"
         
         # Create reservation with status "request_received" (pending payment)
         reservation_id = str(uuid.uuid4())
@@ -14899,7 +14893,7 @@ async def create_public_booking(data: PublicBookingRequest, request: Request):
             "person_count": data.pax,
             "atv_count": atv_count,
             "price": total_price,
-            "currency": default_currency,
+            "currency": currency,
             "exchange_rate": 1.0,
             "notes": f"Public Booking Request\n{data.note or ''}",
             "status": "request_received",  # New status for public bookings
@@ -15131,8 +15125,6 @@ async def get_portal_tours(current_corporate: dict = Depends(get_current_corpora
                 "name": tour.get("name"),
                 "description": tour.get("description"),
                 "duration_hours": tour.get("duration_hours"),
-                "default_price": tour.get("default_price"),
-                "default_currency": tour.get("default_currency", "EUR"),
                 "color": tour.get("color"),
                 "icon": tour.get("icon")
             })

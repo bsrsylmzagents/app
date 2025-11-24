@@ -213,20 +213,7 @@ const StaffManagement = () => {
     description: ''
   });
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const company = JSON.parse(localStorage.getItem('company') || '{}');
-    const isSuperAdmin = user.role === 'super_admin';
-    const isAdmin = user.role === 'admin' || user.role === 'super_admin' || user.is_admin;
-    const isOwner = user.role === 'admin' || (user.is_admin && !isSuperAdmin);
-    const userPermissions = user.permissions || {};
-    const hasStaffManagement = isAdmin || isOwner || (userPermissions.settings?.staff_management === true);
-    
-    if (!hasStaffManagement) {
-      toast.error('Bu sayfaya erişim yetkiniz yok');
-      navigate('/settings');
-    }
-  }, [navigate]);
+  // Permission kontrolü kaldırıldı - tüm roller personel yönetimine erişebilir
 
   useEffect(() => {
     fetchUsers();

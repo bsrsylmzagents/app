@@ -23,8 +23,6 @@ const TourTypes = () => {
     duration_hours: '',
     description: '',
     order: 0,
-    default_price: '',
-    default_currency: 'EUR',
     color: '#3EA6FF',
     icon: '',
     is_active: true
@@ -95,8 +93,6 @@ const TourTypes = () => {
         duration_hours: parseFloat(formData.duration_hours),
         description: formData.description || null,
         order: parseInt(formData.order) || 0,
-        default_price: formData.default_price ? parseFloat(formData.default_price) : null,
-        default_currency: formData.default_currency,
         color: formData.color,
         icon: formData.icon || null,
         is_active: formData.is_active
@@ -139,8 +135,6 @@ const TourTypes = () => {
       duration_hours: tourType.duration_hours?.toString() || '',
       description: tourType.description || '',
       order: tourType.order || 0,
-      default_price: tourType.default_price?.toString() || '',
-      default_currency: tourType.default_currency || 'EUR',
       color: tourType.color || '#3EA6FF',
       icon: tourType.icon || '',
       is_active: tourType.is_active !== false
@@ -154,8 +148,6 @@ const TourTypes = () => {
       duration_hours: '',
       description: '',
       order: 0,
-      default_price: '',
-      default_currency: 'EUR',
       color: '#3EA6FF',
       icon: '',
       is_active: true
@@ -285,37 +277,6 @@ const TourTypes = () => {
                     className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:outline-none focus:border-[#3EA6FF]"
                     placeholder="0"
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Varsayılan Fiyat</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.default_price}
-                    onChange={(e) => setFormData({ ...formData, default_price: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:outline-none focus:border-[#3EA6FF]"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Para Birimi</label>
-                  <Select
-                    value={formData.default_currency}
-                    onValueChange={(value) => setFormData({ ...formData, default_currency: value })}
-                  >
-                    <SelectTrigger className="bg-[#2D2F33] border-[#2D2F33] text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#25272A] border-[#2D2F33]">
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="TRY">TRY</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 
@@ -593,7 +554,7 @@ const TourTypes = () => {
                       </td>
                       <td className="px-6 py-4 text-gray-300">{tourType.duration_hours} saat</td>
                       <td className="px-6 py-4 text-gray-300">
-                        {tourType.default_price ? `${tourType.default_price.toFixed(2)} ${tourType.default_currency || 'EUR'}` : '-'}
+                        Fiyat Yönetimi'nden belirlenir
                       </td>
                       <td className="px-6 py-4">
                         {stats ? (
