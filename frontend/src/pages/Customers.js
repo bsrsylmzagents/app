@@ -295,8 +295,8 @@ const Customers = () => {
                   ) : (
                     filteredIndividualCustomers.map((customer) => (
                       <tr key={customer.id} className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-[#2D2F33] border-b border-slate-100 dark:border-[#2D2F33]">
-                        <td className="px-6 py-4 text-sm text-slate-900 dark:text-white font-medium">{customer.customer_name}</td>
-                        <td className="px-6 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>{customer.phone || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-white font-medium">{customer.customer_name}</td>
+                        <td className="px-6 py-4 text-sm text-white">{customer.phone || '-'}</td>
                         <td className="px-6 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
                           {customer.last_sale_date ? new Date(customer.last_sale_date).toLocaleDateString('tr-TR') : '-'}
                         </td>
@@ -470,8 +470,8 @@ const Customers = () => {
                     ) : (
                       filteredCorporateCustomers.map((customer) => (
                         <tr key={customer.id} className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-[#2D2F33] border-b border-slate-100 dark:border-[#2D2F33]">
-                          <td className="px-6 py-4 text-sm text-slate-900 dark:text-white font-medium">{customer.customer_name}</td>
-                          <td className="px-6 py-4 text-sm text-slate-600 dark:text-[#A5A5A5]">{customer.phone || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-white font-medium">{customer.customer_name}</td>
+                          <td className="px-6 py-4 text-sm text-white">{customer.phone || '-'}</td>
                           <td className="px-6 py-4 text-sm">
                             <span className={`font-semibold ${
                               customer.current_balance?.EUR > 0 || customer.current_balance?.USD > 0 || customer.current_balance?.TRY > 0

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API } from '../App';
 import { toast } from 'sonner';
-import { Shield, Smartphone, CheckCircle, XCircle, Download, Copy, Eye, EyeOff } from 'lucide-react';
+import { Shield, Smartphone, CheckCircle, XCircle, Download, Copy, Eye, EyeOff, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const Security = () => {
   const [user, setUser] = useState(null);
@@ -21,6 +22,21 @@ const Security = () => {
   const [showRecoveryCodesInput, setShowRecoveryCodesInput] = useState(false);
   const [disablePassword, setDisablePassword] = useState('');
   const [showDisablePassword, setShowDisablePassword] = useState(false);
+  
+  // Password change states
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordFormData, setPasswordFormData] = useState({
+    old_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    old: false,
+    new: false,
+    confirm: false
+  });
+  const [show2FADialog, setShow2FADialog] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   useEffect(() => {
     fetchUserInfo();
@@ -150,6 +166,111 @@ const Security = () => {
     toast.success('Kurtarma kodları indirildi');
   };
 
+  const handleChangePassword = async () => {
+    // Validation
+    if (!passwordFormData.old_password || !passwordFormData.new_password || !passwordFormData.confirm_password) {
+      toast.error('Lütfen tüm alanları doldurun');
+      return;
+    }
+
+    if (passwordFormData.new_password !== passwordFormData.confirm_password) {
+      toast.error('Yeni şifreler eşleşmiyor');
+      return;
+    }
+
+    if (passwordFormData.new_password.length < 6) {
+      toast.error('Yeni şifre en az 6 karakter olmalıdır');
+      return;
+    }
+
+    // If 2FA is enabled, show 2FA dialog first
+    if (twoFactorStatus) {
+      setShow2FADialog(true);
+      return;
+    }
+
+    // If 2FA is not enabled, proceed with password change
+    await submitPasswordChange();
+  };
+
+  const submitPasswordChange = async () => {
+    try {
+      setLoading(true);
+      const payload = {
+        old_password: passwordFormData.old_password,
+        new_password: passwordFormData.new_password
+      };
+
+      // Add 2FA code if provided
+      if (twoFactorCode) {
+        payload.two_factor_code = twoFactorCode;
+      }
+
+      const url = `${API}/auth/change-password`;
+      console.log('Şifre değiştirme isteği:', url, payload);
+      
+      const response = await axios.put(url, payload);
+      console.log('Şifre değiştirme yanıtı:', response);
+      
+      toast.success('Şifre başarıyla değiştirildi');
+      setShowChangePassword(false);
+      setPasswordFormData({
+        old_password: '',
+        new_password: '',
+        confirm_password: ''
+      });
+      setTwoFactorCode('');
+      setShow2FADialog(false);
+    } catch (error) {
+      console.error('Şifre değiştirme hatası:', error);
+      console.error('Hata detayları:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url
+      });
+      
+      let errorMessage = 'Şifre değiştirilemedi';
+      
+      if (error.response) {
+        // 404 Not Found hatası
+        if (error.response.status === 404) {
+          errorMessage = 'Endpoint bulunamadı. Lütfen backend servisinin çalıştığından emin olun.';
+        } else if (error.response.data?.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.request) {
+        errorMessage = 'Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edin.';
+      }
+      
+      if (typeof errorMessage === 'string') {
+        toast.error(errorMessage);
+      } else if (Array.isArray(errorMessage)) {
+        toast.error(errorMessage.map(e => e.msg || String(e)).join(', '));
+      } else {
+        toast.error('Şifre değiştirilemedi');
+      }
+      
+      // If 2FA code is required, show dialog
+      if (error.response?.status === 400 && (errorMessage.includes('2FA code') || errorMessage.includes('2FA'))) {
+        setShow2FADialog(true);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handle2FAVerify = async () => {
+    if (!twoFactorCode || twoFactorCode.length !== 6) {
+      toast.error('Lütfen 6 haneli doğrulama kodunu girin');
+      return;
+    }
+
+    await submitPasswordChange();
+  };
+
   if (loading && !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -166,6 +287,119 @@ const Security = () => {
           <p className="text-gray-400 mt-2">Hesap güvenliğinizi yönetin</p>
         </div>
       </div>
+
+      {/* Change Password Section */}
+      <Card className="bg-[#1a1f2e] border-[#2D2F33]">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Lock className="h-6 w-6 text-[#3EA6FF]" />
+            <div>
+              <CardTitle className="text-white">Şifre Değiştir</CardTitle>
+              <CardDescription className="text-gray-400">
+                Hesap şifrenizi güncelleyin
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!showChangePassword ? (
+            <Button
+              onClick={() => setShowChangePassword(true)}
+              className="w-full bg-[#3EA6FF] hover:bg-[#3EA6FF]/80 text-white"
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              Şifre Değiştir
+            </Button>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-white">Mevcut Şifre</Label>
+                <div className="relative">
+                  <Input
+                    type={showPasswords.old ? "text" : "password"}
+                    value={passwordFormData.old_password}
+                    onChange={(e) => setPasswordFormData({ ...passwordFormData, old_password: e.target.value })}
+                    placeholder="Mevcut şifrenizi girin"
+                    className="bg-[#1a1f2e] border-[#2D2F33] text-white pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, old: !showPasswords.old })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    {showPasswords.old ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-white">Yeni Şifre</Label>
+                <div className="relative">
+                  <Input
+                    type={showPasswords.new ? "text" : "password"}
+                    value={passwordFormData.new_password}
+                    onChange={(e) => setPasswordFormData({ ...passwordFormData, new_password: e.target.value })}
+                    placeholder="Yeni şifrenizi girin (min 6 karakter)"
+                    className="bg-[#1a1f2e] border-[#2D2F33] text-white pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-white">Yeni Şifre Tekrar</Label>
+                <div className="relative">
+                  <Input
+                    type={showPasswords.confirm ? "text" : "password"}
+                    value={passwordFormData.confirm_password}
+                    onChange={(e) => setPasswordFormData({ ...passwordFormData, confirm_password: e.target.value })}
+                    placeholder="Yeni şifrenizi tekrar girin"
+                    className="bg-[#1a1f2e] border-[#2D2F33] text-white pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={loading}
+                  className="flex-1 bg-[#3EA6FF] hover:bg-[#3EA6FF]/80 text-white"
+                >
+                  Şifreyi Değiştir
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowChangePassword(false);
+                    setPasswordFormData({
+                      old_password: '',
+                      new_password: '',
+                      confirm_password: ''
+                    });
+                    setTwoFactorCode('');
+                  }}
+                  variant="outline"
+                  className="border-[#2D2F33] text-gray-400 hover:text-white"
+                >
+                  İptal
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Two-Factor Authentication Section */}
       <Card className="bg-[#1a1f2e] border-[#2D2F33]">
@@ -394,6 +628,57 @@ const Security = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* 2FA Verification Dialog for Password Change */}
+      <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
+        <DialogContent className="bg-[#1a1f2e] border-[#2D2F33] text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">2FA Doğrulama</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <Alert className="bg-blue-500/10 border-blue-500/30">
+              <AlertDescription className="text-blue-200">
+                Şifre değiştirmek için 2FA doğrulama kodunuzu girin
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <Label className="text-white">Doğrulama Kodu</Label>
+              <Input
+                type="text"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                className="bg-[#25272A] border-[#2D2F33] text-white text-center text-2xl tracking-widest"
+              />
+              <p className="text-xs text-gray-400">
+                Google Authenticator veya benzeri uygulamadan aldığınız 6 haneli kodu girin
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handle2FAVerify}
+                disabled={loading || twoFactorCode.length !== 6}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              >
+                Doğrula ve Şifreyi Değiştir
+              </Button>
+              <Button
+                onClick={() => {
+                  setShow2FADialog(false);
+                  setTwoFactorCode('');
+                }}
+                variant="outline"
+                className="border-[#2D2F33] text-gray-400 hover:text-white"
+              >
+                İptal
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -137,47 +137,68 @@ const Reservations = () => {
   // Dönemsel fiyat kontrolü - rezervasyon formunda cari, tur tipi ve tarih seçildiğinde
   useEffect(() => {
     const checkSeasonalPrice = async () => {
-      if (formData.cari_id && formData.tour_type_id && formData.date && formData.atv_count && dialogOpen) {
+      // Tur tipi, tarih ve ATV sayısı zorunlu
+      if (formData.tour_type_id && formData.date && formData.atv_count && formData.atv_count > 0 && dialogOpen) {
         try {
-          // Backend'den fiyat hesapla
-          const response = await axios.get(`${API}/reservations/calculate-price`, {
-            params: {
-              cari_id: formData.cari_id,
-              tour_type_id: formData.tour_type_id,
-              date: formData.date,
-              atv_count: formData.atv_count,
-              person_count: formData.person_count || 1
-            }
-          });
+          // Backend'den fiyat hesapla (cari_id opsiyonel - münferit rezervasyonlar için None olabilir)
+          const params = {
+            tour_type_id: formData.tour_type_id,
+            date: formData.date,
+            atv_count: formData.atv_count,
+            person_count: formData.person_count || 1
+          };
           
-          if (response.data && response.data.price > 0) {
+          // Cari ID varsa ekle (boş string değilse)
+          if (formData.cari_id && formData.cari_id.trim() !== '') {
+            params.cari_id = formData.cari_id;
+          }
+          
+          console.log('Fiyat hesaplama isteği gönderiliyor:', params);
+          const response = await axios.get(`${API}/reservations/calculate-price`, { params });
+          console.log('Fiyat hesaplama yanıtı:', response.data);
+          
+          if (response.data && response.data.price !== undefined) {
             const totalPrice = response.data.price;
-            const currency = response.data.currency;
-            const exchangeRate = rates[currency] || 1.0;
+            const currency = response.data.currency || 'EUR';
             
-            // ATV başına fiyatı hesapla (gösterim için)
-            const pricePerAtv = totalPrice / formData.atv_count;
-            
-            setBasePricePerAtv(pricePerAtv);
-            setSeasonalPriceCurrency(currency);
-            
-            setFormData(prev => ({
-              ...prev,
-              price: totalPrice,
-              currency: currency,
-              exchange_rate: exchangeRate
-            }));
-            
-            toast.success(`Dönemsel fiyat uygulandı: ${totalPrice} ${currency}`);
+            if (totalPrice > 0) {
+              const exchangeRate = rates[currency] || 1.0;
+              
+              // ATV başına fiyatı hesapla (gösterim için)
+              const pricePerAtv = totalPrice / formData.atv_count;
+              
+              setBasePricePerAtv(pricePerAtv);
+              setSeasonalPriceCurrency(currency);
+              
+              setFormData(prev => ({
+                ...prev,
+                price: totalPrice,
+                currency: currency,
+                exchange_rate: exchangeRate
+              }));
+              
+              toast.success(`Dönemsel fiyat uygulandı: ${totalPrice} ${currency}`);
+            } else {
+              // Fiyat 0 - fiyat tanımlanmamış
+              setBasePricePerAtv(null);
+              setSeasonalPriceCurrency(null);
+              console.warn('Fiyat hesaplama: Fiyat 0 döndü. Backend loglarını kontrol edin. Parametreler:', params);
+              toast.warning('Bu tarih ve tur tipi için fiyat tanımlanmamış. Lütfen fiyat yönetiminden fiyat ekleyin.');
+            }
           } else {
-            // Fiyat bulunamadı
+            // Response data yok
             setBasePricePerAtv(null);
             setSeasonalPriceCurrency(null);
+            console.error('Fiyat hesaplama: Response data yok. Response:', response);
           }
         } catch (error) {
           console.error('Dönemsel fiyat kontrolü hatası:', error);
           setBasePricePerAtv(null);
           setSeasonalPriceCurrency(null);
+          // Hata mesajını sadece gerçek bir hata varsa göster
+          if (error.response?.status !== 404) {
+            toast.error('Fiyat hesaplanırken hata oluştu');
+          }
         }
       } else {
         // Eksik bilgi varsa base price'ı sıfırla

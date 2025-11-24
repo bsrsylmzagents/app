@@ -238,12 +238,6 @@ const StaffManagement = () => {
       setStaff(response.data);
     } catch (error) {
       console.error('Personeller yüklenemedi:', error);
-      // 403 hatası = yetki yok, settings'e yönlendir
-      if (error.response?.status === 403) {
-        toast.error('Bu sayfaya erişim yetkiniz yok');
-        navigate('/settings');
-        return;
-      }
       toast.error('Personeller yüklenemedi');
     } finally {
       setLoading(false);
@@ -265,12 +259,6 @@ const StaffManagement = () => {
       setStatistics(response.data);
     } catch (error) {
       console.error('İstatistikler yüklenemedi:', error);
-      // 403 hatası = yetki yok, settings'e yönlendir
-      if (error.response?.status === 403) {
-        toast.error('Bu sayfaya erişim yetkiniz yok');
-        navigate('/settings');
-        return;
-      }
     }
   };
 

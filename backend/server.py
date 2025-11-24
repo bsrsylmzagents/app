@@ -842,6 +842,133 @@ async def disable_2fa(data: dict, current_user: dict = Depends(get_current_user)
     
     return {"message": "2FA disabled successfully"}
 
+@api_router.post("/auth/2fa/verify-code")
+async def verify_2fa_code(data: dict, current_user: dict = Depends(get_current_user)):
+    """Verify 2FA code for operations like password change"""
+    code = data.get("code")
+    if not code:
+        raise HTTPException(status_code=400, detail="Code is required")
+    
+    user = await db.users.find_one({"id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user.get("is_two_factor_enabled", False):
+        raise HTTPException(status_code=400, detail="2FA is not enabled for this user")
+    
+    # Get 2FA secret
+    two_factor_secret = user.get("two_factor_secret")
+    if not two_factor_secret or "base32" not in two_factor_secret:
+        raise HTTPException(status_code=400, detail="2FA secret not found")
+    
+    secret = two_factor_secret["base32"]
+    totp = pyotp.TOTP(secret)
+    
+    # Verify code or check recovery codes
+    is_valid = False
+    used_recovery_code = None
+    
+    # First try TOTP code
+    if totp.verify(code, valid_window=1):
+        is_valid = True
+    else:
+        # Check recovery codes
+        recovery_codes = user.get("two_factor_recovery_codes", [])
+        if code in recovery_codes:
+            is_valid = True
+            used_recovery_code = code
+            # Remove used recovery code
+            recovery_codes.remove(code)
+            await db.users.update_one(
+                {"id": current_user["user_id"]},
+                {"$set": {"two_factor_recovery_codes": recovery_codes}}
+            )
+    
+    if not is_valid:
+        raise HTTPException(status_code=401, detail="Invalid 2FA code")
+    
+    return {"message": "2FA code verified successfully"}
+
+@api_router.put("/auth/change-password")
+async def change_password(data: dict, current_user: dict = Depends(get_current_user)):
+    """Change user password (requires 2FA if enabled)"""
+    old_password = data.get("old_password")
+    new_password = data.get("new_password")
+    two_factor_code = data.get("two_factor_code")  # Optional, required if 2FA is enabled
+    
+    if not old_password or not new_password:
+        raise HTTPException(status_code=400, detail="Old password and new password are required")
+    
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    user = await db.users.find_one({"id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify old password
+    if not verify_password(old_password, user.get("password_hash") or user.get("password")):
+        raise HTTPException(status_code=401, detail="Invalid old password")
+    
+    # If 2FA is enabled, verify 2FA code
+    if user.get("is_two_factor_enabled", False):
+        if not two_factor_code:
+            raise HTTPException(status_code=400, detail="2FA code is required")
+        
+        # Get 2FA secret
+        two_factor_secret = user.get("two_factor_secret")
+        if not two_factor_secret or "base32" not in two_factor_secret:
+            raise HTTPException(status_code=400, detail="2FA secret not found")
+        
+        secret = two_factor_secret["base32"]
+        totp = pyotp.TOTP(secret)
+        
+        # Verify code or check recovery codes
+        is_valid = False
+        used_recovery_code = None
+        
+        # First try TOTP code
+        if totp.verify(two_factor_code, valid_window=1):
+            is_valid = True
+        else:
+            # Check recovery codes
+            recovery_codes = user.get("two_factor_recovery_codes", [])
+            if two_factor_code in recovery_codes:
+                is_valid = True
+                used_recovery_code = two_factor_code
+                # Remove used recovery code
+                recovery_codes.remove(two_factor_code)
+                await db.users.update_one(
+                    {"id": current_user["user_id"]},
+                    {"$set": {"two_factor_recovery_codes": recovery_codes}}
+                )
+        
+        if not is_valid:
+            raise HTTPException(status_code=401, detail="Invalid 2FA code")
+    
+    # Hash new password
+    new_password_hash = get_password_hash(new_password)
+    
+    # Update password
+    await db.users.update_one(
+        {"id": current_user["user_id"]},
+        {"$set": {"password_hash": new_password_hash}}
+    )
+    
+    # Activity log
+    await create_activity_log(
+        company_id=current_user["company_id"],
+        user_id=current_user["user_id"],
+        username=user.get("username", ""),
+        full_name=user.get("full_name", ""),
+        action="change_password",
+        entity_type="user",
+        entity_id=current_user["user_id"],
+        description="Password changed"
+    )
+    
+    return {"message": "Password changed successfully"}
+
 @api_router.post("/auth/2fa/validate-login")
 async def validate_2fa_login(data: dict, request: Request):
     """Validate 2FA code during login and return final JWT token"""
@@ -2454,8 +2581,8 @@ async def get_busy_hour_threshold(current_user: dict = Depends(get_current_user)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     
-    # Varsayılan değer: 80% (0.8)
-    threshold = company.get("busy_hour_threshold", 0.8)
+    # Varsayılan değer: 5 ATV
+    threshold = company.get("busy_hour_threshold", 5)
     
     return {
         "threshold": threshold,
@@ -2469,11 +2596,17 @@ async def update_busy_hour_threshold(
 ):
     """Yoğun saat eşiğini güncelle"""
     company_id = current_user["company_id"]
-    threshold = data.get("threshold", 0.8)
+    threshold = data.get("threshold", 5)
     
-    # Threshold değerini 0-1 arasında kontrol et
-    if not isinstance(threshold, (int, float)) or threshold < 0 or threshold > 1:
-        raise HTTPException(status_code=400, detail="Threshold must be between 0 and 1")
+    # Threshold'u integer'a çevir (tam sayı olmalı)
+    try:
+        threshold = int(float(threshold))  # Önce float'a çevir sonra int'e (ondalıklı sayıları da kabul eder)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Threshold must be a valid number")
+    
+    # Threshold değerini pozitif tam sayı olarak kontrol et (minimum 1)
+    if threshold < 1:
+        raise HTTPException(status_code=400, detail="Threshold must be 1 or greater (must be an integer)")
     
     await db.companies.update_one(
         {"id": company_id},
@@ -4152,6 +4285,10 @@ async def calculate_reservation_price(
     logger.info(f"Fiyat hesaplama başladı: company_id={company_id}, cari_id={cari_id}, tour_type_id={tour_type_id}, date={date}, atv_count={atv_count}")
     logger.info(f"Seasonal prices bulundu: {len(seasonal_prices)} adet")
     
+    # Debug: Tüm seasonal prices'ları logla
+    for idx, sp in enumerate(seasonal_prices):
+        logger.info(f"Seasonal price #{idx+1}: id={sp.get('id')}, start={sp.get('start_date')}, end={sp.get('end_date')}, tour_type_ids={sp.get('tour_type_ids')}, price_per_atv={sp.get('price_per_atv')}, currency={sp.get('currency')}, cari_prices_count={len(sp.get('cari_prices', {}))}")
+    
     reservation_date = datetime.strptime(date, "%Y-%m-%d").date()
     matching_seasonal = None
     
@@ -4160,11 +4297,20 @@ async def calculate_reservation_price(
         end_date = datetime.strptime(sp["end_date"], "%Y-%m-%d").date()
         tour_type_ids = sp.get("tour_type_ids", [])
         
-        logger.debug(f"Seasonal price kontrolü: start={start_date}, end={end_date}, reservation_date={reservation_date}, tour_type_ids={tour_type_ids}, tour_type_id={tour_type_id}")
+        logger.debug(f"Seasonal price kontrolü: start={start_date}, end={end_date}, reservation_date={reservation_date}, tour_type_ids={tour_type_ids} (type: {type(tour_type_ids)}), tour_type_id={tour_type_id} (type: {type(tour_type_id)})")
         
-        if start_date <= reservation_date <= end_date and tour_type_id in tour_type_ids:
+        # Tour type ID kontrolü - hem string hem de list içinde string kontrolü
+        tour_type_match = False
+        if isinstance(tour_type_ids, list):
+            # List içinde string olarak kontrol et
+            tour_type_match = tour_type_id in tour_type_ids or str(tour_type_id) in [str(tid) for tid in tour_type_ids]
+        elif isinstance(tour_type_ids, str):
+            # Tek bir tour type ID varsa
+            tour_type_match = tour_type_id == tour_type_ids or str(tour_type_id) == tour_type_ids
+        
+        if start_date <= reservation_date <= end_date and tour_type_match:
             matching_seasonal = sp
-            logger.info(f"Matching seasonal price bulundu: price_per_atv={sp.get('price_per_atv')}, currency={sp.get('currency')}, cari_prices keys={list(sp.get('cari_prices', {}).keys())}")
+            logger.info(f"Matching seasonal price bulundu: price_per_atv={sp.get('price_per_atv')}, currency={sp.get('currency')}, cari_prices keys={list(sp.get('cari_prices', {}).keys())}, cari_prices={sp.get('cari_prices', {})}")
             break
     
     # Fiyat hesaplama - artık sadece seasonal prices kullanılacak
@@ -4173,14 +4319,27 @@ async def calculate_reservation_price(
     price_source = "seasonal"  # seasonal, cari_specific, error_fallback
     
     if matching_seasonal:
+        # Para birimini al
+        currency = matching_seasonal.get("currency", "EUR")
+        
         # Cari özel fiyatı var mı? (cari_prices dict'inde cari_id key olarak saklanır)
         cari_prices = matching_seasonal.get("cari_prices", {})
         
-        # cari_id string olarak kontrol et
-        logger.info(f"Cari prices dict kontrolü: cari_id={cari_id}, cari_prices keys={list(cari_prices.keys())}, cari_id in cari_prices={cari_id in cari_prices if cari_id else False}")
+        # cari_id string olarak kontrol et (hem string hem de None kontrolü)
+        logger.info(f"Cari prices dict kontrolü: cari_id={cari_id} (type: {type(cari_id)}), cari_prices keys={list(cari_prices.keys())} (types: {[type(k) for k in cari_prices.keys()]}), cari_id in cari_prices={cari_id in cari_prices if cari_id else False}")
         
-        if cari_id and cari_id in cari_prices:
-            cari_specific_price = cari_prices[cari_id]
+        # Cari ID'yi string'e çevir ve kontrol et
+        cari_id_str = str(cari_id).strip() if cari_id else None
+        # Cari prices key'lerini de string'e çevir ve normalize et
+        cari_prices_str_keys = {}
+        for k, v in cari_prices.items():
+            key_str = str(k).strip()
+            cari_prices_str_keys[key_str] = v
+        
+        logger.info(f"Cari ID string kontrolü: cari_id_str='{cari_id_str}', cari_prices_str_keys={list(cari_prices_str_keys.keys())}, cari_prices_values={list(cari_prices_str_keys.values())}")
+        
+        if cari_id_str and cari_id_str in cari_prices_str_keys:
+            cari_specific_price = cari_prices_str_keys[cari_id_str]
             logger.info(f"Cari özel fiyat bulundu: cari_id={cari_id}, price={cari_specific_price}, type={type(cari_specific_price)}")
             # None kontrolü ve sayısal değer kontrolü
             if cari_specific_price is not None and isinstance(cari_specific_price, (int, float)):
@@ -4188,14 +4347,27 @@ async def calculate_reservation_price(
                 price_source = "cari_specific"
                 logger.info(f"Cari özel fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}, currency={currency}")
             else:
-                # Cari özel fiyat geçersiz, seasonal genel fiyatı kullan
+                # Cari özel fiyat geçersiz, seasonal genel fiyatı veya cari_prices'dan ilk fiyatı kullan
                 seasonal_price = matching_seasonal.get("price_per_atv")
                 if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
                     price_per_atv = float(seasonal_price)
+                    price_source = "seasonal"
+                    logger.warning(f"Cari özel fiyat geçersiz (None veya sayı değil), seasonal genel fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}")
+                elif cari_prices_str_keys and len(cari_prices_str_keys) > 0:
+                    # price_per_atv yok ama cari_prices var - ilk fiyatı kullan
+                    prices = list(cari_prices_str_keys.values())
+                    if prices and len(prices) > 0:
+                        price_per_atv = float(prices[0])
+                        price_source = "seasonal"
+                        logger.warning(f"Cari özel fiyat geçersiz, cari_prices'dan ilk fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}")
+                    else:
+                        price_per_atv = 0.0
+                        price_source = "error_fallback"
+                        logger.error(f"Cari özel fiyat geçersiz ve cari_prices boş: cari_id={cari_id}")
                 else:
                     price_per_atv = 0.0
-                price_source = "seasonal"
-                logger.warning(f"Cari özel fiyat geçersiz (None veya sayı değil), seasonal fiyat kullanıldı: cari_id={cari_id}, price={price_per_atv}")
+                    price_source = "error_fallback"
+                    logger.error(f"Cari özel fiyat geçersiz ve fiyat bulunamadı: cari_id={cari_id}")
         elif matching_seasonal.get("apply_to_new_caris", False) and cari_id:
             # Yeni cariler için geçerli mi kontrol et
             cari_account = await db.cari_accounts.find_one({"id": cari_id, "company_id": company_id})
@@ -4216,37 +4388,105 @@ async def calculate_reservation_price(
                         seasonal_price = matching_seasonal.get("price_per_atv")
                         if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
                             price_per_atv = float(seasonal_price)
+                            price_source = "seasonal"
+                            logger.info(f"Seasonal genel fiyat kullanıldı (yeni cari için, cari_prices boş): price={price_per_atv}, currency={currency}")
                         else:
                             price_per_atv = 0.0
-                        price_source = "seasonal"
-                        logger.info(f"Seasonal genel fiyat kullanıldı (yeni cari için): price={price_per_atv}, currency={currency}")
+                            price_source = "error_fallback"
+                            logger.warning(f"Seasonal price'da fiyat bulunamadı (yeni cari için): price_per_atv=None, cari_prices boş")
                 else:
                     # Cari oluşturulma tarihi aralık dışında, seasonal genel fiyatı kullan
                     seasonal_price = matching_seasonal.get("price_per_atv")
                     if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
                         price_per_atv = float(seasonal_price)
+                        price_source = "seasonal"
+                        logger.info(f"Seasonal genel fiyat kullanıldı (cari tarih aralık dışında): price={price_per_atv}, currency={currency}")
+                    elif cari_prices and len(cari_prices) > 0:
+                        # price_per_atv yok ama cari_prices var - ilk fiyatı kullan
+                        prices = list(cari_prices.values())
+                        if prices and len(prices) > 0:
+                            price_per_atv = float(prices[0])
+                            price_source = "seasonal"
+                            logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan, tarih aralık dışında): price={price_per_atv}, currency={currency}")
+                        else:
+                            price_per_atv = 0.0
+                            price_source = "error_fallback"
+                            logger.warning(f"Seasonal price'da fiyat bulunamadı (cari tarih aralık dışında): price_per_atv=None, cari_prices boş")
                     else:
                         price_per_atv = 0.0
-                    price_source = "seasonal"
-                    logger.info(f"Seasonal genel fiyat kullanıldı (cari tarih aralık dışında): price={price_per_atv}, currency={currency}")
+                        price_source = "error_fallback"
+                        logger.warning(f"Seasonal price'da fiyat bulunamadı (cari tarih aralık dışında): price_per_atv=None, cari_prices yok")
             else:
                 # Cari bulunamadı veya created_at yok, seasonal genel fiyatı kullan
                 seasonal_price = matching_seasonal.get("price_per_atv")
                 if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
                     price_per_atv = float(seasonal_price)
+                    price_source = "seasonal"
+                    logger.info(f"Seasonal genel fiyat kullanıldı (cari bilgisi yok): price={price_per_atv}, currency={currency}")
+                elif cari_prices and len(cari_prices) > 0:
+                    # price_per_atv yok ama cari_prices var - ilk fiyatı kullan
+                    prices = list(cari_prices.values())
+                    if prices and len(prices) > 0:
+                        price_per_atv = float(prices[0])
+                        price_source = "seasonal"
+                        logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan, cari bilgisi yok): price={price_per_atv}, currency={currency}")
+                    else:
+                        price_per_atv = 0.0
+                        price_source = "error_fallback"
+                        logger.warning(f"Seasonal price'da fiyat bulunamadı (cari bilgisi yok): price_per_atv=None, cari_prices boş")
                 else:
                     price_per_atv = 0.0
-                price_source = "seasonal"
-                logger.info(f"Seasonal genel fiyat kullanıldı (cari bilgisi yok): price={price_per_atv}, currency={currency}")
+                    price_source = "error_fallback"
+                    logger.warning(f"Seasonal price'da fiyat bulunamadı (cari bilgisi yok): price_per_atv=None, cari_prices yok")
         else:
-            # Seasonal genel fiyatı kullan
-            seasonal_price = matching_seasonal.get("price_per_atv")
-            if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
-                price_per_atv = float(seasonal_price)
+            # Cari ID yok veya eşleşmedi - ÖNCE cari_prices'dan bir fiyat kullanmayı dene
+            # Çünkü cari_prices varsa, bu fiyatlar tanımlı demektir ve kullanılmalı
+            if cari_prices_str_keys and len(cari_prices_str_keys) > 0:
+                # Cari ID varsa onun fiyatını, yoksa ilk fiyatı kullan
+                if cari_id_str and cari_id_str in cari_prices_str_keys:
+                    # Cari ID var ama yukarıdaki kontrol geçmedi (belki başka bir sorun var) - tekrar dene
+                    cari_specific_price = cari_prices_str_keys[cari_id_str]
+                    if cari_specific_price is not None and isinstance(cari_specific_price, (int, float)):
+                        price_per_atv = float(cari_specific_price)
+                        price_source = "cari_specific"
+                        logger.info(f"Cari özel fiyat kullanıldı (else bloğunda, tekrar kontrol): cari_id={cari_id}, price={price_per_atv}, currency={currency}")
+                    else:
+                        # Cari fiyat geçersiz, ilk fiyatı kullan
+                        prices = list(cari_prices_str_keys.values())
+                        if prices and len(prices) > 0:
+                            price_per_atv = float(prices[0])
+                            price_source = "seasonal"
+                            logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan ilk fiyat, cari fiyat geçersiz): price={price_per_atv}, currency={currency}")
+                        else:
+                            price_per_atv = 0.0
+                            price_source = "error_fallback"
+                            logger.warning(f"Seasonal price'da fiyat bulunamadı: cari_prices boş")
+                else:
+                    # Cari ID yok veya eşleşmedi - ilk fiyatı kullan (genel fiyat olarak)
+                    prices = list(cari_prices_str_keys.values())
+                    if prices and len(prices) > 0:
+                        price_per_atv = float(prices[0])
+                        price_source = "seasonal"
+                        logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan ilk fiyat, cari_id yok/eşleşmedi): price={price_per_atv}, currency={currency}, cari_id={cari_id_str}")
+                    else:
+                        price_per_atv = 0.0
+                        price_source = "error_fallback"
+                        logger.warning(f"Seasonal price'da fiyat bulunamadı: price_per_atv=None, cari_prices boş")
+            elif matching_seasonal.get("price_per_atv") is not None:
+                # cari_prices yok ama price_per_atv var - genel fiyatı kullan
+                seasonal_price = matching_seasonal.get("price_per_atv")
+                if isinstance(seasonal_price, (int, float)):
+                    price_per_atv = float(seasonal_price)
+                    price_source = "seasonal"
+                    logger.info(f"Seasonal genel fiyat kullanıldı (cari özel fiyat yok, cari_prices yok): price={price_per_atv}, currency={currency}")
+                else:
+                    price_per_atv = 0.0
+                    price_source = "error_fallback"
+                    logger.warning(f"Seasonal price'da fiyat bulunamadı: price_per_atv geçersiz")
             else:
                 price_per_atv = 0.0
-            price_source = "seasonal"
-            logger.info(f"Seasonal genel fiyat kullanıldı (cari özel fiyat yok): price={price_per_atv}, currency={currency}")
+                price_source = "error_fallback"
+                logger.warning(f"Seasonal price'da fiyat bulunamadı: price_per_atv=None, cari_prices yok")
         
         currency = matching_seasonal.get("currency", "EUR")
     else:
@@ -4272,15 +4512,19 @@ async def calculate_reservation_price(
 
 @api_router.get("/reservations/calculate-price")
 async def calculate_price(
-    cari_id: str,
     tour_type_id: str,
     date: str,
     atv_count: int,
+    cari_id: Optional[str] = None,
     person_count: int = 1,
     current_user: dict = Depends(get_current_user)
 ):
     """Rezervasyon fiyatını hesapla - frontend için"""
     try:
+        # Boş string'i None'a çevir
+        if cari_id == "" or cari_id is None:
+            cari_id = None
+        
         total_price, currency = await calculate_reservation_price(
             company_id=current_user["company_id"],
             cari_id=cari_id,

@@ -21,12 +21,12 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { formatDate } from '../utils/dateFormatter';
 import { useTheme } from '../contexts/ThemeContext';
-import { Monitor, Contrast, Moon } from 'lucide-react';
+import { Monitor, Contrast, Moon, Sparkles } from 'lucide-react';
 
 const Preferences = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const { contrast, setContrastLevel } = useTheme();
+  const { contrast, setContrastLevel, theme, setThemeMode } = useTheme();
   
   // All preference states
   const [dateFormat, setDateFormat] = useState('DD/MM/YYYY');
@@ -54,8 +54,10 @@ const Preferences = () => {
           setSoundEffects(prefs.soundEffects !== undefined ? prefs.soundEffects : true);
           setSidebarCollapsed(prefs.sidebarCollapsed || false);
           
-          // Set contrast level if available
-          if (prefs.darkContrast && ['classic', 'soft', 'medium', 'high'].includes(prefs.darkContrast)) {
+          // Set theme if available (dynamic theme takes priority)
+          if (prefs.theme === 'dynamic') {
+            setThemeMode('dynamic');
+          } else if (prefs.darkContrast && ['classic', 'soft', 'medium', 'high'].includes(prefs.darkContrast)) {
             setContrastLevel(prefs.darkContrast);
           }
         }
@@ -72,7 +74,8 @@ const Preferences = () => {
     try {
       const response = await axios.put(`${API}/users/me/preferences`, {
         dateFormat,
-        darkContrast: contrast, // Save contrast level
+        theme: theme || null, // Save theme (dynamic or null)
+        darkContrast: theme === 'dynamic' ? null : contrast, // Save contrast level only if not dynamic
         tableDensity,
         startPage,
         currencyDisplay,
@@ -312,87 +315,158 @@ const Preferences = () => {
           </div>
         </div>
 
-        {/* Dark Contrast Section */}
+        {/* Theme & Contrast Section */}
         <div className="bg-card backdrop-blur-xl border border-border rounded-xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <Contrast className="h-5 w-5 text-[#A5A5A5]" />
-            <h2 className="text-xl font-semibold text-foreground">Karanlık Mod Yoğunluğu</h2>
+            <h2 className="text-xl font-semibold text-foreground">Tema ve Kontrast</h2>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="darkContrast" className="text-foreground">
-              Kontrast Seviyesi
+            <Label htmlFor="theme" className="text-foreground">
+              Tema Seçimi
             </Label>
             <p className="text-sm text-muted-foreground mb-4">
-              Uygulamanın karanlık mod yoğunluğunu ayarlayın. Değişiklik anında uygulanır.
+              Uygulamanın görsel temasını seçin. Dinamik tema, giriş sayfasındaki turuncu gradyan ve marka kimliğini dashboard'a taşır.
             </p>
             
-            <Select value={contrast} onValueChange={(value) => {
-              setContrastLevel(value);
-              // Also update in preferences immediately
-              try {
-                const userStr = localStorage.getItem('user');
-                if (userStr) {
-                  const user = JSON.parse(userStr);
-                  const updatedUser = {
-                    ...user,
-                    preferences: {
-                      ...user.preferences,
-                      darkContrast: value
-                    }
-                  };
-                  localStorage.setItem('user', JSON.stringify(updatedUser));
+            <Select value={theme === 'dynamic' ? 'dynamic' : 'contrast'} onValueChange={(value) => {
+              if (value === 'dynamic') {
+                setThemeMode('dynamic');
+                // Also update in preferences immediately
+                try {
+                  const userStr = localStorage.getItem('user');
+                  if (userStr) {
+                    const user = JSON.parse(userStr);
+                    const updatedUser = {
+                      ...user,
+                      preferences: {
+                        ...user.preferences,
+                        theme: 'dynamic'
+                      }
+                    };
+                    localStorage.setItem('user', JSON.stringify(updatedUser));
+                  }
+                } catch (error) {
+                  console.error('Error updating theme:', error);
                 }
-              } catch (error) {
-                console.error('Error updating contrast:', error);
+              } else {
+                // Switch back to contrast mode
+                setThemeMode(null);
+                if (contrast) {
+                  setContrastLevel(contrast);
+                } else {
+                  setContrastLevel('classic');
+                }
               }
             }}>
               <SelectTrigger 
-                id="darkContrast"
+                id="theme"
                 className="w-full bg-input border-border text-foreground"
               >
-                <SelectValue placeholder="Kontrast seviyesi seçin" />
+                <SelectValue placeholder="Tema seçin" />
               </SelectTrigger>
               <SelectContent className="bg-input border-border">
-                <SelectItem value="classic" className="text-foreground hover:bg-elevated focus:bg-elevated">
+                <SelectItem value="dynamic" className="text-foreground hover:bg-elevated focus:bg-elevated">
                   <div className="flex items-center gap-2">
-                    <Monitor className="h-4 w-4" />
+                    <Sparkles className="h-4 w-4 text-orange-500" />
                     <div>
-                      <div className="font-medium">Klasik (Classic)</div>
-                      <div className="text-xs text-muted-foreground">Orijinal Slate / Mavi Tonlu Karanlık</div>
+                      <div className="font-medium">Dinamik (Brand)</div>
+                      <div className="text-xs text-muted-foreground">Turuncu gradyan, topografik desen, Outfit font</div>
                     </div>
                   </div>
                 </SelectItem>
-                <SelectItem value="soft" className="text-foreground hover:bg-elevated focus:bg-elevated">
-                  <div className="flex items-center gap-2">
-                    <Monitor className="h-4 w-4" />
-                    <div>
-                      <div className="font-medium">Yumuşak (Soft)</div>
-                      <div className="text-xs text-muted-foreground">Göz Yormayan Mavi Tonlu Gri</div>
-                    </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="medium" className="text-white hover:bg-[#2D2F33] focus:bg-[#2D2F33]">
+                <SelectItem value="contrast" className="text-foreground hover:bg-elevated focus:bg-elevated">
                   <div className="flex items-center gap-2">
                     <Contrast className="h-4 w-4" />
                     <div>
-                      <div className="font-medium">Dengeli (Medium)</div>
-                      <div className="text-xs text-[#A5A5A5]">Nötr Koyu Gri</div>
-                    </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="high" className="text-white hover:bg-[#2D2F33] focus:bg-[#2D2F33]">
-                  <div className="flex items-center gap-2">
-                    <Moon className="h-4 w-4" />
-                    <div>
-                      <div className="font-medium">Simsiyah (OLED)</div>
-                      <div className="text-xs text-[#A5A5A5]">Tam Siyah - Yüksek Kontrast</div>
+                      <div className="font-medium">Kontrast Modları</div>
+                      <div className="text-xs text-muted-foreground">Klasik, Yumuşak, Dengeli, Simsiyah</div>
                     </div>
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
+          
+          {/* Contrast Level Selector - Only show if not dynamic theme */}
+          {theme !== 'dynamic' && (
+            <div className="space-y-2 mt-6">
+              <Label htmlFor="darkContrast" className="text-foreground">
+                Kontrast Seviyesi
+              </Label>
+              <p className="text-sm text-muted-foreground mb-4">
+                Karanlık mod yoğunluğunu ayarlayın. Değişiklik anında uygulanır.
+              </p>
+              
+              <Select value={contrast || 'classic'} onValueChange={(value) => {
+                setContrastLevel(value);
+                // Also update in preferences immediately
+                try {
+                  const userStr = localStorage.getItem('user');
+                  if (userStr) {
+                    const user = JSON.parse(userStr);
+                    const updatedUser = {
+                      ...user,
+                      preferences: {
+                        ...user.preferences,
+                        darkContrast: value,
+                        theme: null
+                      }
+                    };
+                    localStorage.setItem('user', JSON.stringify(updatedUser));
+                  }
+                } catch (error) {
+                  console.error('Error updating contrast:', error);
+                }
+              }}>
+                <SelectTrigger 
+                  id="darkContrast"
+                  className="w-full bg-input border-border text-foreground"
+                >
+                  <SelectValue placeholder="Kontrast seviyesi seçin" />
+                </SelectTrigger>
+                <SelectContent className="bg-input border-border">
+                  <SelectItem value="classic" className="text-foreground hover:bg-elevated focus:bg-elevated">
+                    <div className="flex items-center gap-2">
+                      <Monitor className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">Klasik (Classic)</div>
+                        <div className="text-xs text-muted-foreground">Orijinal Slate / Mavi Tonlu Karanlık</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="soft" className="text-foreground hover:bg-elevated focus:bg-elevated">
+                    <div className="flex items-center gap-2">
+                      <Monitor className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">Yumuşak (Soft)</div>
+                        <div className="text-xs text-muted-foreground">Göz Yormayan Mavi Tonlu Gri</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="medium" className="text-white hover:bg-[#2D2F33] focus:bg-[#2D2F33]">
+                    <div className="flex items-center gap-2">
+                      <Contrast className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">Dengeli (Medium)</div>
+                        <div className="text-xs text-[#A5A5A5]">Nötr Koyu Gri</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="high" className="text-white hover:bg-[#2D2F33] focus:bg-[#2D2F33]">
+                    <div className="flex items-center gap-2">
+                      <Moon className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">Simsiyah (OLED)</div>
+                        <div className="text-xs text-[#A5A5A5]">Tam Siyah - Yüksek Kontrast</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {/* Sidebar Default Section */}

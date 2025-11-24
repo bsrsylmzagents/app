@@ -5,6 +5,7 @@ import { API } from '../App';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { LogIn, User, Lock, Smartphone, Building2, Phone, Mail, X, MapPin, Plane, Car, Bike, Activity, Mountain } from 'lucide-react';
+import { CircleNotch } from '@phosphor-icons/react';
 import {
   Dialog,
   DialogContent,
@@ -444,11 +445,17 @@ const Login = ({ setAuth }) => {
             <button
               type="submit"
               disabled={loading}
-                  className="w-full py-3.5 rounded-xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 !text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 relative z-10"
+                  className={`w-full py-3.5 rounded-xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 !text-white transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 relative z-10 flex items-center justify-center gap-2 ${loading ? 'opacity-75 cursor-not-allowed' : ''}`}
                   style={{ fontFamily: 'Inter, sans-serif', fontSize: '16px', letterSpacing: '0.01em', backgroundColor: '#f97316', color: '#ffffff' }}
               data-testid="login-submit-btn"
             >
-              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+              {loading ? (
+                <>
+                  <CircleNotch size={24} className="text-white animate-spin" />
+                </>
+              ) : (
+                'Giriş Yap'
+              )}
             </button>
           </form>
 

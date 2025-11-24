@@ -167,6 +167,74 @@
     --placeholder: #A5A5A5;
   }
 
+  /* DYNAMIC THEME - Brand-First Orange Gradient Theme */
+  :root[data-theme="dynamic"] {
+    /* Background Colors - Warm Stone-50 canvas */
+    --bg-app: #fafaf9; /* Warm Stone-50 - Clean canvas */
+    --bg-card: #ffffff; /* White cards */
+    --bg-elevated: #f5f5f4; /* Stone-100 for elevated surfaces */
+    --bg-input: #ffffff; /* White inputs */
+    --border-color: #e7e5e4; /* Stone-200 borders */
+    --border-subtle: #d6d3d1; /* Stone-300 subtle borders */
+    
+    /* Sidebar - Orange Gradient */
+    --bg-sidebar: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); /* Orange-600 to Orange-700 */
+    --sidebar-pattern: url("data:image/svg+xml,%3Csvg width='300' height='300' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='wave-topography' x='0' y='0' width='300' height='300' patternUnits='userSpaceOnUse'%3E%3Cpath d='M0,150 Q75,100 150,150 T300,150' fill='none' stroke='white' stroke-width='1.5' opacity='0.6'/%3E%3Cpath d='M0,180 Q75,130 150,180 T300,180' fill='none' stroke='white' stroke-width='1.5' opacity='0.5'/%3E%3Cpath d='M0,210 Q75,160 150,210 T300,210' fill='none' stroke='white' stroke-width='1.5' opacity='0.4'/%3E%3Cpath d='M0,240 Q75,190 150,240 T300,240' fill='none' stroke='white' stroke-width='1.5' opacity='0.3'/%3E%3Cpath d='M0,50 Q50,30 100,50 T200,50 Q250,30 300,50' fill='none' stroke='white' stroke-width='1' opacity='0.5'/%3E%3Cpath d='M0,80 Q50,60 100,80 T200,80 Q250,60 300,80' fill='none' stroke='white' stroke-width='1' opacity='0.4'/%3E%3Cpath d='M0,110 Q50,90 100,110 T200,110 Q250,90 300,110' fill='none' stroke='white' stroke-width='1' opacity='0.35'/%3E%3Cpath d='M0,120 Q100,100 200,120 Q250,110 300,120' fill='none' stroke='white' stroke-width='1.2' opacity='0.3'/%3E%3Cpath d='M0,270 Q75,250 150,270 T300,270' fill='none' stroke='white' stroke-width='1.5' opacity='0.25'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23wave-topography)'/%3E%3C/svg%3E");
+    --text-sidebar: #ffffff; /* White text on orange */
+    --text-sidebar-muted: rgba(255, 255, 255, 0.7); /* 70% opacity white */
+    
+    /* Primary Gradient - Orange */
+    --primary-gradient: linear-gradient(to right, #f97316, #ea580c); /* Orange-500 to Orange-600 */
+    
+    /* Typography */
+    --font-heading: 'Outfit', sans-serif; /* Display font */
+    --font-body: 'Inter', sans-serif; /* Readable font */
+    
+    /* HSL format (Tailwind compatible) */
+    --background: 24 10% 98%; /* Stone-50 */
+    --foreground: 24 10% 10%; /* Stone-900 - Dark charcoal */
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 24 10% 10%; /* Stone-900 */
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 24 10% 10%; /* Stone-900 */
+    --primary: 24 95% 53%; /* Orange-600 */
+    --primary-foreground: 0 0% 100%; /* White */
+    --secondary: 24 10% 90%; /* Stone-100 */
+    --secondary-foreground: 24 10% 10%; /* Stone-900 */
+    --muted: 24 10% 96%; /* Stone-50 */
+    --muted-foreground: 24 10% 40%; /* Stone-600 */
+    --accent: 24 95% 53%; /* Orange-600 */
+    --accent-foreground: 0 0% 100%; /* White */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 24 10% 90%; /* Stone-200 */
+    --input: 0 0% 100%; /* White */
+    --ring: 24 95% 53%; /* Orange-600 */
+    --radius: 1rem; /* rounded-2xl */
+    
+    /* Legacy variables for compatibility */
+    --bg-primary: #fafaf9;
+    --bg-surface: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); /* Sidebar gradient */
+    --bg-elevated: #f5f5f4;
+    --text-primary: #1c1917; /* Stone-900 - Dark charcoal for headings */
+    --text-secondary: #57534e; /* Stone-600 - Body text */
+    --text-main: #1c1917;
+    --text-muted: #a8a29e; /* Stone-400 */
+    --primary-color: #ea580c; /* Orange-600 */
+    --sidebar-bg: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+    --sidebar-hover: rgba(255, 255, 255, 0.1); /* White glassmorphism */
+    --chip-bg: #f5f5f4;
+    --table-header: #fafaf9;
+    --input-bg: #ffffff;
+    --modal-overlay: rgba(0, 0, 0, 0.4);
+    --popup-bg: #ffffff;
+    --tooltip-bg: #1c1917;
+    --tooltip-text: #ffffff;
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --timeline-bg: #fafaf9;
+    --placeholder: #a8a29e;
+  }
+
   /* HIGH CONTRAST - Pure Black for OLED */
   :root[data-contrast="high"] {
     --bg-app: #000000; /* Pure Black */
@@ -406,6 +474,34 @@
     letter-spacing: -0.025em; /* tracking-tight */
   }
   
+  /* Dynamic Theme Typography - Use Outfit for headings */
+  :root[data-theme="dynamic"] h1,
+  :root[data-theme="dynamic"] h2,
+  :root[data-theme="dynamic"] h3,
+  :root[data-theme="dynamic"] h4,
+  :root[data-theme="dynamic"] h5,
+  :root[data-theme="dynamic"] h6,
+  :root[data-theme="dynamic"] [class*="heading"],
+  :root[data-theme="dynamic"] [class*="title"],
+  :root[data-theme="dynamic"] h1[class*="text-"],
+  :root[data-theme="dynamic"] h2[class*="text-"],
+  :root[data-theme="dynamic"] h3[class*="text-"] {
+    font-family: var(--font-heading) !important; /* Outfit font */
+    font-weight: 800; /* Extra bold for magazine look */
+    letter-spacing: -0.02em;
+    color: var(--text-primary) !important; /* Dark charcoal */
+  }
+  
+  /* Dynamic Theme Page Titles - Large, Bold, Outfit */
+  :root[data-theme="dynamic"] h1.text-3xl,
+  :root[data-theme="dynamic"] h1.text-4xl,
+  :root[data-theme="dynamic"] h2.text-3xl,
+  :root[data-theme="dynamic"] h2.text-2xl {
+    font-family: var(--font-heading) !important;
+    font-weight: 800 !important;
+    color: #1c1917 !important; /* Stone-900 - Dark charcoal */
+  }
+  
   /* Dark Mode Only Typography */
   h1, h2, h3, h4, h5, h6 {
     color: var(--text-primary) !important;
@@ -573,11 +669,77 @@
     color: var(--text-primary) !important;
   }
   
+  /* Dynamic Theme Sidebar - Orange Gradient + Topographic Pattern */
+  :root[data-theme="dynamic"] .sidebar,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] {
+    background: var(--bg-sidebar) !important;
+    position: relative;
+    color: var(--text-sidebar) !important;
+    overflow: hidden;
+  }
+  
+  :root[data-theme="dynamic"] .sidebar::before,
+  :root[data-theme="dynamic"] aside[class*="sidebar"]::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--sidebar-pattern);
+    opacity: 0.5;
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  /* Ensure sidebar content is above the pattern */
+  :root[data-theme="dynamic"] .sidebar > *,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] > * {
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Dynamic Theme Sidebar Text - Force White */
+  :root[data-theme="dynamic"] .sidebar,
+  :root[data-theme="dynamic"] .sidebar *,
+  :root[data-theme="dynamic"] aside[class*="sidebar"],
+  :root[data-theme="dynamic"] aside[class*="sidebar"] * {
+    color: var(--text-sidebar) !important;
+  }
+  
+  /* Dynamic Theme Sidebar Navigation Items */
+  :root[data-theme="dynamic"] .sidebar .nav-item:not(.active),
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:not(.active) {
+    color: var(--text-sidebar-muted) !important; /* 70% opacity white */
+  }
+  
+  :root[data-theme="dynamic"] .sidebar .nav-item.active,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.active {
+    background: rgba(255, 255, 255, 0.2) !important; /* White glassmorphism */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text-sidebar) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Dynamic Theme Sidebar Icons - Force White */
+  :root[data-theme="dynamic"] .sidebar svg,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] svg {
+    color: var(--text-sidebar) !important;
+    fill: var(--text-sidebar) !important;
+    stroke: var(--text-sidebar) !important;
+  }
+  
   .sidebar a:hover,
   .sidebar button:hover,
   aside[class*="sidebar"] a:hover,
   aside[class*="sidebar"] button:hover {
     background-color: var(--sidebar-hover) !important;
+  }
+  
+  /* Dynamic Theme Sidebar Hover */
+  :root[data-theme="dynamic"] .sidebar .nav-item:hover,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--text-sidebar) !important;
   }
   
   /* Header - Use CSS Variables */
@@ -596,6 +758,16 @@
     border-color: var(--border-color) !important;
     color: var(--text-primary) !important;
     box-shadow: var(--card-shadow) !important;
+  }
+  
+  /* Dynamic Theme Cards - Clean White Cards */
+  :root[data-theme="dynamic"] .card,
+  :root[data-theme="dynamic"] [class*="card"],
+  :root[data-theme="dynamic"] [class*="Card"] {
+    background-color: #ffffff !important; /* Clean white */
+    border-color: #e7e5e4 !important; /* Stone-200 */
+    border-radius: 1rem !important; /* rounded-2xl */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important; /* Subtle shadow */
   }
   
   /* Tables - Use CSS Variables */
@@ -633,6 +805,28 @@
   button[type="submit"]:not([class*="bg-"]) {
     background-color: var(--primary) !important;
     color: var(--primary-foreground) !important;
+  }
+  
+  /* Dynamic Theme Primary Buttons - Orange Gradient */
+  :root[data-theme="dynamic"] button[class*="primary"],
+  :root[data-theme="dynamic"] button[type="submit"]:not([class*="bg-"]) {
+    background: var(--primary-gradient) !important;
+    color: var(--primary-foreground) !important;
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3) !important; /* shadow-orange-500/30 */
+  }
+  
+  /* Dynamic Theme Active Tabs/Toggles - Orange */
+  :root[data-theme="dynamic"] [role="tab"][aria-selected="true"],
+  :root[data-theme="dynamic"] [class*="tab"][class*="active"],
+  :root[data-theme="dynamic"] [class*="toggle"][class*="active"] {
+    background-color: #ea580c !important; /* Orange-600 */
+    color: var(--primary-foreground) !important;
+  }
+  
+  /* Dynamic Theme Focus Rings - Orange */
+  :root[data-theme="dynamic"] *:focus-visible {
+    outline: 2px solid #f97316 !important; /* Orange-500 */
+    outline-offset: 2px;
   }
   
   button[class*="ghost"]:hover,

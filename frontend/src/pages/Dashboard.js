@@ -819,13 +819,14 @@ const Dashboard = () => {
                   <>
                     {/* Dikey çizgi - saat başlıkları alanının altından başlayıp saat kutusunun hemen altına kadar */}
                     <div
-                      className="absolute w-0.5 z-20 pointer-events-none transition-all duration-1000"
+                      className="absolute z-30 pointer-events-none transition-all duration-1000"
                       style={{
                         left: `${((currentTime.getHours() + currentTime.getMinutes() / 60) / 24) * 100}%`,
                         top: '40px', // Saat başlıkları alanının altından başlıyor
                         bottom: '43px', // Saat kutusunun hemen altına kadar
-                        backgroundColor: 'var(--accent)',
-                        boxShadow: '0 0 10px var(--accent)'
+                        width: '2px',
+                        backgroundColor: '#3EA6FF',
+                        boxShadow: '0 0 8px rgba(62, 166, 255, 0.8), 0 0 16px rgba(62, 166, 255, 0.4)'
                       }}
                     >
                     </div>

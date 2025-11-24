@@ -326,7 +326,6 @@ const Layout = () => {
   
   // Permission kontrolü için user bilgilerini al
   const userPermissions = user.permissions || {};
-  const hasStaffManagement = isAdmin || isOwner || (userPermissions.settings?.staff_management === true);
 
   // Get active module from localStorage or default to 'tour'
   const activeModule = localStorage.getItem('activeModule') || 'tour';

@@ -1376,7 +1376,7 @@ const Calendar = () => {
         {/* Desktop View: Full Calendar Grid */}
         <div className="hidden md:block">
           {/* Calendar Grid */}
-          <div className="backdrop-blur-xl rounded-xl p-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--accent)', borderWidth: '1px', borderStyle: 'solid', opacity: 0.2 }}>
+          <div className="backdrop-blur-xl rounded-xl p-6 border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
         {/* Weekday Headers */}
         <div className="grid grid-cols-7 gap-2 mb-4">
           {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day, index) => (

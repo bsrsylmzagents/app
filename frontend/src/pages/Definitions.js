@@ -322,16 +322,22 @@ const Definitions = () => {
 
   const handleBusyHourThresholdSave = async () => {
     try {
-      if (!thresholdValue || thresholdValue < 1) {
-        toast.error('Lütfen geçerli bir sayı girin (1 veya daha büyük)');
+      // String'i integer'a çevir
+      const thresholdInt = parseInt(thresholdValue);
+      
+      // Validation: Tam sayı ve 1'den büyük olmalı
+      if (isNaN(thresholdInt) || thresholdInt < 1) {
+        toast.error('Lütfen geçerli bir tam sayı girin (1 veya daha büyük)');
         return;
       }
 
-      await axios.put(`${API}/busy-hour-threshold`, { threshold: parseInt(thresholdValue) });
+      await axios.put(`${API}/busy-hour-threshold`, { threshold: thresholdInt });
       toast.success('Yoğun saat tanımı kaydedildi');
       fetchBusyHourThreshold();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Yoğun saat tanımı kaydedilemedi');
+      const errorMessage = error.response?.data?.detail || error.message || 'Yoğun saat tanımı kaydedilemedi';
+      toast.error(errorMessage);
+      console.error('Yoğun saat tanımı kaydetme hatası:', error);
     }
   };
 
@@ -867,10 +873,17 @@ const Definitions = () => {
                 <input
                   type="number"
                   value={thresholdValue}
-                  onChange={(e) => setThresholdValue(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Sadece pozitif tam sayıları kabul et
+                    if (value === '' || (!isNaN(value) && parseInt(value) >= 1)) {
+                      setThresholdValue(value);
+                    }
+                  }}
                   className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
                   placeholder="5"
                   min="1"
+                  step="1"
                   required
                 />
                 <p className="text-xs text-[#A5A5A5] mt-2">
