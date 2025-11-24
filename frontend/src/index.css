@@ -174,8 +174,8 @@
     --bg-card: #ffffff; /* White cards */
     --bg-elevated: #f5f5f4; /* Stone-100 for elevated surfaces */
     --bg-input: #ffffff; /* White inputs */
-    --border-color: #e7e5e4; /* Stone-200 borders */
-    --border-subtle: #d6d3d1; /* Stone-300 subtle borders */
+    --border-color: #d6d3d1; /* Stone-300 borders - STRONGER */
+    --border-subtle: #e7e5e4; /* Stone-200 subtle borders */
     
     /* Sidebar - Orange Gradient */
     --bg-sidebar: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); /* Orange-600 to Orange-700 */
@@ -207,7 +207,7 @@
     --accent-foreground: 0 0% 100%; /* White */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
-    --border: 24 10% 90%; /* Stone-200 */
+    --border: 24 6% 83%; /* Stone-300 - STRONGER */
     --input: 0 0% 100%; /* White */
     --ring: 24 95% 53%; /* Orange-600 */
     --radius: 1rem; /* rounded-2xl */
@@ -216,10 +216,10 @@
     --bg-primary: #fafaf9;
     --bg-surface: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); /* Sidebar gradient */
     --bg-elevated: #f5f5f4;
-    --text-primary: #1c1917; /* Stone-900 - Dark charcoal for headings */
-    --text-secondary: #57534e; /* Stone-600 - Body text */
-    --text-main: #1c1917;
-    --text-muted: #a8a29e; /* Stone-400 */
+    --text-primary: #0c0a09; /* Stone-950 - Almost Black for headings */
+    --text-secondary: #292524; /* Stone-800 - Darker Grey Body text */
+    --text-main: #0c0a09;
+    --text-muted: #57534e; /* Stone-600 - Readable muted */
     --primary-color: #ea580c; /* Orange-600 */
     --sidebar-bg: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
     --sidebar-hover: rgba(255, 255, 255, 0.1); /* White glassmorphism */
@@ -230,9 +230,9 @@
     --popup-bg: #ffffff;
     --tooltip-bg: #1c1917;
     --tooltip-text: #ffffff;
-    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0,0,0,0.05); /* Stronger shadow with border-like ring */
     --timeline-bg: #fafaf9;
-    --placeholder: #a8a29e;
+    --placeholder: #78716c; /* Stone-500 - Darker placeholder */
   }
 
   /* HIGH CONTRAST - Pure Black for OLED */
@@ -489,7 +489,7 @@
     font-family: var(--font-heading) !important; /* Outfit font */
     font-weight: 800 !important; /* Extra bold for magazine look */
     letter-spacing: -0.02em;
-    color: #1c1917 !important; /* Stone-900 - BELİRGİN Dark charcoal */
+    color: #0c0a09 !important; /* Stone-950 - BELİRGİN Dark charcoal */
   }
   
   /* Dynamic Theme Page Titles - Large, Bold, Outfit - BELİRGİN */
@@ -499,7 +499,7 @@
   :root[data-theme="dynamic"] h2.text-2xl {
     font-family: var(--font-heading) !important;
     font-weight: 800 !important;
-    color: #1c1917 !important; /* Stone-900 - BELİRGİN Dark charcoal */
+    color: #0c0a09 !important; /* Stone-950 - BELİRGİN Dark charcoal */
   }
   
   /* Dark Mode Only Typography */
@@ -516,7 +516,7 @@
   :root[data-theme="dynamic"] body,
   :root[data-theme="dynamic"] main {
     background-color: #fafaf9 !important; /* Stone-50 */
-    color: #1c1917 !important; /* Stone-900 - Dark charcoal for readability */
+    color: #0c0a09 !important; /* Stone-950 - Dark charcoal for readability */
   }
   
   /* Dynamic Theme - Başlıklar belirgin */
@@ -526,7 +526,7 @@
   :root[data-theme="dynamic"] main h4,
   :root[data-theme="dynamic"] main h5,
   :root[data-theme="dynamic"] main h6 {
-    color: #1c1917 !important; /* Stone-900 */
+    color: #0c0a09 !important; /* Stone-950 */
     font-weight: 800 !important;
   }
   
@@ -534,7 +534,7 @@
   :root[data-theme="dynamic"] main p:not(.sidebar p),
   :root[data-theme="dynamic"] main span:not(button span):not(a span):not(.sidebar span),
   :root[data-theme="dynamic"] main div:not(button):not(a):not([class*="card"]):not([class*="Card"]):not(.sidebar):not(.sidebar *) {
-    color: #57534e !important; /* Stone-600 - Readable body text */
+    color: #292524 !important; /* Stone-800 - Readable body text */
   }
   
   .text-muted,
@@ -814,9 +814,9 @@
   :root[data-theme="dynamic"] [class*="card"],
   :root[data-theme="dynamic"] [class*="Card"] {
     background-color: #ffffff !important; /* Clean white */
-    border-color: #e7e5e4 !important; /* Stone-200 */
+    border-color: #d6d3d1 !important; /* Stone-300 - Stronger Border */
     border-radius: 1rem !important; /* rounded-2xl */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important; /* Subtle shadow */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; /* Stronger shadow */
   }
   
   /* Dynamic Theme - Card içindeki yazılar belirgin */
@@ -826,7 +826,7 @@
   :root[data-theme="dynamic"] [class*="card"] h1,
   :root[data-theme="dynamic"] [class*="card"] h2,
   :root[data-theme="dynamic"] [class*="card"] h3 {
-    color: #1c1917 !important; /* Stone-900 - Belirgin başlıklar */
+    color: #0c0a09 !important; /* Stone-950 - Belirgin başlıklar */
   }
   
   :root[data-theme="dynamic"] .card p,
@@ -835,7 +835,7 @@
   :root[data-theme="dynamic"] [class*="card"] p,
   :root[data-theme="dynamic"] [class*="card"] span,
   :root[data-theme="dynamic"] [class*="card"] div {
-    color: #57534e !important; /* Stone-600 - Belirgin metin */
+    color: #292524 !important; /* Stone-800 - Belirgin metin */
   }
   
   /* Dynamic Theme - Input alanları belirgin */
@@ -843,13 +843,13 @@
   :root[data-theme="dynamic"] textarea,
   :root[data-theme="dynamic"] select {
     background-color: #ffffff !important;
-    border-color: #e7e5e4 !important;
-    color: #1c1917 !important; /* Belirgin yazı */
+    border-color: #d6d3d1 !important; /* Stone-300 */
+    color: #0c0a09 !important; /* Belirgin yazı */
   }
   
   :root[data-theme="dynamic"] input::placeholder,
   :root[data-theme="dynamic"] textarea::placeholder {
-    color: #a8a29e !important; /* Stone-400 - Belirgin placeholder */
+    color: #78716c !important; /* Stone-500 - Belirgin placeholder */
   }
   
   /* Dynamic Theme - Butonlar belirgin */
