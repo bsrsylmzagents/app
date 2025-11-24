@@ -135,8 +135,9 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 401 veya 403 hatası authentication hatasıdır
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    // 401 hatası = Unauthenticated (token geçersiz/süresi dolmuş) → login'e yönlendir
+    // 403 hatası = Unauthorized (yetki yok) → component'in handle etmesine izin ver
+    if (error.response?.status === 401) {
       // /auth/me endpoint'i için özel işlem yapma (App.js'deki useEffect zaten hallediyor)
       if (error.config?.url?.includes('/auth/me')) {
         return Promise.reject(error);
@@ -190,6 +191,8 @@ axios.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+    // 403 hatası için component'in handle etmesine izin ver (yetki kontrolü)
+    // Component'ler bu hatayı yakalayıp uygun şekilde yönlendirebilir
     console.error("Axios error:", error.response?.data || error.message);
     return Promise.reject(error);
   }
