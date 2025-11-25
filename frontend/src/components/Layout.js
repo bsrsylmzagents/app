@@ -651,11 +651,15 @@ const Layout = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header - L-Shaped Orange Brand Zone (merged with Sidebar) */}
-        <header className={`header-gradient px-4 md:px-6 py-4 flex items-center justify-between relative z-[10000] ${
+        <header className={`header-gradient px-4 md:px-8 py-4 flex items-center justify-between relative z-[10000] ${
           isDynamicTheme 
-            ? 'bg-gradient-to-r from-orange-600 to-orange-500 border-b border-white/20' 
+            ? 'border-b border-white/20' 
             : 'bg-surface backdrop-blur-md border-0 border-b border-border shadow-sm'
-        }`}>
+        }`}
+        style={isDynamicTheme ? {
+          background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)'
+        } : {}}
+        >
           {/* Topographic Pattern Overlay for Dynamic Theme - Same as Sidebar */}
           {isDynamicTheme && (
             <div 
@@ -667,7 +671,7 @@ const Layout = () => {
             />
           )}
           
-          {/* Left Side: Mobile Menu */}
+          {/* Left Side: Mobile Menu and Currency Converter (aligned with Dashboard title) */}
           <div className={`flex items-center gap-4 relative z-[10001] ${isDynamicTheme ? 'text-white' : ''}`}>
             <button 
               onClick={() => setSidebarOpen(true)} 
@@ -676,13 +680,13 @@ const Layout = () => {
             >
               <Menu size={24} />
             </button>
-          </div>
-          
-          {/* Right Side: Currency Converter (moved to right with small margin) and Admin View, Notifications, Profile */}
-          <div className={`flex items-center gap-4 relative z-[10001] ${isDynamicTheme ? 'text-white' : ''}`}>
-            <div style={{ marginRight: '1cm' }}>
+            <div className="hidden md:block pl-0 md:pl-4">
               <CurrencyConverter />
             </div>
+          </div>
+          
+          {/* Right Side: Admin View, Notifications, Profile */}
+          <div className={`flex items-center gap-4 relative z-[10001] ${isDynamicTheme ? 'text-white' : ''}`}>
             {isAdminView && (
               <button
                 onClick={handleExitAdminView}

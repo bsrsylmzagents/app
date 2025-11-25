@@ -716,15 +716,15 @@
   
   /* ========== DYNAMIC THEME HEADER ========== */
   
-  /* Dynamic Theme Header - Orange Gradient + Pattern (L-Shaped with Sidebar) */
+  /* Dynamic Theme Header - Orange Gradient + Pattern (L-Shaped with Sidebar) - Match Sidebar */
   :root[data-theme="dynamic"] .header-gradient,
   :root[data-theme="dynamic"] header.header-gradient {
-    background: linear-gradient(to right, #ea580c, #f97316) !important; /* from-orange-600 to-orange-500 */
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important; /* Same as sidebar */
     position: relative !important;
     margin: 0 !important;
     margin-left: 0 !important;
     padding-left: 0 !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important; /* border-b border-white/20 */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important; /* border-b border-white/20 - Same as sidebar */
   }
   
   /* Remove gap between sidebar and header in dynamic theme - Ensure flush connection */
