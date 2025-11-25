@@ -15703,7 +15703,7 @@ async def create_portal_reservation(
             "customer_name": data.customerName,
             "customer_contact": data.customerContact,
             "person_count": data.pax,
-            "atv_count": atv_count,
+            "vehicle_count": vehicle_count,
             "price": total_price,
             "currency": currency,
             "exchange_rate": 1.0,
