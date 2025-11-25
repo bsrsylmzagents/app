@@ -1,0 +1,676 @@
+.App {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  transition: background-color 0.3s ease;
+}
+
+.header-gradient {
+  background: var(--bg-surface);
+  backdrop-filter: blur(10px);
+  border-bottom: var(--border-width) solid var(--border);
+  transition: background-color 0.3s ease, border-color 0.3s ease, border-width 0.3s ease;
+}
+
+/* Light mode için header rengi */
+[data-theme="light"] .header-gradient {
+  background: var(--header-bg) !important;
+  border-bottom: 1px solid var(--header-border) !important;
+}
+
+/* Light mode için header içindeki yazı ve ikonlar */
+[data-theme="light"] .header-gradient *,
+[data-theme="light"] header * {
+  color: var(--header-text) !important;
+}
+
+[data-theme="light"] .header-gradient svg,
+[data-theme="light"] header svg {
+  color: var(--header-icon) !important;
+  fill: var(--header-icon) !important;
+  stroke: var(--header-icon) !important;
+}
+
+[data-theme="light"] .header-gradient svg:hover,
+[data-theme="light"] header svg:hover {
+  color: var(--header-icon-hover) !important;
+  fill: var(--header-icon-hover) !important;
+  stroke: var(--header-icon-hover) !important;
+}
+
+/* Header içindeki CurrencyConverter için özel override'lar */
+[data-theme="light"] .header-gradient [style*="var(--text-secondary)"],
+[data-theme="light"] .header-gradient [style*="var(--accent)"],
+[data-theme="light"] header [style*="var(--text-secondary)"],
+[data-theme="light"] header [style*="var(--accent)"] {
+  color: var(--header-text) !important;
+}
+
+[data-theme="light"] .header-gradient span[style*="var(--accent)"],
+[data-theme="light"] header span[style*="var(--accent)"] {
+  color: var(--header-text) !important;
+}
+
+/* ============================================
+   LIGHT MODE BUTONLAR (Header ve Sidebar dışı)
+   ============================================ */
+
+/* Main content alanındaki butonlar - Primary */
+[data-theme="light"] main button:not(.btn-secondary):not(.btn-ghost):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] .main-content button:not(.btn-secondary):not(.btn-ghost):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] .page-content button:not(.btn-secondary):not(.btn-ghost):not([variant="outline"]):not([variant="ghost"]) {
+  background-color: var(--button-primary-bg) !important;
+  color: var(--button-primary-text) !important;
+  border-color: var(--button-primary-bg) !important;
+}
+
+[data-theme="light"] main button:not(.btn-secondary):not(.btn-ghost):not([variant="outline"]):not([variant="ghost"]):hover,
+[data-theme="light"] .main-content button:not(.btn-secondary):not(.btn-ghost):not([variant="outline"]):not([variant="ghost"]):hover,
+[data-theme="light"] .page-content button:not(.btn-secondary):not(.btn-ghost):not([variant="outline"]):not([variant="ghost"]):hover {
+  background-color: var(--button-primary-hover) !important;
+}
+
+/* Secondary buttons */
+[data-theme="light"] main .btn-secondary,
+[data-theme="light"] .main-content .btn-secondary,
+[data-theme="light"] .page-content .btn-secondary {
+  background-color: var(--button-secondary-bg) !important;
+  color: var(--button-secondary-text) !important;
+  border-color: var(--button-secondary-bg) !important;
+}
+
+[data-theme="light"] main .btn-secondary:hover,
+[data-theme="light"] .main-content .btn-secondary:hover,
+[data-theme="light"] .page-content .btn-secondary:hover {
+  background-color: var(--button-secondary-hover) !important;
+}
+
+/* Ghost/Outline buttons */
+[data-theme="light"] main [variant="outline"],
+[data-theme="light"] main [variant="ghost"],
+[data-theme="light"] main .btn-ghost,
+[data-theme="light"] .main-content [variant="outline"],
+[data-theme="light"] .main-content [variant="ghost"],
+[data-theme="light"] .main-content .btn-ghost,
+[data-theme="light"] .page-content [variant="outline"],
+[data-theme="light"] .page-content [variant="ghost"],
+[data-theme="light"] .page-content .btn-ghost {
+  background-color: var(--button-ghost-bg) !important;
+  color: var(--button-ghost-text) !important;
+  border-color: var(--button-ghost-border) !important;
+}
+
+[data-theme="light"] main [variant="outline"]:hover,
+[data-theme="light"] main [variant="ghost"]:hover,
+[data-theme="light"] main .btn-ghost:hover,
+[data-theme="light"] .main-content [variant="outline"]:hover,
+[data-theme="light"] .main-content [variant="ghost"]:hover,
+[data-theme="light"] .main-content .btn-ghost:hover,
+[data-theme="light"] .page-content [variant="outline"]:hover,
+[data-theme="light"] .page-content [variant="ghost"]:hover,
+[data-theme="light"] .page-content .btn-ghost:hover {
+  background-color: var(--button-ghost-hover) !important;
+}
+
+[data-theme="light"] main button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) *,
+[data-theme="light"] .main-content button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) *,
+[data-theme="light"] .page-content button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) * {
+  color: var(--button-primary-text) !important;
+}
+
+[data-theme="light"] main .btn-secondary *,
+[data-theme="light"] .main-content .btn-secondary *,
+[data-theme="light"] .page-content .btn-secondary * {
+  color: var(--button-secondary-text) !important;
+}
+
+[data-theme="light"] main [variant="outline"] *,
+[data-theme="light"] main [variant="ghost"] *,
+[data-theme="light"] main .btn-ghost *,
+[data-theme="light"] .main-content [variant="outline"] *,
+[data-theme="light"] .main-content [variant="ghost"] *,
+[data-theme="light"] .main-content .btn-ghost *,
+[data-theme="light"] .page-content [variant="outline"] *,
+[data-theme="light"] .page-content [variant="ghost"] *,
+[data-theme="light"] .page-content .btn-ghost * {
+  color: var(--button-ghost-text) !important;
+}
+
+[data-theme="light"] main button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) svg,
+[data-theme="light"] .main-content button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) svg,
+[data-theme="light"] .page-content button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) svg {
+  color: var(--button-primary-text) !important;
+  fill: var(--button-primary-text) !important;
+  stroke: var(--button-primary-text) !important;
+}
+
+[data-theme="light"] main .btn-secondary svg,
+[data-theme="light"] .main-content .btn-secondary svg,
+[data-theme="light"] .page-content .btn-secondary svg {
+  color: var(--button-secondary-text) !important;
+  fill: var(--button-secondary-text) !important;
+  stroke: var(--button-secondary-text) !important;
+}
+
+[data-theme="light"] main [variant="outline"] svg,
+[data-theme="light"] main [variant="ghost"] svg,
+[data-theme="light"] main .btn-ghost svg,
+[data-theme="light"] .main-content [variant="outline"] svg,
+[data-theme="light"] .main-content [variant="ghost"] svg,
+[data-theme="light"] .main-content .btn-ghost svg,
+[data-theme="light"] .page-content [variant="outline"] svg,
+[data-theme="light"] .page-content [variant="ghost"] svg,
+[data-theme="light"] .page-content .btn-ghost svg {
+  color: var(--button-ghost-text) !important;
+  fill: var(--button-ghost-text) !important;
+  stroke: var(--button-ghost-text) !important;
+}
+
+/* ============================================
+   LIGHT MODE MODAL VE POPUP
+   ============================================ */
+
+/* Tüm modallar, popup'lar, dropdown'lar ve açılır ekranlar */
+[data-theme="light"] [role="dialog"],
+[data-theme="light"] .modal,
+[data-theme="light"] .popup,
+[data-theme="light"] [data-radix-dialog-content],
+[data-theme="light"] [data-radix-popover-content],
+[data-theme="light"] [data-radix-dropdown-content],
+[data-theme="light"] [data-radix-select-content],
+[data-theme="light"] [data-radix-menu-content],
+[data-theme="light"] [data-radix-tooltip-content],
+[data-theme="light"] .dropdown,
+[data-theme="light"] .dropdown-menu,
+[data-theme="light"] .dropdown-content,
+[data-theme="light"] [class*="dropdown"],
+[data-theme="light"] [class*="menu"],
+[data-theme="light"] [class*="tooltip"],
+[data-theme="light"] select option,
+[data-theme="light"] [role="listbox"],
+[data-theme="light"] [role="menu"],
+[data-theme="light"] [role="tooltip"] {
+  background-color: var(--modal-bg) !important;
+  color: var(--text-secondary) !important;
+  border-radius: var(--modal-border-radius) !important;
+  box-shadow: var(--popup-shadow) !important;
+}
+
+/* Modal, popup ve açılır ekranlar içindeki başlıklar */
+[data-theme="light"] [role="dialog"] h1,
+[data-theme="light"] [role="dialog"] h2,
+[data-theme="light"] [role="dialog"] h3,
+[data-theme="light"] .modal h1,
+[data-theme="light"] .modal h2,
+[data-theme="light"] .modal h3,
+[data-theme="light"] .popup h1,
+[data-theme="light"] .popup h2,
+[data-theme="light"] .popup h3 {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Modal, popup ve açılır ekranlar içindeki body text */
+[data-theme="light"] [role="dialog"] p,
+[data-theme="light"] [role="dialog"] span,
+[data-theme="light"] [role="dialog"] div:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6),
+[data-theme="light"] .modal p,
+[data-theme="light"] .modal span,
+[data-theme="light"] .modal div:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6),
+[data-theme="light"] .popup p,
+[data-theme="light"] .popup span,
+[data-theme="light"] .popup div:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) {
+  color: var(--text-secondary) !important;
+}
+
+/* Modal, popup ve açılır ekranlar içindeki SVG ikonlar */
+[data-theme="light"] [role="dialog"] svg,
+[data-theme="light"] .modal svg,
+[data-theme="light"] .popup svg,
+[data-theme="light"] [data-radix-dropdown-content] svg,
+[data-theme="light"] [data-radix-select-content] svg,
+[data-theme="light"] [data-radix-menu-content] svg,
+[data-theme="light"] [data-radix-tooltip-content] svg,
+[data-theme="light"] .dropdown svg,
+[data-theme="light"] .dropdown-menu svg,
+[data-theme="light"] [class*="dropdown"] svg,
+[data-theme="light"] [class*="menu"] svg {
+  color: var(--modal-text) !important;
+  fill: var(--modal-text) !important;
+  stroke: var(--modal-text) !important;
+}
+
+/* ============================================
+   MODAL İÇİNDEKİ INPUT ALANLARI (Sarı alanlar)
+   ============================================ */
+
+/* Modal, popup ve açılır ekranlar içindeki input alanları */
+[data-theme="light"] [role="dialog"] input,
+[data-theme="light"] [role="dialog"] textarea,
+[data-theme="light"] [role="dialog"] select,
+[data-theme="light"] .modal input,
+[data-theme="light"] .modal textarea,
+[data-theme="light"] .modal select,
+[data-theme="light"] .popup input,
+[data-theme="light"] .popup textarea,
+[data-theme="light"] .popup select,
+[data-theme="light"] [data-radix-dropdown-content] input,
+[data-theme="light"] [data-radix-dropdown-content] textarea,
+[data-theme="light"] [data-radix-dropdown-content] select,
+[data-theme="light"] .dropdown input,
+[data-theme="light"] .dropdown textarea,
+[data-theme="light"] .dropdown select {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border-color: var(--input-border) !important;
+}
+
+[data-theme="light"] [role="dialog"] input:focus,
+[data-theme="light"] [role="dialog"] textarea:focus,
+[data-theme="light"] [role="dialog"] select:focus,
+[data-theme="light"] .modal input:focus,
+[data-theme="light"] .modal textarea:focus,
+[data-theme="light"] .modal select:focus,
+[data-theme="light"] .popup input:focus,
+[data-theme="light"] .popup textarea:focus,
+[data-theme="light"] .popup select:focus {
+  border-color: var(--input-border-focus) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(22, 150, 240, 0.1) !important;
+}
+
+/* Modal içindeki input placeholder */
+[data-theme="light"] [role="dialog"] input::placeholder,
+[data-theme="light"] [role="dialog"] textarea::placeholder,
+[data-theme="light"] .modal input::placeholder,
+[data-theme="light"] .modal textarea::placeholder,
+[data-theme="light"] .popup input::placeholder,
+[data-theme="light"] .popup textarea::placeholder {
+  color: var(--input-placeholder) !important;
+}
+
+/* Modal içindeki select option'lar */
+[data-theme="light"] [role="dialog"] select option,
+[data-theme="light"] .modal select option,
+[data-theme="light"] .popup select option {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+}
+
+/* Modal içindeki label'lar */
+[data-theme="light"] [role="dialog"] label,
+[data-theme="light"] .modal label,
+[data-theme="light"] .popup label {
+  color: var(--input-label) !important;
+}
+
+/* ============================================
+   MODAL İÇİNDEKİ BUTONLAR (Mavi alanlar)
+   ============================================ */
+
+/* Modal, popup ve açılır ekranlar içindeki primary butonlar */
+[data-theme="light"] [role="dialog"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] .modal button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] .popup button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] [data-radix-dropdown-content] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] [data-radix-select-content] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] [data-radix-menu-content] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] .dropdown button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] .dropdown-menu button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] [class*="dropdown"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]),
+[data-theme="light"] [class*="menu"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) {
+  background-color: var(--button-primary-bg) !important;
+  color: var(--button-primary-text) !important;
+  border-color: var(--button-primary-bg) !important;
+}
+
+[data-theme="light"] [role="dialog"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]):hover,
+[data-theme="light"] .modal button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]):hover,
+[data-theme="light"] .popup button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]):hover {
+  background-color: var(--button-primary-hover) !important;
+}
+
+/* Modal içindeki secondary butonlar */
+[data-theme="light"] [role="dialog"] .btn-secondary,
+[data-theme="light"] .modal .btn-secondary,
+[data-theme="light"] .popup .btn-secondary {
+  background-color: var(--button-secondary-bg) !important;
+  color: var(--button-secondary-text) !important;
+  border-color: var(--button-secondary-bg) !important;
+}
+
+[data-theme="light"] [role="dialog"] .btn-secondary:hover,
+[data-theme="light"] .modal .btn-secondary:hover,
+[data-theme="light"] .popup .btn-secondary:hover {
+  background-color: var(--button-secondary-hover) !important;
+}
+
+[data-theme="light"] [role="dialog"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) *,
+[data-theme="light"] .modal button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) *,
+[data-theme="light"] .popup button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) * {
+  color: var(--button-primary-text) !important;
+}
+
+[data-theme="light"] [role="dialog"] .btn-secondary *,
+[data-theme="light"] .modal .btn-secondary *,
+[data-theme="light"] .popup .btn-secondary * {
+  color: var(--button-secondary-text) !important;
+}
+
+[data-theme="light"] [role="dialog"] button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) svg,
+[data-theme="light"] .modal button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) svg,
+[data-theme="light"] .popup button:not(.btn-secondary):not([variant="outline"]):not([variant="ghost"]) svg {
+  color: var(--button-primary-text) !important;
+  fill: var(--button-primary-text) !important;
+  stroke: var(--button-primary-text) !important;
+}
+
+[data-theme="light"] [role="dialog"] .btn-secondary svg,
+[data-theme="light"] .modal .btn-secondary svg,
+[data-theme="light"] .popup .btn-secondary svg {
+  color: var(--button-secondary-text) !important;
+  fill: var(--button-secondary-text) !important;
+  stroke: var(--button-secondary-text) !important;
+}
+
+/* Dropdown, modal ve popup içindeki hardcoded renkleri override et */
+[data-theme="light"] [role="dialog"] [class*="bg-[#1E1E1E]"],
+[data-theme="light"] [role="dialog"] [class*="bg-[#25272A]"],
+[data-theme="light"] [role="dialog"] [class*="bg-[#2D2F33]"],
+[data-theme="light"] .modal [class*="bg-[#1E1E1E]"],
+[data-theme="light"] .modal [class*="bg-[#25272A]"],
+[data-theme="light"] .modal [class*="bg-[#2D2F33]"],
+[data-theme="light"] .dropdown [class*="bg-[#1E1E1E]"],
+[data-theme="light"] .dropdown [class*="bg-[#25272A]"],
+[data-theme="light"] .dropdown [class*="bg-[#2D2F33]"] {
+  background-color: var(--modal-bg) !important;
+}
+
+[data-theme="light"] [role="dialog"] [class*="text-white"],
+[data-theme="light"] [role="dialog"] [class*="text-[#A5A5A5]"],
+[data-theme="light"] [role="dialog"] [class*="text-[#3EA6FF]"],
+[data-theme="light"] .modal [class*="text-white"],
+[data-theme="light"] .modal [class*="text-[#A5A5A5]"],
+[data-theme="light"] .modal [class*="text-[#3EA6FF]"],
+[data-theme="light"] .dropdown [class*="text-white"],
+[data-theme="light"] .dropdown [class*="text-[#A5A5A5]"],
+[data-theme="light"] .dropdown [class*="text-[#3EA6FF]"] {
+  color: var(--modal-text) !important;
+}
+
+/* Modal içindeki hardcoded input background renklerini override et */
+[data-theme="light"] [role="dialog"] input[class*="bg-"],
+[data-theme="light"] [role="dialog"] textarea[class*="bg-"],
+[data-theme="light"] [role="dialog"] select[class*="bg-"],
+[data-theme="light"] .modal input[class*="bg-"],
+[data-theme="light"] .modal textarea[class*="bg-"],
+[data-theme="light"] .modal select[class*="bg-"],
+[data-theme="light"] .popup input[class*="bg-"],
+[data-theme="light"] .popup textarea[class*="bg-"],
+[data-theme="light"] .popup select[class*="bg-"] {
+  background-color: var(--modal-input-bg) !important;
+}
+
+/* Modal içindeki hardcoded input text renklerini override et */
+[data-theme="light"] [role="dialog"] input[class*="text-"],
+[data-theme="light"] [role="dialog"] textarea[class*="text-"],
+[data-theme="light"] [role="dialog"] select[class*="text-"],
+[data-theme="light"] .modal input[class*="text-"],
+[data-theme="light"] .modal textarea[class*="text-"],
+[data-theme="light"] .modal select[class*="text-"],
+[data-theme="light"] .popup input[class*="text-"],
+[data-theme="light"] .popup textarea[class*="text-"],
+[data-theme="light"] .popup select[class*="text-"] {
+  color: var(--modal-input-text) !important;
+}
+
+.sidebar {
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(12px);
+  border-right: var(--border-width) solid var(--border);
+  transition: background-color 0.3s ease, border-color 0.3s ease, border-width 0.3s ease;
+}
+
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--card-shadow);
+}
+
+.timeline-dot {
+  position: relative;
+}
+
+.timeline-dot::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  background: rgba(62, 166, 255, 0.3);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+/* Light mode için timeline dot rengi */
+[data-theme="light"] .timeline-dot::before {
+  background: rgba(13, 111, 115, 0.3);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(1.3);
+  }
+}
+
+.stat-card {
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--border);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--card-shadow);
+  transition: background-color 0.3s ease, border-color 0.3s ease, border-width 0.3s ease;
+}
+
+.currency-input {
+  background: var(--input-bg);
+  border: var(--border-width) solid var(--border);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.currency-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(62, 166, 255, 0.1);
+}
+
+/* Light mode için currency input focus rengi */
+[data-theme="light"] .currency-input:focus {
+  border-color: var(--input-border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(22, 150, 240, 0.1) !important;
+}
+
+.currency-input::placeholder {
+  color: var(--placeholder);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow);
+}
+
+.nav-item {
+  transition: all 0.3s ease;
+  color: var(--text-secondary);
+}
+
+/* Light mode nav-item */
+[data-theme="light"] .nav-item {
+  color: var(--sidebar-text) !important;
+}
+
+[data-theme="light"] .nav-item:hover {
+  background: var(--sidebar-selected-bg) !important;
+  border-left: 3px solid var(--accent) !important;
+  padding-left: 1.25rem;
+  transition: background-color 0.3s ease;
+  color: var(--sidebar-text-hover) !important;
+}
+
+[data-theme="light"] .nav-item.active {
+  background: var(--sidebar-selected-bg) !important;
+  border-left: 3px solid var(--accent) !important;
+  padding-left: 1.25rem;
+  color: var(--sidebar-text-active) !important;
+  font-weight: 600 !important;
+}
+
+/* Light mode için sidebar içindeki nav-item renkleri */
+[data-theme="light"] .sidebar .nav-item,
+[data-theme="light"] aside .nav-item {
+  color: var(--sidebar-text) !important;
+}
+
+[data-theme="light"] .sidebar .nav-item:hover,
+[data-theme="light"] aside .nav-item:hover {
+  color: var(--sidebar-text) !important;
+}
+
+[data-theme="light"] .sidebar .nav-item.active,
+[data-theme="light"] aside .nav-item.active {
+  color: var(--sidebar-text) !important;
+}
+
+/* Light mode için sidebar submenu linkleri */
+[data-theme="light"] .sidebar ul li a.text-\[#A5A5A5\],
+[data-theme="light"] .sidebar ul li a.text-\[#3EA6FF\],
+[data-theme="light"] aside ul li a.text-\[#A5A5A5\],
+[data-theme="light"] aside ul li a.text-\[#3EA6FF\] {
+  color: var(--sidebar-text) !important;
+}
+
+[data-theme="light"] .sidebar ul li a.hover\:text-white:hover,
+[data-theme="light"] aside ul li a.hover\:text-white:hover {
+  color: var(--sidebar-text) !important;
+}
+
+/* ============================================
+   LIGHT MODE - SADECE RENK OVERRIDE'LARI
+   Dark mode ile aynı layout, padding, font-size, border-radius, animasyonlar
+   ============================================ */
+
+/* Hardcoded background renklerini override et - sadece renk */
+[data-theme="light"] [class*="bg-[#1E1E1E]"] {
+  background-color: var(--bg-primary) !important;
+}
+
+[data-theme="light"] [class*="bg-[#25272A]"] {
+  background-color: var(--bg-elevated) !important;
+}
+
+[data-theme="light"] [class*="bg-[#2D2F33]"] {
+  background-color: var(--chip-bg) !important;
+}
+
+[data-theme="light"] [class*="bg-[#fbe3e8]"],
+[data-theme="light"] [class*="bg-[#E0EDE9]"] {
+  background-color: var(--chip-bg) !important;
+}
+
+[data-theme="light"] [class*="bg-[#5cbdb9]"],
+[data-theme="light"] [class*="bg-[#0D6F73]"] {
+  background-color: var(--accent) !important;
+}
+
+[data-theme="light"] [class*="bg-[#ebf6f5]"] {
+  background-color: var(--bg-primary) !important;
+}
+
+/* Hardcoded text renklerini override et - sadece renk */
+[data-theme="light"] [class*="text-[#3EA6FF]"],
+[data-theme="light"] [class*="text-[#14b8dc]"],
+[data-theme="light"] [class*="text-[#5cbdb9]"],
+[data-theme="light"] [class*="text-[#0D6F73]"] {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] [class*="text-[#A5A5A5]"] {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] [class*="text-white"]:not([class*="bg-"]) {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] [class*="text-[#FFFFFF]"] {
+  color: var(--text-primary) !important;
+}
+
+/* Hardcoded border renklerini override et - sadece renk */
+[data-theme="light"] [class*="border-[#2D2F33]"],
+[data-theme="light"] [class*="border-[#25272A]"],
+[data-theme="light"] [class*="border-[#14b8dc]"] {
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] [class*="divide-[#2D2F33]"] > * {
+  border-color: var(--divider) !important;
+}
+
+/* Hardcoded hover background renklerini override et - sadece renk */
+[data-theme="light"] [class*="hover:bg-[#2D2F33]"]:hover {
+  background-color: var(--hover-surface) !important;
+}
+
+/* Hardcoded opacity background renklerini override et - sadece renk */
+[data-theme="light"] [class*="bg-[#3EA6FF]/20"],
+[data-theme="light"] [class*="bg-[#5cbdb9]/20"],
+[data-theme="light"] [class*="bg-[#0D6F73]/20"] {
+  background-color: rgba(13, 111, 115, 0.2) !important;
+}
+
+[data-theme="light"] [class*="bg-[#3EA6FF]/5"],
+[data-theme="light"] [class*="bg-[#5cbdb9]/5"],
+[data-theme="light"] [class*="bg-[#0D6F73]/5"] {
+  background-color: rgba(13, 111, 115, 0.05) !important;
+}
+
+/* Hardcoded placeholder renklerini override et - sadece renk */
+[data-theme="light"] [class*="placeholder-[#A5A5A5]"]::placeholder {
+  color: var(--placeholder) !important;
+}
+
+/* Hardcoded focus border renklerini override et - sadece renk */
+[data-theme="light"] [class*="focus:border-[#3EA6FF]"]:focus,
+[data-theme="light"] [class*="focus:border-[#5cbdb9]"]:focus,
+[data-theme="light"] [class*="focus:border-[#0D6F73]"]:focus {
+  border-color: var(--accent) !important;
+}
+
+/* Hardcoded ikon renklerini override et - sadece renk */
+[data-theme="light"] [class*="stroke-[#3EA6FF]"],
+[data-theme="light"] [class*="stroke-[#5cbdb9]"],
+[data-theme="light"] [class*="stroke-[#0D6F73]"] {
+  stroke: var(--accent) !important;
+}
+
+[data-theme="light"] [class*="fill-[#3EA6FF]"],
+[data-theme="light"] [class*="fill-[#5cbdb9]"],
+[data-theme="light"] [class*="fill-[#0D6F73]"] {
+  fill: var(--accent) !important;
+}

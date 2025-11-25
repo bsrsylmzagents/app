@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "verify multi tenant data isolation and role based access control",
+    "description": "Test that the multi-tenant architecture enforces strict data isolation between different travel agencies and that role-based access control correctly restricts access to resources based on user roles (admin, staff, customer)."
+  },
+  {
+    "id": "TC002",
+    "title": "test user authentication and authorization flows",
+    "description": "Verify that user authentication using JWT and password hashing with bcrypt works correctly, including login, token issuance, token validation, and access to protected routes."
+  },
+  {
+    "id": "TC003",
+    "title": "validate company registration and auto generated company codes",
+    "description": "Ensure that new companies can register successfully and receive unique auto-generated company codes for multi-tenant onboarding."
+  },
+  {
+    "id": "TC004",
+    "title": "test reservation management crud and calendar view",
+    "description": "Verify that reservation CRUD operations function correctly, reservation statuses update properly, and reservations are displayed accurately in calendar view including transport arrangements."
+  },
+  {
+    "id": "TC005",
+    "title": "validate customer account management and password control",
+    "description": "Test customer account creation, profile updates, transaction history retrieval, and password management functionalities."
+  },
+  {
+    "id": "TC006",
+    "title": "verify financial management multi currency and transaction logging",
+    "description": "Ensure cash flow tracking, payment type configuration, debt/credit management, multi-currency support, and transaction logging work as expected with real-time currency updates."
+  },
+  {
+    "id": "TC007",
+    "title": "test stripe integration for module purchases and webhook handling",
+    "description": "Validate that Stripe Checkout integration allows module purchases, processes payments correctly, and webhook events are handled without failures."
+  },
+  {
+    "id": "TC008",
+    "title": "validate hotel ics calendar synchronization and push reservation retries",
+    "description": "Test that hotel ICS calendar synchronization pulls external calendar data correctly, and that reservation push operations to hotels use retry queues for failed attempts."
+  },
+  {
+    "id": "TC009",
+    "title": "verify reporting modules generate accurate reports",
+    "description": "Ensure that all reporting modules generate accurate and comprehensive reports for income, expenses, performance, customer analysis, reservations, and profit/loss."
+  },
+  {
+    "id": "TC010",
+    "title": "test administrative features and module switching interface",
+    "description": "Verify that staff management, company profile updates, system settings, security settings, and module switching interface function correctly for administrators."
+  }
+]
