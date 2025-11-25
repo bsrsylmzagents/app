@@ -3962,50 +3962,50 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
         if is_munferit:
             # Münferit müşteri kaydet/güncelle
             existing_customer = await db.munferit_customers.find_one({
-            "company_id": current_user["company_id"],
-            "customer_name": data.customer_name
-        })
-        
-        if existing_customer:
-            # Güncelle
-            await db.munferit_customers.update_one(
-                {"id": existing_customer["id"]},
-                {
-                    "$set": {
-                        "customer_contact": data.customer_contact or existing_customer.get("customer_contact"),
-                        "phone": customer_details_obj.phone if customer_details_obj else existing_customer.get("phone"),
-                        "email": customer_details_obj.email if customer_details_obj else existing_customer.get("email"),
-                        "nationality": customer_details_obj.nationality if customer_details_obj else existing_customer.get("nationality"),
-                        "id_number": customer_details_obj.id_number if customer_details_obj else existing_customer.get("id_number"),
-                        "birth_date": customer_details_obj.birth_date if customer_details_obj else existing_customer.get("birth_date"),
-                        "last_sale_date": data.date,
-                        "total_sales": existing_customer.get("total_sales", 0) + 1,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
+                "company_id": current_user["company_id"],
+                "customer_name": data.customer_name
+            })
+            
+            if existing_customer:
+                # Güncelle
+                await db.munferit_customers.update_one(
+                    {"id": existing_customer["id"]},
+                    {
+                        "$set": {
+                            "customer_contact": data.customer_contact or existing_customer.get("customer_contact"),
+                            "phone": customer_details_obj.phone if customer_details_obj else existing_customer.get("phone"),
+                            "email": customer_details_obj.email if customer_details_obj else existing_customer.get("email"),
+                            "nationality": customer_details_obj.nationality if customer_details_obj else existing_customer.get("nationality"),
+                            "id_number": customer_details_obj.id_number if customer_details_obj else existing_customer.get("id_number"),
+                            "birth_date": customer_details_obj.birth_date if customer_details_obj else existing_customer.get("birth_date"),
+                            "last_sale_date": data.date,
+                            "total_sales": existing_customer.get("total_sales", 0) + 1,
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }
                     }
-                }
-            )
+                )
+            else:
+                # Yeni müşteri oluştur
+                munferit_customer = MunferitCustomer(
+                    company_id=current_user["company_id"],
+                    customer_name=data.customer_name,
+                    customer_contact=data.customer_contact,
+                    phone=customer_details_obj.phone if customer_details_obj else None,
+                    email=customer_details_obj.email if customer_details_obj else None,
+                    nationality=customer_details_obj.nationality if customer_details_obj else None,
+                    id_number=customer_details_obj.id_number if customer_details_obj else None,
+                    birth_date=customer_details_obj.birth_date if customer_details_obj else None,
+                    first_sale_date=data.date,
+                    last_sale_date=data.date,
+                    total_sales=1
+                )
+                customer_doc = munferit_customer.model_dump()
+                customer_doc['created_at'] = customer_doc['created_at'].isoformat()
+                customer_doc['updated_at'] = customer_doc['updated_at'].isoformat()
+                await db.munferit_customers.insert_one(customer_doc)
         else:
-            # Yeni müşteri oluştur
-            munferit_customer = MunferitCustomer(
-                company_id=current_user["company_id"],
-                customer_name=data.customer_name,
-                customer_contact=data.customer_contact,
-                phone=customer_details_obj.phone if customer_details_obj else None,
-                email=customer_details_obj.email if customer_details_obj else None,
-                nationality=customer_details_obj.nationality if customer_details_obj else None,
-                id_number=customer_details_obj.id_number if customer_details_obj else None,
-                birth_date=customer_details_obj.birth_date if customer_details_obj else None,
-                first_sale_date=data.date,
-                last_sale_date=data.date,
-                total_sales=1
-            )
-            customer_doc = munferit_customer.model_dump()
-            customer_doc['created_at'] = customer_doc['created_at'].isoformat()
-            customer_doc['updated_at'] = customer_doc['updated_at'].isoformat()
-            await db.munferit_customers.insert_one(customer_doc)
-    else:
-        # Cari müşteri kaydet/güncelle
-        existing_customer = await db.cari_customers.find_one({
+            # Cari müşteri kaydet/güncelle
+            existing_customer = await db.cari_customers.find_one({
             "company_id": current_user["company_id"],
             "cari_id": data.cari_id,
             "customer_name": data.customer_name
