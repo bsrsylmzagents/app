@@ -3858,6 +3858,30 @@ async def calculate_price(
         logger.error(f"Fiyat hesaplama hatası: {e}")
         raise HTTPException(status_code=500, detail="Fiyat hesaplanamadı")
 
+@api_router.get("/reservations/pending")
+async def get_pending_cari_reservations(
+    current_user: dict = Depends(get_current_user)
+):
+    """Pending approval cari rezervasyonlarını listele"""
+    reservations = await db.reservations.find({
+        "company_id": current_user["company_id"],
+        "status": "pending_approval",
+        "reservation_source": "cari"
+    }, {"_id": 0}).sort("date", -1).to_list(1000)
+    
+    for reservation in reservations:
+        if reservation.get("tour_type_id"):
+            tour_type = await db.tour_types.find_one({"id": reservation["tour_type_id"]}, {"_id": 0})
+            if tour_type:
+                reservation["tour_type_name"] = tour_type.get("name")
+        
+        if reservation.get("cari_id"):
+            cari = await db.cari_accounts.find_one({"id": reservation["cari_id"]}, {"_id": 0})
+            if cari:
+                reservation["cari_name"] = cari.get("name")
+    
+    return reservations
+
 @api_router.post("/reservations")
 async def create_reservation(data: ReservationCreate, current_user: dict = Depends(get_current_user)):
     if data.vehicle_count is None:
@@ -3936,8 +3960,8 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
         # Müşteriyi kaydet (Cari veya Münferit)
         is_munferit = cari.get("is_munferit", False)
         if is_munferit:
-        # Münferit müşteri kaydet/güncelle
-        existing_customer = await db.munferit_customers.find_one({
+            # Münferit müşteri kaydet/güncelle
+            existing_customer = await db.munferit_customers.find_one({
             "company_id": current_user["company_id"],
             "customer_name": data.customer_name
         })
@@ -4904,31 +4928,6 @@ async def cari_calculate_price(
         raise HTTPException(status_code=500, detail="Fiyat hesaplanamadı")
 
 # ==================== ADMIN CARI RESERVATION ENDPOINTS ====================
-
-@api_router.get("/reservations/pending")
-async def get_pending_cari_reservations(
-    current_user: dict = Depends(get_current_user)
-):
-    """Pending approval cari rezervasyonlarını listele"""
-    query = {
-        "company_id": current_user["company_id"],
-        "status": "pending_approval",
-        "reservation_source": "cari"
-    }
-    
-    reservations = await db.reservations.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    
-    # Cari detaylarını ekle ve created_at'i formatla
-    enriched_reservations = []
-    for r in reservations:
-        cari_code = r.get("cari_code_snapshot")
-        # created_at'i ISO format string olarak döndür (eğer datetime objesi ise)
-        created_at = r.get("created_at")
-        if created_at and isinstance(created_at, datetime):
-            created_at = created_at.isoformat()
-        elif created_at and isinstance(created_at, str):
-            # Zaten string ise olduğu gibi bırak
-            pass
         else:
             created_at = None
         
@@ -11388,40 +11387,6 @@ async def get_cancelled_report(
     ).to_list(10000)
     
     return reservations
-
-@api_router.post("/reservations/{reservation_id}/voucher")
-async def generate_reservation_voucher(reservation_id: str, current_user: dict = Depends(get_current_user)):
-    """Rezervasyon için voucher oluştur veya mevcut voucher'ı getir"""
-    reservation = await db.reservations.find_one({
-        "id": reservation_id,
-        "company_id": current_user["company_id"]
-    })
-    
-    if not reservation:
-        raise HTTPException(status_code=404, detail="Reservation not found")
-    
-    # Voucher kodu yoksa oluştur
-    if not reservation.get("voucher_code"):
-        voucher_code = generate_voucher_code()
-        # Benzersizlik kontrolü (hem rezervasyonlarda hem extra sales'te kontrol et)
-        while await db.reservations.find_one({"voucher_code": voucher_code}) or \
-              await db.extra_sales.find_one({"voucher_code": voucher_code}):
-            voucher_code = generate_voucher_code()
-        
-        await db.reservations.update_one(
-            {"id": reservation_id},
-            {"$set": {"voucher_code": voucher_code}}
-        )
-        reservation["voucher_code"] = voucher_code
-    
-    # Firma bilgilerini al
-    company = await db.companies.find_one({"id": current_user["company_id"]}, {"_id": 0})
-    
-    return {
-        "reservation": reservation,
-        "company": company,
-        "voucher_code": reservation["voucher_code"]
-    }
 
 @api_router.post("/extra-sales/{sale_id}/voucher")
 async def generate_extra_sale_voucher(sale_id: str, current_user: dict = Depends(get_current_user)):
