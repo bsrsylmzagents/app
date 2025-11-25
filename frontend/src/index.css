@@ -174,8 +174,8 @@
     --bg-card: #ffffff; /* White cards */
     --bg-elevated: #f5f5f4; /* Stone-100 for elevated surfaces */
     --bg-input: #ffffff; /* White inputs */
-    --border-color: #d6d3d1; /* Stone-300 borders - STRONGER */
-    --border-subtle: #e7e5e4; /* Stone-200 subtle borders */
+    --border-color: #a8a29e; /* Stone-400 borders - Daha belirgin */
+    --border-subtle: #d6d3d1; /* Stone-300 subtle borders - Daha belirgin */
     
     /* Semantic Color System - Brand Colors */
     --color-primary: #ea580c; /* Orange 600 */
@@ -183,12 +183,12 @@
     
     /* Semantic Color System - Text Colors */
     --color-text-main: #1c1917; /* Stone 900 (Headings) */
-    --color-text-body: #44403c; /* Stone 700 (Paragraphs) */
-    --color-text-muted: #78716c; /* Stone 500 (Labels/Icons) */
+    --color-text-body: #292524; /* Stone 800 (Paragraphs) - Daha belirgin */
+    --color-text-muted: #57534e; /* Stone 600 (Labels/Icons) - Daha belirgin */
     --color-text-on-primary: #ffffff; /* Text inside orange buttons */
     
     /* Semantic Color System - UI Elements */
-    --color-border: #e7e5e4; /* Stone 200 */
+    --color-border: #a8a29e; /* Stone 400 - Daha belirgin border */
     --color-input-bg: #f5f5f4; /* Stone 100 */
     
     /* Sidebar - Orange Gradient */
@@ -246,7 +246,7 @@
     --tooltip-text: #ffffff;
     --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0,0,0,0.05); /* Stronger shadow with border-like ring */
     --timeline-bg: #fafaf9;
-    --placeholder: #78716c; /* Stone-500 - Darker placeholder */
+    --placeholder: #57534e; /* Stone-600 - Daha belirgin placeholder */
   }
 
   /* HIGH CONTRAST - Pure Black for OLED */
@@ -380,7 +380,7 @@
   :root[data-theme="dynamic"] main p:not(.sidebar p),
   :root[data-theme="dynamic"] main span:not(button span):not(a span):not(.sidebar span),
   :root[data-theme="dynamic"] main div:not(button):not(a):not([class*="card"]):not([class*="Card"]):not(.sidebar):not(.sidebar *) {
-    color: #292524 !important; /* Stone-800 - Readable body text */
+    color: var(--color-text-body) !important; /* Daha belirgin body text */
   }
   
   .text-muted,
@@ -877,9 +877,9 @@
   
   /* Currency Converter Pop-up Inputs */
   :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] input[type="number"] {
-    background: #f9fafb !important; /* bg-gray-50 */
-    border: 1px solid #e5e7eb !important; /* border-gray-200 */
-    color: #111827 !important; /* text-gray-900 */
+    background: var(--color-input-bg) !important;
+    border: 1px solid var(--color-border) !important;
+    color: var(--color-text-main) !important;
   }
   
   :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] input[type="number"]:focus {
@@ -890,12 +890,13 @@
   
   /* Currency Converter Pop-up Buttons - Currency Selection */
   :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] button[data-testid^="currency-select-"] {
-    background: #f3f4f6 !important; /* bg-gray-100 */
-    color: #374151 !important; /* text-gray-700 */
+    background: var(--color-input-bg) !important;
+    color: var(--color-text-body) !important;
   }
   
   :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] button[data-testid^="currency-select-"]:hover {
-    background: #e5e7eb !important; /* hover:bg-gray-200 */
+    background: var(--bg-elevated) !important;
+    color: var(--color-text-main) !important;
   }
   
   /* Currency Converter Pop-up - Selected Currency Button (Primary Action) */
@@ -936,7 +937,7 @@
   /* Currency Converter Pop-up - Borders */
   :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] .border-gray-200,
   :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] [class*="border-gray"] {
-    border-color: #e5e7eb !important; /* border-gray-200 */
+    border-color: var(--color-border) !important;
   }
   
   /* Sidebar hover - Exclude dynamic theme (handled separately) */
@@ -970,7 +971,7 @@
   :root[data-theme="dynamic"] [class*="card"],
   :root[data-theme="dynamic"] [class*="Card"] {
     background-color: #ffffff !important; /* Clean white */
-    border-color: #d6d3d1 !important; /* Stone-300 - Stronger Border */
+    border-color: var(--color-border) !important; /* Daha belirgin border */
     border-radius: 1rem !important; /* rounded-2xl */
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; /* Stronger shadow */
   }
@@ -1004,8 +1005,9 @@
   }
   
   :root[data-theme="dynamic"] input::placeholder,
-  :root[data-theme="dynamic"] textarea::placeholder {
-    color: #78716c !important; /* Stone-500 - Belirgin placeholder */
+  :root[data-theme="dynamic"] textarea::placeholder,
+  :root[data-theme="dynamic"] input::placeholder {
+    color: var(--color-text-muted) !important; /* Daha belirgin placeholder */
   }
   
   /* Dynamic Theme - Butonlar belirgin */
@@ -1020,7 +1022,7 @@
   }
   
   :root[data-theme="dynamic"] table td {
-    color: #57534e !important; /* Belirgin hücre yazısı */
+    color: var(--color-text-body) !important; /* Daha belirgin hücre yazısı */
     background-color: #ffffff !important;
   }
   
