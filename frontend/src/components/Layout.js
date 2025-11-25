@@ -424,14 +424,22 @@ const Layout = () => {
       }`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className={`flex items-center justify-between px-6 py-6 border-b ${isDynamicTheme ? 'border-white/20' : 'border-border'}`}>
-            <div>
-              <h1 className={`text-2xl font-bold ${isDynamicTheme ? 'text-white' : 'text-foreground'}`} data-testid="app-logo">TourCast</h1>
-              <p className={`text-xs mt-1 ${isDynamicTheme ? 'text-orange-100' : 'text-muted-foreground'}`}>{company.name}</p>
-            </div>
+          <div className={`flex flex-col items-center justify-center px-6 py-6 relative ${isDynamicTheme ? '' : 'border-b border-border'}`}>
+            <Link 
+              to="/dashboard" 
+              className="text-center cursor-pointer group"
+              data-testid="app-logo"
+            >
+              <h1 className={`text-4xl md:text-5xl font-bold transition-transform group-hover:scale-105 ${isDynamicTheme ? 'text-white' : 'text-foreground'}`}>
+                TourCast
+              </h1>
+              <p className={`text-xs mt-1 ${isDynamicTheme ? 'text-white/80' : 'text-muted-foreground'}`}>
+                v0.1.0
+              </p>
+            </Link>
             <button 
               onClick={() => setSidebarOpen(false)} 
-              className={`md:hidden ${isDynamicTheme ? 'text-white hover:text-white/80' : 'text-foreground/70 hover:text-white'}`}
+              className={`absolute top-4 right-4 md:hidden ${isDynamicTheme ? 'text-white hover:text-white/80' : 'text-foreground/70 hover:text-white'}`}
               data-testid="close-sidebar-btn"
             >
               <X size={24} />
@@ -659,8 +667,8 @@ const Layout = () => {
             />
           )}
           
-          {/* Left Side: Currency Converter */}
-          <div className={`flex items-center gap-4 relative z-[10001] flex-1 ${isDynamicTheme ? 'text-white' : ''}`}>
+          {/* Left Side: Mobile Menu */}
+          <div className={`flex items-center gap-4 relative z-[10001] ${isDynamicTheme ? 'text-white' : ''}`}>
             <button 
               onClick={() => setSidebarOpen(true)} 
               className={`md:hidden ${isDynamicTheme ? 'text-white/90 hover:text-white' : 'text-slate-500 dark:text-[#A5A5A5] hover:text-slate-700 dark:hover:text-white'}`}
@@ -668,11 +676,13 @@ const Layout = () => {
             >
               <Menu size={24} />
             </button>
-            <CurrencyConverter />
           </div>
           
-          {/* Right Side: Admin View, Notifications, Profile */}
-          <div className={`flex items-center gap-2 relative z-[10001] ${isDynamicTheme ? 'text-white' : ''}`}>
+          {/* Right Side: Currency Converter (moved to right with small margin) and Admin View, Notifications, Profile */}
+          <div className={`flex items-center gap-4 relative z-[10001] ${isDynamicTheme ? 'text-white' : ''}`}>
+            <div style={{ marginRight: '1cm' }}>
+              <CurrencyConverter />
+            </div>
             {isAdminView && (
               <button
                 onClick={handleExitAdminView}
