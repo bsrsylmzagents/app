@@ -1826,7 +1826,7 @@ const Calendar = () => {
                     <User size={18} />
                   </Button>
                 </div>
-              </div>
+                      </div>
 
                       <div>
                         <label className="block text-sm font-medium mb-2">Kişi Sayısı</label>
@@ -1841,13 +1841,13 @@ const Calendar = () => {
                       </div>
 
                       <div>
-                <label className="block text-sm font-medium mb-2">Araç Sayısı</label>
+                        <label className="block text-sm font-medium mb-2">Araç Sayısı</label>
                         <input
                           type="number"
-                  value={formData.vehicle_count}
+                          value={formData.vehicle_count}
                           onChange={(e) => {
-                    const newVehicleCount = parseInt(e.target.value) || 1;
-                    setFormData({ ...formData, vehicle_count: newVehicleCount });
+                            const newVehicleCount = parseInt(e.target.value) || 1;
+                            setFormData({ ...formData, vehicle_count: newVehicleCount });
                           }}
                           className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
                           min="1"
@@ -1885,17 +1885,9 @@ const Calendar = () => {
                           value={formData.price}
                           onChange={(e) => {
                             const newPrice = parseFloat(e.target.value) || 0;
-                    // Manuel fiyat değişikliği yapılıyorsa, dönemsel fiyat bağlantısını kaldır
-                    if (basePricePerAtv !== null) {
-                      setBasePricePerAtv(null);
-                      setSeasonalPriceCurrency(null);
-                    }
                             setFormData({ ...formData, price: newPrice });
                           }}
-                  disabled={basePricePerAtv !== null}
-                  className={`w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF] ${
-                    basePricePerAtv !== null ? 'opacity-60 cursor-not-allowed' : ''
-                  }`}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
                           required
                         />
                       </div>
@@ -1906,11 +1898,6 @@ const Calendar = () => {
                           value={formData.currency}
                           onChange={(e) => {
                             const newCurrency = e.target.value;
-                    // Dönemsel fiyat varsa ve kullanıcı manuel değiştiriyorsa, base price'ı sıfırla
-                    if (basePricePerAtv !== null && newCurrency !== seasonalPriceCurrency) {
-                      setBasePricePerAtv(null);
-                      setSeasonalPriceCurrency(null);
-                    }
                             setFormData({ 
                               ...formData, 
                               currency: newCurrency, 
@@ -1923,11 +1910,6 @@ const Calendar = () => {
                           <option value="USD">USD</option>
                           <option value="TRY">TRY</option>
                         </select>
-                {basePricePerAtv !== null && seasonalPriceCurrency && (
-                  <p className="text-xs text-[#A5A5A5] mt-1">
-                    Dönemsel fiyat: {seasonalPriceCurrency}
-                  </p>
-                )}
                       </div>
 
                       <div className="col-span-2">
