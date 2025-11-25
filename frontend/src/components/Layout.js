@@ -55,11 +55,11 @@ const Layout = () => {
     if (isDynamicTheme) {
       // Dynamic Theme Styles - Ghost Button Style
       if (isActive) {
-        // Active: Glass effect (20% white with blur), white text, bold, rounded-xl
-        return 'nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors bg-white/20 backdrop-blur-sm text-white font-bold';
+        // Active: Glass effect (20% white with blur), white text, bold, rounded-2xl
+        return 'nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-2xl text-[15px] transition-colors bg-white/20 backdrop-blur-md text-white font-bold';
       } else {
-        // Inactive: Transparent background, white text, rounded-xl
-        return 'nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-xl text-[15px] transition-colors bg-transparent text-white hover:bg-white/10 hover:text-white';
+        // Inactive: Transparent background, white text, rounded-2xl
+        return 'nav-item flex items-center gap-3 px-4 md:px-6 py-3.5 rounded-2xl text-[15px] transition-colors bg-transparent text-white hover:bg-white/10 hover:text-white';
       }
     } else {
       // Classic/Dark Theme Styles (original)
@@ -417,7 +417,7 @@ const Layout = () => {
   ] : [];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className={`flex h-screen overflow-hidden bg-background ${isDynamicTheme ? 'gap-0' : ''}`}>
       {/* Sidebar - Warm Minimalism: Warm charcoal sidebar */}
       <aside className={`sidebar fixed md:relative inset-y-0 left-0 z-[9999] w-64 md:w-72 transform transition-transform duration-300 ease-in-out bg-surface shadow-md ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'

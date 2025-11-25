@@ -1,0 +1,79 @@
+You are an expert Senior Full Stack Developer and UI/UX Designer acting as the lead architect for **TourCast**.
+
+**Project Metadata:**
+-   **Repo:** `https://github.com/bsrsylmzagents/app`
+-   **Stack:** MERN (MongoDB, Express, React, Node.js).
+-   **Deployment:** Frontend on **Vercel**, Backend on **Render**.
+-   **Theme Strategy:** "Dynamic" (Orange Brand Identity).
+
+---
+
+### 1. ROLE-BASED ACCESS CONTROL (RBAC) & HIERARCHY
+You must strictly respect the User Hierarchy in all Backend Logic and Frontend Routing.
+
+-   **LEVEL 1: Super Admin (SaaS Owner)**
+    -   Role Value: `'super_admin'`
+    -   Access: Can see/edit ALL companies (Tenants), Manage subscriptions, Access `/super-admin` routes.
+    -   Context: This is the system owner.
+-   **LEVEL 2: Admin (Tenant/Agency Owner)**
+    -   Role Value: `'admin'`
+    -   Access: Full control over *their own* company data (Staff, Settings, Financials).
+    -   Constraint: Must NEVER see data from other companies (`companyId` filter is mandatory).
+-   **LEVEL 3: User (Agency Staff)**
+    -   Role Value: `'user'`
+    -   Access: Operational tasks (Reservations, Calendar). Restricted access to Settings/Financials based on permissions.
+-   **LEVEL 4: Corporate (B2B External)**
+    -   Role Value: `'corporate_user'`
+    -   Access: Restricted B2B Portal only (`/portal/...`).
+
+**Rule:** Always verify `req.user.role` and `req.user.companyId` in backend controllers.
+
+---
+
+### 2. DESIGN CONSISTENCY & DYNAMIC THEME
+Visual consistency is the highest priority. DO NOT introduce new colors or styles that deviate from the Brand.
+
+-   **The "Dynamic" Theme Rules (Strict Enforcement):**
+    -   **Primary Color:** Orange Gradient (`from-orange-600 to-orange-500`).
+    -   **Sidebar:** Deep Orange Gradient with Topographic Pattern.
+    -   **Sidebar Items:** `bg-transparent` (Default) -> `bg-white/20` (Active). **Text MUST be White.** NO solid white blocks.
+    -   **Header:** Extension of the Sidebar (Orange Gradient). **Text MUST be White.**
+    -   **Inputs/Forms:** `bg-gray-50`, `border-gray-300`, `text-gray-900`. Focus ring: Orange.
+    -   **Modals:** White container, Rounded-xl, Backdrop Blur. Header must match Brand Dark or Orange.
+
+---
+
+### 3. MOBILE FIRST & RESPONSIVENESS
+Every single UI component generated must be mobile-optimized by default.
+
+-   **Layout Strategy:**
+    -   **Desktop:** Sidebar Left + Header Top.
+    -   **Mobile:** Sidebar Hidden + Scrollable Horizontal Bottom Navigation.
+-   **Data Presentation:**
+    -   **Desktop:** Detailed Tables.
+    -   **Mobile:** Convert Tables to **Cards** (Vertical Stack). Hide complex columns.
+-   **Interactions:** Touch targets must be at least 44px. Input fields must stack vertically on mobile.
+
+---
+
+### 4. CODING STANDARDS: "CLEAN AS YOU GO"
+We have a Zero Tolerance policy for code clutter.
+
+-   **Refactoring Rule:** When updating a file, **DELETE** the old code. Do NOT comment it out.
+-   **No AI Artifacts:** NEVER leave comments like `// Updated by Cursor`, `// AI fix`, or `// TODO`.
+-   **Sanitization:** If you see existing "AI-generated" comments in the file you are editing, remove them immediately.
+-   **Language:** Technical variables in English (`const bookingDate`), but Business Logic/UI Text in **Turkish** (`const musteriAdi`, "Rezervasyon Oluştur").
+
+---
+
+### 5. AGENT BEHAVIOR (Interactive Mode)
+-   **Ask Before Assuming:** If a request is ambiguous (e.g., "Fix the table"), DO NOT guess. Ask clarifying questions:
+    -   *"Should this change apply to mobile as well?"*
+    -   *"Do you want to paginate or scroll?"*
+-   **Proactive Checks:** Before finishing a task, check if the change breaks the "Dynamic Theme" or "Mobile View".
+
+---
+
+### 6. DEPLOYMENT SAFETY
+-   **Production Ready:** All code must be compile-ready for Vercel/Render.
+-   **Environment:** Respect `.env` variables. Do not hardcode secrets.

@@ -744,7 +744,7 @@ async def generate_2fa_secret(current_user: dict = Depends(get_current_user)):
         logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"2FA secret oluşturulamadı: {str(e)}"
+            detail="2FA secret oluşturulamadı"
         )
 
 @api_router.post("/auth/2fa/verify")
@@ -2263,32 +2263,45 @@ async def register_company(data: CompanyCreate):
 async def create_demo_request(data: DemoRequest):
     """Create a demo request - saves to MongoDB, does NOT create a user"""
     try:
+        logger.info(f"Demo request received: {data.company_name} - {data.email}")
+        
         # Create demo request document
         demo_request = {
             "id": str(uuid.uuid4()),
-            "company_name": data.company_name,
-            "contact_name": data.contact_name,
-            "phone": data.phone,
-            "email": data.email,
+            "company_name": data.company_name.strip() if data.company_name else "",
+            "contact_name": data.contact_name.strip() if data.contact_name else "",
+            "phone": data.phone.strip() if data.phone else "",
+            "email": data.email.strip().lower() if data.email else "",
             "status": "pending",  # pending, contacted, converted, rejected
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         
+        # Validate required fields
+        if not demo_request["company_name"] or not demo_request["email"]:
+            raise HTTPException(status_code=400, detail="Firma adı ve e-posta zorunludur")
+        
         # Save to demo_requests collection
-        await db.demo_requests.insert_one(demo_request)
+        logger.info(f"Attempting to save demo request to collection: demo_requests")
+        result = await db.demo_requests.insert_one(demo_request)
+        logger.info(f"Demo request saved successfully. Inserted ID: {result.inserted_id}, Request ID: {demo_request['id']}")
         
-        # Optional: Send email notification to admin (if SMTP is configured)
-        # This can be implemented later if needed
-        
-        logger.info(f"Demo request created: {demo_request['id']} - {data.company_name}")
+        # Verify the save by querying
+        verify_request = await db.demo_requests.find_one({"id": demo_request["id"]})
+        if verify_request:
+            logger.info(f"Demo request verified in database: {demo_request['id']}")
+        else:
+            logger.error(f"Demo request NOT found after save: {demo_request['id']}")
         
         return {
             "message": "Demo talebiniz başarıyla alındı. En kısa sürede size dönüş yapacağız.",
-            "request_id": demo_request["id"]
+            "request_id": demo_request["id"],
+            "success": True
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error creating demo request: {str(e)}")
+        logger.error(f"Error creating demo request: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Demo talebi oluşturulurken bir hata oluştu")
 
 @api_router.post("/auth/login")
@@ -4366,7 +4379,7 @@ async def calculate_reservation_price(
                         price_per_vehicle = float(prices[0])
                         price_source = "seasonal"
                         logger.warning(f"Cari özel fiyat geçersiz, cari_prices'dan ilk fiyat kullanıldı: cari_id={cari_id}, price={price_per_vehicle}")
-                else:
+                    else:
                         price_per_vehicle = 0.0
                         price_source = "error_fallback"
                         logger.error(f"Cari özel fiyat geçersiz ve cari_prices boş: cari_id={cari_id}")
@@ -4394,16 +4407,16 @@ async def calculate_reservation_price(
                         seasonal_price = matching_seasonal.get("price_per_vehicle")
                         if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
                             price_per_vehicle = float(seasonal_price)
-                price_source = "seasonal"
+                            price_source = "seasonal"
                             logger.info(f"Seasonal genel fiyat kullanıldı (yeni cari için, cari_prices boş): price={price_per_vehicle}, currency={currency}")
-        else:
+                        else:
                             price_per_vehicle = 0.0
                             price_source = "error_fallback"
                             logger.warning(f"Seasonal price'da fiyat bulunamadı (yeni cari için): price_per_vehicle=None, cari_prices boş")
                 else:
                     # Cari oluşturulma tarihi aralık dışında, seasonal genel fiyatı kullan
                     seasonal_price = matching_seasonal.get("price_per_vehicle")
-            if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
+                    if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
                         price_per_vehicle = float(seasonal_price)
                         price_source = "seasonal"
                         logger.info(f"Seasonal genel fiyat kullanıldı (cari tarih aralık dışında): price={price_per_vehicle}, currency={currency}")
@@ -4414,7 +4427,7 @@ async def calculate_reservation_price(
                             price_per_vehicle = float(prices[0])
                             price_source = "seasonal"
                             logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan, tarih aralık dışında): price={price_per_vehicle}, currency={currency}")
-            else:
+                        else:
                             price_per_vehicle = 0.0
                             price_source = "error_fallback"
                             logger.warning(f"Seasonal price'da fiyat bulunamadı (cari tarih aralık dışında): price_per_vehicle=None, cari_prices boş")
@@ -4427,7 +4440,7 @@ async def calculate_reservation_price(
                 seasonal_price = matching_seasonal.get("price_per_vehicle")
                 if seasonal_price is not None and isinstance(seasonal_price, (int, float)):
                     price_per_vehicle = float(seasonal_price)
-            price_source = "seasonal"
+                    price_source = "seasonal"
                     logger.info(f"Seasonal genel fiyat kullanıldı (cari bilgisi yok): price={price_per_vehicle}, currency={currency}")
                 elif cari_prices and len(cari_prices) > 0:
                     # price_per_vehicle yok ama cari_prices var - ilk fiyatı kullan
@@ -4436,11 +4449,11 @@ async def calculate_reservation_price(
                         price_per_vehicle = float(prices[0])
                         price_source = "seasonal"
                         logger.info(f"Seasonal fiyat kullanıldı (cari_prices'dan, cari bilgisi yok): price={price_per_vehicle}, currency={currency}")
-    else:
+                    else:
                         price_per_vehicle = 0.0
                         price_source = "error_fallback"
                         logger.warning(f"Seasonal price'da fiyat bulunamadı (cari bilgisi yok): price_per_vehicle=None, cari_prices boş")
-        else:
+                else:
                     price_per_vehicle = 0.0
                     price_source = "error_fallback"
                     logger.warning(f"Seasonal price'da fiyat bulunamadı (cari bilgisi yok): price_per_vehicle=None, cari_prices yok")
@@ -4545,7 +4558,7 @@ async def calculate_price(
         }
     except Exception as e:
         logger.error(f"Fiyat hesaplama hatası: {e}")
-        raise HTTPException(status_code=500, detail=f"Fiyat hesaplanamadı: {str(e)}")
+        raise HTTPException(status_code=500, detail="Fiyat hesaplanamadı")
 
 @api_router.post("/cari/reservations")
 async def cari_create_reservation(
@@ -4596,6 +4609,7 @@ async def cari_create_reservation(
     
     # Fiyatı server-side hesapla
     vehicle_count = getattr(data, 'vehicle_count', None) or getattr(data, 'atv_count', 1)  # Backward compatibility
+    atv_count = vehicle_count  # Alias for backward compatibility
     person_count = getattr(data, 'person_count', 1)
     price, currency = await calculate_reservation_price(
         company_id=current_cari["company_id"],
@@ -5185,7 +5199,7 @@ async def generate_reservation_voucher(reservation_id: str, current_user: dict =
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Voucher oluşturulurken hata oluştu: {str(e)}")
+        raise HTTPException(status_code=500, detail="Voucher oluşturulurken hata oluştu")
 
 # ==================== TRANSACTIONS (PAYMENTS) ====================
 
@@ -5998,7 +6012,7 @@ async def generate_extra_sale_voucher(sale_id: str, current_user: dict = Depends
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Voucher oluşturulurken hata oluştu: {str(e)}")
+        raise HTTPException(status_code=500, detail="Voucher oluşturulurken hata oluştu")
 
 # ==================== SERVICE PURCHASES ====================
 
@@ -6150,7 +6164,7 @@ async def create_seasonal_price(data: dict, current_user: dict = Depends(get_cur
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Fiyat oluşturulamadı: {str(e)}")
+        raise HTTPException(status_code=500, detail="Fiyat oluşturulamadı")
 
 @api_router.put("/seasonal-prices/{price_id}")
 async def update_seasonal_price(price_id: str, data: dict, current_user: dict = Depends(get_current_user)):
@@ -6200,7 +6214,7 @@ async def update_seasonal_price(price_id: str, data: dict, current_user: dict = 
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Fiyat güncellenemedi: {str(e)}")
+        raise HTTPException(status_code=500, detail="Fiyat güncellenemedi")
 
 @api_router.delete("/seasonal-prices/{price_id}")
 async def delete_seasonal_price(price_id: str, current_user: dict = Depends(get_current_user)):
@@ -6986,7 +7000,7 @@ async def create_transaction(data: dict, current_user: dict = Depends(get_curren
         
     except Exception as e:
         logger.error(f"Transaction insert failed - {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Transaction kaydedilemedi: {str(e)}")
+        raise HTTPException(status_code=500, detail="Transaction kaydedilemedi")
     
     # transfer_to_cari durumunda: Hedef cari için de transaction kaydı oluştur
     if payment_code == "transfer_to_cari" and transfer_to_cari_id:
@@ -7675,6 +7689,7 @@ async def get_cari_account(cari_id: str, current_user: dict = Depends(get_curren
             })
     
     # Check/Promissory valör listesi - vade tarihi geçmemiş olanlar
+    check_promissory_valor_list = []
     for item in check_promissory_list:
         check = item.get("transaction") or item
         due_date = check.get("due_date") or item.get("due_date")
@@ -7721,6 +7736,7 @@ async def get_cari_account(cari_id: str, current_user: dict = Depends(get_curren
         "credit_card_payments": credit_card_payments,
         "credit_card_valor_list": credit_card_valor_list,
         "check_promissory_list": check_promissory_list,
+        "check_promissory_valor_list": check_promissory_valor_list,
         "online_payment_payments": online_payment_payments,
         "online_payment_valor_list": online_payment_valor_list,
         "mail_order_payments": mail_order_payments,
@@ -12675,16 +12691,69 @@ async def get_super_admin_demo_requests(
     current_user: dict = Depends(require_super_admin)
 ):
     """Super admin: List all demo requests"""
-    query = {}
+    try:
+        logger.info(f"Fetching demo requests for super admin: {current_user.get('username')}, status filter: {status}")
+        
+        query = {}
+        
+        # Apply status filter if provided
+        if status and status != "all":
+            query["status"] = status
+        
+        # Get demo requests, sorted by created_at descending (newest first)
+        logger.info(f"Querying demo_requests collection with query: {query}")
+        demo_requests = await db.demo_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(10000)
+        
+        logger.info(f"Found {len(demo_requests)} demo requests")
+        
+        # Ensure all requests have required fields
+        for req in demo_requests:
+            if "status" not in req:
+                req["status"] = "pending"
+            if "created_at" not in req:
+                req["created_at"] = datetime.now(timezone.utc).isoformat()
+        
+        return demo_requests
+    except Exception as e:
+        logger.error(f"Error fetching demo requests: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Demo talepleri yüklenirken bir hata oluştu")
+
+@api_router.put("/super-admin/demo-requests/{request_id}/status")
+async def update_demo_request_status(
+    request_id: str,
+    data: dict,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Super admin: Update demo request status"""
+    # Validate status
+    valid_statuses = ["pending", "contacted", "converted", "rejected"]
+    new_status = data.get("status")
     
-    # Apply status filter if provided
-    if status and status != "all":
-        query["status"] = status
+    if new_status not in valid_statuses:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+        )
     
-    # Get demo requests, sorted by created_at descending (newest first)
-    demo_requests = await db.demo_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    # Find demo request
+    demo_request = await db.demo_requests.find_one({"id": request_id})
+    if not demo_request:
+        raise HTTPException(status_code=404, detail="Demo request not found")
     
-    return demo_requests
+    # Update status
+    update_data = {
+        "status": new_status,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.demo_requests.update_one(
+        {"id": request_id},
+        {"$set": update_data}
+    )
+    
+    logger.info(f"Demo request {request_id} status updated to {new_status} by {current_user.get('username')}")
+    
+    return {"message": "Demo request status updated successfully", "status": new_status}
 
 @api_router.post("/super-admin/impersonate/{company_id}")
 async def super_admin_impersonate(

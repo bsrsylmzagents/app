@@ -24,17 +24,33 @@ const AdminDemoRequests = () => {
       if (statusFilter && statusFilter !== 'all') {
         params.status = statusFilter;
       }
+      
+      console.log('Fetching demo requests from:', `${API}/super-admin/demo-requests`);
+      console.log('Params:', params);
+      
       const response = await axios.get(`${API}/super-admin/demo-requests`, { params });
       console.log('Demo requests response:', response.data);
-      const requestsData = response.data || [];
+      console.log('Response status:', response.status);
+      console.log('Number of requests:', response.data?.length || 0);
+      
+      const requestsData = Array.isArray(response.data) ? response.data : [];
       setDemoRequests(requestsData);
       setFilteredRequests(requestsData);
+      
       if (requestsData.length === 0) {
-        console.warn('No demo requests found.');
+        console.warn('No demo requests found in database.');
+      } else {
+        console.log(`Successfully loaded ${requestsData.length} demo requests`);
       }
     } catch (error) {
       console.error('Fetch demo requests error:', error);
       console.error('Error response:', error.response);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
       
       if (error.response?.status === 403) {
         toast.error('Bu sayfaya erişim yetkiniz yok. Super admin olarak giriş yapmalısınız.');
@@ -142,6 +158,28 @@ const AdminDemoRequests = () => {
     }
   };
 
+  const updateRequestStatus = async (requestId, newStatus) => {
+    try {
+      await axios.put(`${API}/super-admin/demo-requests/${requestId}/status`, {
+        status: newStatus
+      });
+      toast.success('Demo talebi durumu güncellendi');
+      fetchDemoRequests(); // Refresh the list
+    } catch (error) {
+      console.error('Update status error:', error);
+      let errorMessage = 'Durum güncellenemedi';
+      const detail = error.response?.data?.detail;
+      
+      if (typeof detail === 'string') {
+        errorMessage = detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8 text-[#A5A5A5]">Yükleniyor...</div>;
   }
@@ -202,12 +240,13 @@ const AdminDemoRequests = () => {
                 <TableHead className="text-gray-300">Telefon</TableHead>
                 <TableHead className="text-gray-300">Durum</TableHead>
                 <TableHead className="text-gray-300">Talep Tarihi</TableHead>
+                <TableHead className="text-gray-300">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredRequests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-[#A5A5A5] py-8">
+                  <TableCell colSpan={7} className="text-center text-[#A5A5A5] py-8">
                     {demoRequests.length === 0 ? 'Henüz demo talebi bulunmuyor' : 'Arama sonucu bulunamadı'}
                   </TableCell>
                 </TableRow>
@@ -248,6 +287,50 @@ const AdminDemoRequests = () => {
                       <div className="flex items-center gap-2">
                         <Calendar size={16} className="text-[#A5A5A5]" />
                         {formatDate(request.created_at)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {request.status !== 'contacted' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateRequestStatus(request.id || request._id, 'contacted')}
+                            className="border-blue-500 text-blue-500 hover:bg-blue-500/10 text-xs px-2 py-1 h-auto"
+                          >
+                            İletişim
+                          </Button>
+                        )}
+                        {request.status !== 'converted' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateRequestStatus(request.id || request._id, 'converted')}
+                            className="border-green-500 text-green-500 hover:bg-green-500/10 text-xs px-2 py-1 h-auto"
+                          >
+                            Dönüştür
+                          </Button>
+                        )}
+                        {request.status !== 'rejected' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateRequestStatus(request.id || request._id, 'rejected')}
+                            className="border-red-500 text-red-500 hover:bg-red-500/10 text-xs px-2 py-1 h-auto"
+                          >
+                            Reddet
+                          </Button>
+                        )}
+                        {request.status !== 'pending' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateRequestStatus(request.id || request._id, 'pending')}
+                            className="border-yellow-500 text-yellow-500 hover:bg-yellow-500/10 text-xs px-2 py-1 h-auto"
+                          >
+                            Beklemede
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

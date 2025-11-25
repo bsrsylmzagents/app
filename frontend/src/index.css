@@ -571,7 +571,7 @@
   /* ========== DYNAMIC THEME SIDEBAR MENU ITEMS - CRITICAL FIX ========== */
   /* Force ALL menu items to have white text and transparent/glassy backgrounds - Ghost Button Style */
   
-  /* Base: ALL nav items - Force white text, rounded-xl */
+  /* Base: ALL nav items - Force white text, rounded-2xl */
   :root[data-theme="dynamic"] .sidebar .nav-item,
   :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item,
   :root[data-theme="dynamic"] .sidebar a.nav-item,
@@ -579,7 +579,7 @@
   :root[data-theme="dynamic"] .sidebar .nav-item span,
   :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item span {
     color: #ffffff !important; /* FORCE white text - override everything */
-    border-radius: 0.75rem !important; /* rounded-xl */
+    border-radius: 1rem !important; /* rounded-2xl */
   }
   
   /* Inactive: Transparent background - NO solid blocks */
@@ -592,21 +592,21 @@
     color: #ffffff !important;
   }
   
-  /* Active: Glass effect - 20% white with blur, rounded-xl */
+  /* Active: Glass effect - 20% white with blur, rounded-2xl */
   :root[data-theme="dynamic"] .sidebar .nav-item[class*="bg-white/20"],
   :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item[class*="bg-white/20"],
   :root[data-theme="dynamic"] .sidebar a[class*="bg-white/20"],
   :root[data-theme="dynamic"] aside[class*="sidebar"] a[class*="bg-white/20"] {
     background: rgba(255, 255, 255, 0.2) !important; /* bg-white/20 */
     background-color: rgba(255, 255, 255, 0.2) !important; /* Double override */
-    backdrop-filter: blur(4px) !important;
-    -webkit-backdrop-filter: blur(4px) !important;
+    backdrop-filter: blur(12px) !important; /* backdrop-blur-md */
+    -webkit-backdrop-filter: blur(12px) !important;
     font-weight: 700 !important; /* font-bold */
     color: #ffffff !important; /* White text */
-    border-radius: 0.75rem !important; /* rounded-xl */
+    border-radius: 1rem !important; /* rounded-2xl */
   }
   
-  /* Hover: 10% white - subtle glow, rounded-xl */
+  /* Hover: 10% white - subtle glow, rounded-2xl */
   :root[data-theme="dynamic"] .sidebar .nav-item.bg-transparent:hover,
   :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-transparent:hover,
   :root[data-theme="dynamic"] .sidebar .nav-item:not([class*="bg-white/20"]):not([class*="bg-white"]):not([class*="bg-elevated"]):hover,
@@ -614,6 +614,7 @@
     background: rgba(255, 255, 255, 0.1) !important; /* hover:bg-white/10 */
     background-color: rgba(255, 255, 255, 0.1) !important; /* Double override */
     color: #ffffff !important;
+    border-radius: 1rem !important; /* rounded-2xl */
   }
   
   /* Icons: ALL white - no exceptions */
@@ -633,11 +634,11 @@
   :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-elevated {
     background: rgba(255, 255, 255, 0.2) !important; /* Convert to glass */
     background-color: rgba(255, 255, 255, 0.2) !important; /* Double override */
-    backdrop-filter: blur(4px) !important;
-    -webkit-backdrop-filter: blur(4px) !important;
+    backdrop-filter: blur(12px) !important; /* backdrop-blur-md */
+    -webkit-backdrop-filter: blur(12px) !important;
     color: #ffffff !important; /* White text, NOT orange */
     font-weight: 700 !important;
-    border-radius: 0.75rem !important; /* rounded-xl */
+    border-radius: 1rem !important; /* rounded-2xl */
   }
   
   
@@ -648,8 +649,9 @@
   :root[data-theme="dynamic"] header.header-gradient {
     background: linear-gradient(to right, #ea580c, #f97316) !important; /* from-orange-600 to-orange-500 */
     position: relative !important;
-    margin: 0 !important; /* Remove gaps */
-    padding-left: 0 !important; /* Connect with sidebar */
+    margin: 0 !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important; /* border-b border-white/20 */
   }
   
@@ -666,9 +668,12 @@
   
   /* Ensure header sits flush against sidebar - no white space */
   :root[data-theme="dynamic"] aside.sidebar ~ div > header,
-  :root[data-theme="dynamic"] aside[class*="sidebar"] ~ div > header {
+  :root[data-theme="dynamic"] aside[class*="sidebar"] ~ div > header,
+  :root[data-theme="dynamic"] aside.sidebar + div > header,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] + div > header {
     margin-left: 0 !important;
     padding-left: 0 !important;
+    left: 0 !important;
   }
   
   /* Dynamic Theme Header - Topographic Pattern Overlay */

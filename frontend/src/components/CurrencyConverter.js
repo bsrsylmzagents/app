@@ -177,7 +177,7 @@ const CurrencyConverter = () => {
                 placeholder="Miktar girin"
                 className={`w-full px-3 py-2 rounded-lg focus:outline-none transition-colors ${
                   isDynamicTheme 
-                    ? 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-500' 
+                    ? 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-orange-500' 
                     : ''
                 }`}
                 style={!isDynamicTheme ? {

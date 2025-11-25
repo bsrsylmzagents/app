@@ -213,17 +213,40 @@ const Login = ({ setAuth }) => {
     setDemoLoading(true);
 
     try {
-      await axios.post(`${API}/auth/demo-request`, demoFormData);
-      toast.success('Demo talebiniz alındı! En kısa sürede size dönüş yapacağız.');
-      setDemoModalOpen(false);
-      setDemoFormData({
-        company_name: '',
-        contact_name: '',
-        phone: '',
-        email: ''
-      });
+      // Validate form data
+      if (!demoFormData.company_name || !demoFormData.email) {
+        toast.error('Lütfen firma adı ve e-posta adresini doldurun');
+        setDemoLoading(false);
+        return;
+      }
+
+      console.log('Sending demo request:', demoFormData);
+      console.log('API URL:', `${API}/auth/demo-request`);
+      
+      const response = await axios.post(`${API}/auth/demo-request`, demoFormData);
+      
+      console.log('Demo request response:', response.data);
+      
+      if (response.data && response.data.success !== false) {
+        toast.success('Demo talebiniz alındı! En kısa sürede size dönüş yapacağız.');
+        setDemoModalOpen(false);
+        setDemoFormData({
+          company_name: '',
+          contact_name: '',
+          phone: '',
+          email: ''
+        });
+      } else {
+        toast.error('Demo talebi gönderilemedi. Lütfen tekrar deneyin.');
+      }
     } catch (error) {
       console.error('Demo request error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
       
       if (error.response) {
         let errorMessage = 'Demo talebi gönderilemedi';
@@ -248,6 +271,8 @@ const Login = ({ setAuth }) => {
         }
         
         toast.error(errorMessage);
+      } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+        toast.error('Backend bağlantısı yapılamadı! Backend\'in çalıştığından emin olun.');
       } else {
         toast.error('Bağlantı hatası: ' + (error.message || 'Bilinmeyen hata'));
       }
