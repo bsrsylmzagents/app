@@ -4928,18 +4928,6 @@ async def cari_calculate_price(
         raise HTTPException(status_code=500, detail="Fiyat hesaplanamadı")
 
 # ==================== ADMIN CARI RESERVATION ENDPOINTS ====================
-        else:
-            created_at = None
-        
-        enriched_reservations.append({
-            **r,
-            "cari_code_snapshot": cari_code,
-            "display_name": r.get("cari_name"),
-            "created_at": created_at,  # ISO format string
-            "voucher_code": r.get("voucher_code")  # Voucher kodu dahil
-        })
-    
-    return enriched_reservations
 
 @api_router.post("/reservations/{reservation_id}/approve")
 async def approve_cari_reservation(
