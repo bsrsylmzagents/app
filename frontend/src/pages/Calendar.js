@@ -1059,7 +1059,7 @@ const Calendar = () => {
         pickup_maps_link: newCari.pickup_maps_link || ''
       });
     } catch (error) {
-      toast.error('Cari hesap oluşturulamadı');
+      toast.error(error.response?.data?.detail || 'Cari hesap oluşturulamadı');
     }
   };
 
@@ -1095,41 +1095,6 @@ const Calendar = () => {
       setBankAccounts(response.data);
     } catch (error) {
       console.error('Banka hesapları yüklenemedi');
-    }
-  };
-
-  const handleCariSelect = (cariId) => {
-    const cari = cariAccounts.find(c => c.id === cariId);
-    if (cari) {
-      setCariSearch(cari.name);
-      setFormData({
-        ...formData,
-        cari_id: cariId,
-        pickup_location: cari.pickup_location || '',
-        pickup_maps_link: cari.pickup_maps_link || ''
-      });
-    }
-  };
-
-  const handleQuickCreateCari = async () => {
-    try {
-      const response = await axios.post(`${API}/cari-accounts`, newCariData);
-      toast.success('Cari hesap oluşturuldu');
-      setCariDialogOpen(false);
-      setNewCariData({ name: '', phone: '', pickup_location: '' });
-      await fetchCariAccounts();
-      
-      const newCariId = response.data.id;
-      const newCari = response.data;
-      setCariSearch(newCari.name);
-      setFormData({ 
-        ...formData, 
-        cari_id: newCariId,
-        pickup_location: newCari.pickup_location || '',
-        pickup_maps_link: newCari.pickup_maps_link || ''
-      });
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Cari hesap oluşturulamadı');
     }
   };
 
