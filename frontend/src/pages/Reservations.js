@@ -132,6 +132,61 @@ const Reservations = () => {
     fetchSeasonalPrices();
   }, []);
 
+  useEffect(() => {
+    const calculatePrice = async () => {
+      if (!formData.tour_type_id || !formData.date || !dialogOpen) {
+        return;
+      }
+
+      const tourType = tourTypes.find(t => t.id === formData.tour_type_id);
+      if (!tourType) return;
+
+      const pricingModel = tourType.pricing_model || 'vehicle_based';
+      
+      if (pricingModel === 'vehicle_based' && (!formData.vehicle_count || formData.vehicle_count <= 0)) {
+        return;
+      }
+      if (pricingModel === 'person_based' && (!formData.person_count || formData.person_count <= 0)) {
+        return;
+      }
+
+      try {
+        const params = {
+          tour_type_id: formData.tour_type_id,
+          date: formData.date,
+          vehicle_count: formData.vehicle_count || 1,
+          person_count: formData.person_count || 1
+        };
+        
+        if (formData.cari_id && formData.cari_id.trim() !== '') {
+          params.cari_id = formData.cari_id;
+        }
+        
+        const response = await axios.get(`${API}/reservations/calculate-price`, { params });
+        
+        if (response.data && response.data.price !== undefined) {
+          const totalPrice = response.data.price;
+          const currency = response.data.currency || 'EUR';
+          const exchangeRate = rates[currency] || 1.0;
+          
+          setFormData(prev => ({
+            ...prev,
+            price: totalPrice,
+            currency: currency,
+            exchange_rate: exchangeRate
+          }));
+        }
+      } catch (error) {
+        console.error('Fiyat hesaplama hatası:', error);
+        if (error.response?.status !== 404) {
+          toast.error('Fiyat hesaplanırken hata oluştu');
+        }
+      }
+    };
+
+    calculatePrice();
+  }, [formData.cari_id, formData.tour_type_id, formData.date, formData.vehicle_count, formData.person_count, dialogOpen, rates, tourTypes]);
+
   const fetchReservations = async (status = null) => {
     try {
       setLoading(true);

@@ -163,6 +163,60 @@ const Calendar = () => {
     }
   }, [cariAccounts]);
 
+  useEffect(() => {
+    const calculatePrice = async () => {
+      if (!formData.tour_type_id || !formData.date || !reservationDialogOpen) {
+        return;
+      }
+
+      const tourType = tourTypes.find(t => t.id === formData.tour_type_id);
+      if (!tourType) return;
+
+      const pricingModel = tourType.pricing_model || 'vehicle_based';
+      
+      if (pricingModel === 'vehicle_based' && (!formData.vehicle_count || formData.vehicle_count <= 0)) {
+        return;
+      }
+      if (pricingModel === 'person_based' && (!formData.person_count || formData.person_count <= 0)) {
+        return;
+      }
+
+      try {
+        const params = {
+          tour_type_id: formData.tour_type_id,
+          date: formData.date,
+          vehicle_count: formData.vehicle_count || 1,
+          person_count: formData.person_count || 1
+        };
+        
+        if (formData.cari_id && formData.cari_id.trim() !== '') {
+          params.cari_id = formData.cari_id;
+        }
+        
+        const response = await axios.get(`${API}/reservations/calculate-price`, { params });
+        
+        if (response.data && response.data.price !== undefined) {
+          const totalPrice = response.data.price;
+          const currency = response.data.currency || 'EUR';
+            const exchangeRate = rates[currency] || 1.0;
+            
+            setFormData(prev => ({
+              ...prev,
+              price: totalPrice,
+              currency: currency,
+              exchange_rate: exchangeRate
+            }));
+        }
+      } catch (error) {
+        console.error('Fiyat hesaplama hatası:', error);
+        if (error.response?.status !== 404) {
+          toast.error('Fiyat hesaplanırken hata oluştu');
+        }
+      }
+    };
+
+    calculatePrice();
+  }, [formData.cari_id, formData.tour_type_id, formData.date, formData.vehicle_count, formData.person_count, reservationDialogOpen, rates, tourTypes]);
 
   const fetchReservations = async () => {
     try {
@@ -559,11 +613,13 @@ const Calendar = () => {
 
   const handleReservationButtonClick = (date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
+    const now = new Date();
+    const timeStr = format(now, 'HH:mm');
     setReservationDate(date);
     setFormData({
       ...formData,
       date: dateStr,
-      time: '',
+      time: timeStr,
       tour_type_id: '',
       cari_id: '',
       customer_name: '',
@@ -578,8 +634,6 @@ const Calendar = () => {
       exchange_rate: rates.EUR || 1.0,
       notes: ''
     });
-    setBasePricePerAtv(null);
-    setSeasonalPriceCurrency(null);
     setCariSearch('');
     setReservationDialogOpen(true);
   };
@@ -611,10 +665,13 @@ const Calendar = () => {
   };
 
   const resetReservationForm = () => {
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+    const timeStr = format(today, 'HH:mm');
     setFormData({
       cari_id: '',
-      date: '',
-      time: '',
+      date: todayStr,
+      time: timeStr,
       tour_type_id: '',
       customer_name: '',
       customer_contact: '',
@@ -625,11 +682,9 @@ const Calendar = () => {
       pickup_maps_link: '',
       price: 0,
       currency: 'EUR',
-      exchange_rate: 1.0,
+      exchange_rate: rates.EUR || 1.0,
       notes: ''
     });
-    setBasePricePerAtv(null);
-    setSeasonalPriceCurrency(null);
     setCariSearch('');
     setReservationDate(null);
   };

@@ -3904,7 +3904,7 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
         
         # Müşteriyi kaydet (Cari veya Münferit)
         is_munferit = cari.get("is_munferit", False)
-    if is_munferit:
+        if is_munferit:
         # Münferit müşteri kaydet/güncelle
         existing_customer = await db.munferit_customers.find_one({
             "company_id": current_user["company_id"],
@@ -4294,16 +4294,18 @@ async def cancel_reservation(
 
 class CariReservationCreate(BaseModel):
     """Cari tarafından rezervasyon oluşturma - sadece izin verilen alanlar"""
-    model_config = ConfigDict(extra="forbid")  # Ekstra alanları reddet
+    model_config = ConfigDict(extra="forbid")
     
     customer_name: str
     customer_contact: Optional[str] = None
-    customer_details: Optional[Dict[str, Any]] = None  # phone, email, nationality, id_number, birth_date
+    customer_details: Optional[Dict[str, Any]] = None
     date: str
     time: str
-    tour_id: str  # tour_type_id
+    tour_id: str
     person_count: int = 1
     vehicle_count: int = 1
+    pickup_location: Optional[str] = None
+    pickup_maps_link: Optional[str] = None
     extras: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
     # Price ve cari_name alanları KABUL EDİLMEZ - server-side hesaplanacak
@@ -4689,16 +4691,18 @@ async def cari_create_reservation(
         person_count=person_count,
         vehicle_count=vehicle_count,
         customer_contact=getattr(data, 'customer_contact', None),
+        pickup_location=getattr(data, 'pickup_location', None) or cari_account.get("pickup_location"),
+        pickup_maps_link=getattr(data, 'pickup_maps_link', None) or cari_account.get("pickup_maps_link"),
         price=price,
         currency=currency,
         exchange_rate=exchange_rate,
         notes=getattr(data, 'notes', None),
-        voucher_code=voucher_code,  # B2B voucher kodu
+        voucher_code=voucher_code,
         status="pending_approval",
         reservation_source="cari",
         created_by_cari=current_cari["cari_id"],
         cari_code_snapshot=cari.get("cari_code"),
-        created_by=current_cari["cari_id"]  # created_by field için
+        created_by=current_cari["cari_id"]
     )
     
     reservation_doc = reservation.model_dump()
@@ -4839,6 +4843,65 @@ async def cari_get_transactions(
         "balance_usd": cari_account.get("balance_usd", 0),
         "balance_try": cari_account.get("balance_try", 0)
     }
+
+@api_router.get("/cari/company-info")
+async def cari_get_company_info(
+    current_cari: dict = Depends(get_current_cari)
+):
+    """Cari için company bilgilerini getir (currency rates dahil)"""
+    company = await db.companies.find_one({"id": current_cari["company_id"]}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    return {
+        "currency_rates": company.get("currency_rates", {"EUR": 1.0, "USD": 1.0, "TRY": 1.0}),
+        "name": company.get("name"),
+        "id": company.get("id")
+    }
+
+@api_router.get("/cari/reservations/calculate-price")
+async def cari_calculate_price(
+    tour_type_id: str,
+    date: str,
+    vehicle_count: int,
+    person_count: int = 1,
+    current_cari: dict = Depends(get_current_cari)
+):
+    """Cari için rezervasyon fiyatını hesapla"""
+    try:
+        # Cari account bilgisini al
+        cari = await db.caris.find_one({"id": current_cari["cari_id"]})
+        if not cari:
+            raise HTTPException(status_code=404, detail="Cari account not found")
+        
+        cari_code = cari.get("cari_code")
+        if not cari_code:
+            raise HTTPException(status_code=400, detail="Cari code not found")
+        
+        cari_account = await db.cari_accounts.find_one({
+            "company_id": current_cari["company_id"],
+            "cari_code": cari_code
+        })
+        
+        if not cari_account:
+            raise HTTPException(status_code=404, detail="Cari account not found")
+        
+        total_price, currency = await calculate_reservation_price(
+            company_id=current_cari["company_id"],
+            cari_id=cari_account["id"],
+            tour_type_id=tour_type_id,
+            date=date,
+            vehicle_count=vehicle_count,
+            person_count=person_count
+        )
+        
+        return {
+            "price": total_price,
+            "currency": currency
+        }
+    except Exception as e:
+        logger.error(f"Cari fiyat hesaplama hatası: {e}")
+        raise HTTPException(status_code=500, detail="Fiyat hesaplanamadı")
 
 # ==================== ADMIN CARI RESERVATION ENDPOINTS ====================
 

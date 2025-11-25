@@ -7,6 +7,7 @@ import { ArrowLeft, Save, User, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import CustomerDetailDialog from '../../components/CustomerDetailDialog';
+import { format } from 'date-fns';
 
 const CariCreateReservation = () => {
   const [formData, setFormData] = useState({
@@ -41,18 +42,22 @@ const CariCreateReservation = () => {
       return;
     }
 
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const timeStr = format(now, 'HH:mm');
+
     setCari(cariData);
     fetchTourTypes();
     fetchRates();
     
-    // Cari bilgilerini form'a set et
-    if (cariData.pickup_location) {
-      setFormData(prev => ({
-        ...prev,
-        pickup_location: cariData.pickup_location || '',
-        pickup_maps_link: cariData.pickup_maps_link || ''
-      }));
-    }
+    // Cari bilgilerini form'a set et ve tarih/saat default değerlerini ayarla
+    setFormData(prev => ({
+      ...prev,
+      date: todayStr,
+      time: timeStr,
+      pickup_location: cariData.pickup_location || '',
+      pickup_maps_link: cariData.pickup_maps_link || ''
+    }));
   }, [navigate]);
 
   const fetchTourTypes = async () => {
@@ -79,8 +84,65 @@ const CariCreateReservation = () => {
       }
     } catch (error) {
       console.error('Fetch rates error:', error);
+      // Hata durumunda varsayılan rates kullan
+      setRates({ EUR: 1.0, USD: 1.0, TRY: 1.0 });
     }
   };
+
+  useEffect(() => {
+    const calculatePrice = async () => {
+      if (!formData.tour_type_id || !formData.date || !cari?.id) {
+        return;
+      }
+
+      const tourType = tourTypes.find(t => t.id === formData.tour_type_id);
+      if (!tourType) return;
+
+      const pricingModel = tourType.pricing_model || 'vehicle_based';
+      
+      if (pricingModel === 'vehicle_based' && (!formData.vehicle_count || formData.vehicle_count <= 0)) {
+        return;
+      }
+      if (pricingModel === 'person_based' && (!formData.person_count || formData.person_count <= 0)) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('cari_token');
+        const params = {
+          tour_type_id: formData.tour_type_id,
+          date: formData.date,
+          vehicle_count: formData.vehicle_count || 1,
+          person_count: formData.person_count || 1
+        };
+        
+        const response = await axios.get(`${API}/cari/reservations/calculate-price`, {
+          params,
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data && response.data.price !== undefined) {
+          const totalPrice = response.data.price;
+          const currency = response.data.currency || 'EUR';
+          const exchangeRate = rates[currency] || 1.0;
+          
+          setFormData(prev => ({
+            ...prev,
+            price: totalPrice,
+            currency: currency,
+            exchange_rate: exchangeRate
+          }));
+        }
+      } catch (error) {
+        console.error('Fiyat hesaplama hatası:', error);
+        if (error.response?.status !== 404) {
+          toast.error('Fiyat hesaplanırken hata oluştu');
+        }
+      }
+    };
+
+    calculatePrice();
+  }, [formData.tour_type_id, formData.date, formData.vehicle_count, formData.person_count, cari, tourTypes, rates]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -100,10 +162,7 @@ const CariCreateReservation = () => {
         time: formData.time,
         tour_id: formData.tour_type_id,
         person_count: parseInt(formData.person_count) || 1,
-        vehicle_count: parseInt(formData.vehicle_count) || 1,
-        price: parseFloat(formData.price) || 0,
-        currency: formData.currency,
-        exchange_rate: formData.exchange_rate
+        vehicle_count: parseInt(formData.vehicle_count) || 1
       };
       
       if (formData.customer_contact) {
