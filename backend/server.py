@@ -1,6 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -15362,15 +15363,42 @@ class B2BLoginRequest(BaseModel):
     corporateCode: str  # Cari code
     password: str
 
+@api_router.get("/auth/oauth/callback")
+async def oauth_callback_get(code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None):
+    """OAuth callback GET handler - receives OAuth redirect with code and state"""
+    try:
+        if error:
+            logger.error(f"OAuth error received: {error}")
+            raise HTTPException(status_code=400, detail=f"OAuth hatası: {error}")
+        
+        if not code:
+            raise HTTPException(status_code=400, detail="OAuth code parametresi bulunamadı")
+        
+        logger.info(f"OAuth callback received - code: {code[:10]}..., state: {state}")
+        
+        # Redirect to frontend with code and state
+        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+        redirect_url = f"{frontend_url}/auth/callback?code={code}&state={state or ''}"
+        
+        return RedirectResponse(url=redirect_url)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OAuth callback GET error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="OAuth callback işlemi başarısız oldu")
+
 @api_router.post("/auth/oauth/callback")
-async def oauth_callback(data: dict):
-    """OAuth callback handler - processes OAuth code and returns JWT token"""
+async def oauth_callback_post(data: dict):
+    """OAuth callback POST handler - processes OAuth code and returns JWT token"""
     try:
         code = data.get("code")
         state = data.get("state")
         
         if not code:
             raise HTTPException(status_code=400, detail="OAuth code is required")
+        
+        logger.info(f"OAuth callback POST received - code: {code[:10]}..., state: {state}")
         
         # TODO: Implement OAuth provider-specific logic here
         # This is a placeholder - you need to:
@@ -15828,6 +15856,27 @@ async def sync_ical_endpoint(
 @api_router.get("/test")
 async def test_endpoint():
     return {"message": "API router is working", "status": "ok"}
+
+@api_router.get("/auth/oauth/test")
+async def oauth_test_endpoint():
+    """Test endpoint for OAuth callback - returns test info"""
+    try:
+        # Test için dummy token oluştur
+        test_token = "test_oauth_token_" + secrets.token_urlsafe(32)
+        
+        return {
+            "message": "OAuth test endpoint çalışıyor",
+            "test_token": test_token,
+            "callback_url": "/api/auth/oauth/callback",
+            "instructions": {
+                "1": "OAuth provider'dan gelen code ve state parametrelerini kullanın",
+                "2": "GET /api/auth/oauth/callback?code=XXX&state=YYY şeklinde çağırın",
+                "3": "Frontend'e yönlendirileceksiniz: /auth/callback?code=XXX&state=YYY"
+            }
+        }
+    except Exception as e:
+        logger.error(f"OAuth test endpoint error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Test endpoint hatası")
 
 # Log router info before including
 logger.info(f"Including api_router with prefix: {api_router.prefix}")
