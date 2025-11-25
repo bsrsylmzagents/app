@@ -1063,10 +1063,6 @@ const Calendar = () => {
     }
   };
 
-  const filteredCariAccounts = cariAccounts.filter(c => 
-    c.name.toLowerCase().includes(cariSearch.toLowerCase())
-  );
-
   const filteredCariAccountsForSeasonal = cariAccounts.filter(c => 
     c.name.toLowerCase().includes(cariSearchFilter.toLowerCase())
   );
