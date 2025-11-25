@@ -31,6 +31,14 @@ const SeasonalPrices = () => {
   }, []);
 
   useEffect(() => {
+    const handleFocus = () => {
+      fetchTourTypes();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  useEffect(() => {
     // Tüm carileri başlangıçta seçili yap
     if (cariAccounts.length > 0 && selectedCaris.length === 0) {
       setSelectedCaris(cariAccounts.map(c => c.id));

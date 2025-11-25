@@ -34,6 +34,14 @@ const TourTypes = () => {
   }, []);
 
   useEffect(() => {
+    const handleFocus = () => {
+      fetchTourTypes();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  useEffect(() => {
     // Fetch statistics for all tour types
     tourTypes.forEach(tt => {
       if (!statistics[tt.id]) {
