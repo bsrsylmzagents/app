@@ -146,30 +146,30 @@ const CurrencyConverter = () => {
           } : {}}
           data-testid="currency-converter-panel"
         >
-          <h3 className={`text-lg font-bold mb-4 ${isDynamicTheme ? 'text-gray-800' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}}>Döviz Çevirici</h3>
+          <h3 className={`text-lg font-bold mb-4 ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}}>Döviz Çevirici</h3>
           
           {/* Quick Rates Display */}
           <div className={`mb-4 pb-4 ${isDynamicTheme ? 'border-b border-gray-200' : ''}`} style={!isDynamicTheme ? { borderBottom: '1px solid var(--divider)' } : {}}>
-            <p className={`text-xs mb-2 ${isDynamicTheme ? 'text-gray-600' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>Güncel Kurlar</p>
+            <p className={`text-xs mb-2 ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>Güncel Kurlar</p>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className={isDynamicTheme ? 'text-gray-600' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>1 EUR =</span>
-                <span className={`font-semibold ${isDynamicTheme ? 'text-gray-900' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}}>{rates.EUR.toFixed(4)} TRY</span>
+                <span className={isDynamicTheme ? 'text-black' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>1 EUR =</span>
+                <span className={`font-semibold ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}}>{rates.EUR.toFixed(4)} TRY</span>
               </div>
               <div className="flex justify-between">
-                <span className={isDynamicTheme ? 'text-gray-600' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>1 USD =</span>
-                <span className={`font-semibold ${isDynamicTheme ? 'text-gray-900' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}}>{rates.USD.toFixed(4)} TRY</span>
+                <span className={isDynamicTheme ? 'text-black' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>1 USD =</span>
+                <span className={`font-semibold ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}}>{rates.USD.toFixed(4)} TRY</span>
               </div>
               <div className="flex justify-between">
-                <span className={isDynamicTheme ? 'text-gray-600' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>1 EUR =</span>
-                <span className={`font-semibold ${isDynamicTheme ? 'text-gray-900' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}}>{(rates.EUR / rates.USD).toFixed(4)} USD</span>
+                <span className={isDynamicTheme ? 'text-black' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>1 EUR =</span>
+                <span className={`font-semibold ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}}>{(rates.EUR / rates.USD).toFixed(4)} USD</span>
               </div>
             </div>
           </div>
           
           <div className="space-y-4">
             <div>
-              <label className={`block text-sm mb-2 ${isDynamicTheme ? 'text-gray-700' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>Miktar</label>
+              <label className={`block text-sm mb-2 ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>Miktar</label>
               <input
                 type="number"
                 value={amount}
@@ -192,7 +192,7 @@ const CurrencyConverter = () => {
             </div>
 
             <div>
-              <label className={`block text-sm mb-2 ${isDynamicTheme ? 'text-gray-700' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>Para Birimi</label>
+              <label className={`block text-sm mb-2 ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>Para Birimi</label>
               <div className="flex gap-2">
                 {['EUR', 'USD', 'TRY'].map((curr) => (
                   <button
@@ -201,8 +201,8 @@ const CurrencyConverter = () => {
                     className={`flex-1 px-3 py-2 rounded-lg font-medium transition-colors ${
                       isDynamicTheme
                         ? selectedCurrency === curr
-                          ? 'bg-orange-600 hover:bg-orange-700 text-white font-bold'
-                          : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                          ? 'bg-orange-600 hover:bg-orange-700 text-white font-bold border-2 border-orange-600'
+                          : 'bg-gray-100 hover:bg-gray-200 text-black border-2 border-gray-300'
                         : ''
                     }`}
                     style={!isDynamicTheme ? {
@@ -229,19 +229,19 @@ const CurrencyConverter = () => {
 
             {amount && (
               <div className={`pt-4 ${isDynamicTheme ? 'border-t border-gray-200' : ''}`} style={!isDynamicTheme ? { borderTop: '1px solid var(--divider)' } : {}}>
-                <p className={`text-xs mb-2 ${isDynamicTheme ? 'text-gray-600' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>Çevrilmiş Tutarlar</p>
+                <p className={`text-xs mb-2 ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>Çevrilmiş Tutarlar</p>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className={isDynamicTheme ? 'text-gray-600' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>EUR</span>
-                    <span className={`font-semibold ${isDynamicTheme ? 'text-gray-900' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}} data-testid="converted-eur">{converted.EUR}</span>
+                    <span className={isDynamicTheme ? 'text-black' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>EUR</span>
+                    <span className={`font-semibold ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}} data-testid="converted-eur">{converted.EUR}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className={isDynamicTheme ? 'text-gray-600' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>USD</span>
-                    <span className={`font-semibold ${isDynamicTheme ? 'text-gray-900' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}} data-testid="converted-usd">{converted.USD}</span>
+                    <span className={isDynamicTheme ? 'text-black' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>USD</span>
+                    <span className={`font-semibold ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}} data-testid="converted-usd">{converted.USD}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className={isDynamicTheme ? 'text-gray-600' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>TRY</span>
-                    <span className={`font-semibold ${isDynamicTheme ? 'text-gray-900' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}} data-testid="converted-try">{converted.TRY}</span>
+                    <span className={isDynamicTheme ? 'text-black' : ''} style={!isDynamicTheme ? { color: 'var(--text-secondary)' } : {}}>TRY</span>
+                    <span className={`font-semibold ${isDynamicTheme ? 'text-black' : ''}`} style={!isDynamicTheme ? { color: 'var(--text-primary)' } : {}} data-testid="converted-try">{converted.TRY}</span>
                   </div>
                 </div>
               </div>
