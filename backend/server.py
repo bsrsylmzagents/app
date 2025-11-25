@@ -3858,6 +3858,41 @@ async def calculate_price(
         logger.error(f"Fiyat hesaplama hatası: {e}")
         raise HTTPException(status_code=500, detail="Fiyat hesaplanamadı")
 
+class ReservationPriceRequest(BaseModel):
+    tour_type_id: str
+    date: str
+    vehicle_count: int
+    cari_id: Optional[str] = None
+    person_count: int = 1
+
+
+@api_router.post("/reservations/calculate-price")
+async def calculate_price_post(
+    payload: ReservationPriceRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Rezervasyon fiyatını hesapla (POST versiyonu) - frontend ile uyum için.
+    """
+    try:
+        cari_id = payload.cari_id or None
+
+        total_price, currency = await calculate_reservation_price(
+            company_id=current_user["company_id"],
+            cari_id=cari_id,
+            tour_type_id=payload.tour_type_id,
+            date=payload.date,
+            vehicle_count=payload.vehicle_count,
+            person_count=payload.person_count,
+        )
+        return {
+            "price": total_price,
+            "currency": currency,
+        }
+    except Exception as e:
+        logger.error(f"Fiyat hesaplama hatası (POST): {e}")
+        raise HTTPException(status_code=500, detail="Fiyat hesaplanamadı")
+
 @api_router.get("/reservations/pending")
 async def get_pending_cari_reservations(
     current_user: dict = Depends(get_current_user)

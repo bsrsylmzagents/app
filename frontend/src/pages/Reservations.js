@@ -151,18 +151,15 @@ const Reservations = () => {
       }
 
       try {
-        const params = {
+        const payload = {
           tour_type_id: formData.tour_type_id,
           date: formData.date,
           vehicle_count: formData.vehicle_count || 1,
-          person_count: formData.person_count || 1
+          person_count: formData.person_count || 1,
+          cari_id: formData.cari_id && formData.cari_id.trim() !== '' ? formData.cari_id : null
         };
         
-        if (formData.cari_id && formData.cari_id.trim() !== '') {
-          params.cari_id = formData.cari_id;
-        }
-        
-        const response = await axios.get(`${API}/reservations/calculate-price`, { params });
+        const response = await axios.post(`${API}/reservations/calculate-price`, payload);
         
         if (response.data && response.data.price !== undefined) {
           const totalPrice = response.data.price;
