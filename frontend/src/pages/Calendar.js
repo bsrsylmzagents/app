@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { API } from '../App';
 import { toast } from 'sonner';
@@ -7,8 +7,16 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isTod
 import { tr } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { downloadVoucherPdf, printVoucherPdf } from '../utils/voucherPdf';
 import CustomerDetailDialog from '../components/CustomerDetailDialog';
+import { COUNTRIES } from '../components/CustomerDetailDialog';
 
 // Custom hook for mobile detection
 const useMediaQuery = (query) => {
@@ -54,11 +62,12 @@ const Calendar = () => {
     date: '',
     time: '',
     tour_type_id: '',
-    customer_name: '',
+    customer_first_name: '',
+    customer_last_name: '',
     customer_contact: '',
     customer_details: null,
     person_count: 1,
-    atv_count: 1,
+    vehicle_count: 1,
     pickup_location: '',
     pickup_maps_link: '',
     price: 0,
@@ -67,13 +76,40 @@ const Calendar = () => {
     notes: ''
   });
   const [customerDetailDialogOpen, setCustomerDetailDialogOpen] = useState(false);
-  const [basePricePerAtv, setBasePricePerAtv] = useState(null); // 1 ATV için dönemsel fiyat
-  const [seasonalPriceCurrency, setSeasonalPriceCurrency] = useState(null); // Dönemsel fiyat döviz tipi
+  const [customerDetails, setCustomerDetails] = useState({
+    phone: '',
+    email: '',
+    nationality: '',
+    id_number: '',
+    birth_date: ''
+  });
+  const [nationalityOpen, setNationalityOpen] = useState(false);
+  const [nationalitySearch, setNationalitySearch] = useState('');
+  const [activeTab, setActiveTab] = useState('reservation');
+  const [paymentTypes, setPaymentTypes] = useState([]);
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [paymentFormData, setPaymentFormData] = useState({
+    amount: '',
+    currency: 'EUR',
+    payment_type: '',
+    description: '',
+    date: '',
+    time: '',
+    bank_account_id: '',
+    transfer_to_cari_id: '',
+    transfer_to_cari_search: '',
+    due_date: '',
+    check_number: '',
+    bank_name: ''
+  });
+  const [paymentAdded, setPaymentAdded] = useState(false);
+  const [savedPaymentTransactionId, setSavedPaymentTransactionId] = useState(null);
   const [newCariData, setNewCariData] = useState({
     name: '',
     phone: '',
     pickup_location: ''
   });
+  const [filteredCariAccountsForPayment, setFilteredCariAccountsForPayment] = useState([]);
 
   // Dönemsel Fiyat için state'ler
   const [seasonalPrices, setSeasonalPrices] = useState([]);
@@ -112,7 +148,22 @@ const Calendar = () => {
     fetchTourTypes();
     fetchRates();
     fetchSeasonalPrices();
+    fetchPaymentTypes();
+    fetchBankAccounts();
   }, []);
+
+  useEffect(() => {
+    if (paymentFormData.transfer_to_cari_search && paymentFormData.transfer_to_cari_search.length >= 2) {
+      const munferitCari = cariAccounts.find(c => c.is_munferit || c.name === "Münferit");
+      const filtered = cariAccounts.filter(c => 
+        c.id !== (munferitCari?.id || '') && 
+        c.name.toLowerCase().includes(paymentFormData.transfer_to_cari_search.toLowerCase())
+      );
+      setFilteredCariAccountsForPayment(filtered);
+    } else {
+      setFilteredCariAccountsForPayment([]);
+    }
+  }, [paymentFormData.transfer_to_cari_search, cariAccounts]);
 
   // Klavye kısayolları
   useEffect(() => {
@@ -165,131 +216,6 @@ const Calendar = () => {
     }
   }, [cariAccounts]);
 
-  // Dönemsel fiyat kontrolü ve backend fiyat hesaplama - rezervasyon formunda cari, tur tipi ve tarih seçildiğinde
-  useEffect(() => {
-    const checkSeasonalPrice = async () => {
-      if (formData.tour_type_id && formData.date && formData.atv_count && formData.atv_count > 0 && reservationDialogOpen) {
-        try {
-          // Tarih aralığında ve tur tipine uygun dönemsel fiyat ara
-          const matchingPrices = seasonalPrices.filter(price => {
-            const priceStart = new Date(price.start_date);
-            const priceEnd = new Date(price.end_date);
-            const reservationDate = new Date(formData.date);
-            
-            return priceStart <= reservationDate && 
-                   reservationDate <= priceEnd &&
-                   price.tour_type_ids && price.tour_type_ids.includes(formData.tour_type_id);
-          });
-
-          // En uygun fiyatı bul
-          for (const seasonalPrice of matchingPrices) {
-            // Dönemsel fiyattan currency'yi direkt al, varsayılan EUR kullanma
-            const seasonalCurrency = seasonalPrice.currency || formData.currency || 'EUR';
-            const seasonalExchangeRate = rates[seasonalCurrency] || 1.0;
-            
-            // Cari ID'sine özel fiyat var mı?
-            if (formData.cari_id && seasonalPrice.cari_prices && seasonalPrice.cari_prices[formData.cari_id]) {
-              const pricePerAtv = seasonalPrice.cari_prices[formData.cari_id];
-              const totalPrice = pricePerAtv * formData.atv_count;
-              
-              setBasePricePerAtv(pricePerAtv);
-              setSeasonalPriceCurrency(seasonalCurrency);
-              
-              setFormData(prev => ({
-                ...prev,
-                price: totalPrice,
-                currency: seasonalCurrency,
-                exchange_rate: seasonalExchangeRate
-              }));
-              toast.success(`Dönemsel fiyat uygulandı: ${pricePerAtv} ${seasonalCurrency}/ATV x ${formData.atv_count} = ${totalPrice} ${seasonalCurrency}`);
-              return;
-            }
-            // Yeni cariler için geçerli mi?
-            else if (seasonalPrice.apply_to_new_caris && formData.cari_id) {
-              const cari = cariAccounts.find(c => c.id === formData.cari_id);
-              if (cari && cari.created_at) {
-                const cariCreated = new Date(cari.created_at);
-                const priceStart = new Date(seasonalPrice.start_date);
-                const priceEnd = new Date(seasonalPrice.end_date);
-                
-                if (priceStart <= cariCreated && cariCreated <= priceEnd) {
-                  const prices = Object.values(seasonalPrice.cari_prices || {});
-                  if (prices.length > 0) {
-                    const pricePerAtv = prices[0];
-                    const totalPrice = pricePerAtv * formData.atv_count;
-                    
-                    setBasePricePerAtv(pricePerAtv);
-                    setSeasonalPriceCurrency(seasonalCurrency);
-                    
-                    setFormData(prev => ({
-                      ...prev,
-                      price: totalPrice,
-                      currency: seasonalCurrency,
-                      exchange_rate: seasonalExchangeRate
-                    }));
-                    toast.success(`Dönemsel fiyat uygulandı: ${pricePerAtv} ${seasonalCurrency}/ATV x ${formData.atv_count} = ${totalPrice} ${seasonalCurrency}`);
-                    return;
-                  }
-                }
-              }
-            }
-          }
-          
-          // Dönemsel fiyat bulunamadıysa backend'den fiyat hesapla
-          if (matchingPrices.length === 0) {
-            setBasePricePerAtv(null);
-            setSeasonalPriceCurrency(null);
-            
-            try {
-              const params = {
-                tour_type_id: formData.tour_type_id,
-                date: formData.date,
-                vehicle_count: parseInt(formData.atv_count) || 1,
-                person_count: parseInt(formData.person_count) || 1
-              };
-              
-              if (formData.cari_id && formData.cari_id.trim() !== '') {
-                params.cari_id = formData.cari_id;
-              }
-              
-              const response = await axios.get(`${API}/reservations/calculate-price`, { params });
-              
-              if (response.data && response.data.price !== undefined) {
-                setFormData(prev => ({
-                  ...prev,
-                  price: response.data.price,
-                  currency: response.data.currency || 'EUR',
-                  exchange_rate: rates[response.data.currency || 'EUR'] || 1.0
-                }));
-              }
-            } catch (error) {
-              console.error('Fiyat hesaplama hatası:', error);
-            }
-          }
-        } catch (error) {
-          console.error('Dönemsel fiyat kontrolü hatası:', error);
-        }
-      }
-    };
-
-    checkSeasonalPrice();
-  }, [formData.cari_id, formData.tour_type_id, formData.date, formData.atv_count, formData.person_count, reservationDialogOpen, seasonalPrices, cariAccounts, rates]);
-
-  // ATV sayısı değiştiğinde fiyatı güncelle (dönemsel fiyat varsa)
-  useEffect(() => {
-    if (basePricePerAtv !== null && reservationDialogOpen) {
-      const totalPrice = basePricePerAtv * formData.atv_count;
-      const currency = seasonalPriceCurrency || formData.currency;
-      const exchangeRate = rates[currency] || 1.0;
-      
-      setFormData(prev => ({
-        ...prev,
-        price: totalPrice,
-        currency: currency,
-        exchange_rate: exchangeRate
-      }));
-    }
-  }, [formData.atv_count, basePricePerAtv, seasonalPriceCurrency, rates, reservationDialogOpen]);
 
   const fetchReservations = async () => {
     try {
@@ -470,16 +396,23 @@ const Calendar = () => {
   const handleEditReservation = (reservation) => {
     setEditingReservation(reservation);
     setReservationDate(parseISO(reservation.date));
+    
+    const customerName = reservation.customer_name || '';
+    const nameParts = customerName.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
     setFormData({
       cari_id: reservation.cari_id || '',
       date: reservation.date,
       time: reservation.time || '',
       tour_type_id: reservation.tour_type_id || '',
-      customer_name: reservation.customer_name || '',
+      customer_first_name: firstName,
+      customer_last_name: lastName,
       customer_contact: reservation.customer_contact || '',
       customer_details: reservation.customer_details || null,
       person_count: reservation.person_count || 1,
-      atv_count: reservation.vehicle_count || reservation.atv_count || 1,
+      vehicle_count: reservation.vehicle_count || reservation.atv_count || 1,
       pickup_location: reservation.pickup_location || '',
       pickup_maps_link: reservation.pickup_maps_link || '',
       price: reservation.price || 0,
@@ -487,26 +420,67 @@ const Calendar = () => {
       exchange_rate: reservation.exchange_rate || 1.0,
       notes: reservation.notes || ''
     });
+    
+    if (reservation.customer_details) {
+      setCustomerDetails({
+        phone: reservation.customer_details.phone || '',
+        email: reservation.customer_details.email || '',
+        nationality: reservation.customer_details.nationality || '',
+        id_number: reservation.customer_details.id_number || '',
+        birth_date: reservation.customer_details.birth_date || ''
+      });
+    } else {
+      setCustomerDetails({
+        phone: '',
+        email: '',
+        nationality: '',
+        id_number: '',
+        birth_date: ''
+      });
+    }
+    
     setCariSearch(reservation.cari_name || '');
+    setActiveTab('reservation');
     setReservationDialogOpen(true);
   };
 
   const handleUpdateReservation = async (e) => {
     e.preventDefault();
     try {
-      const { status, atv_count, ...payload } = formData;
+      const { status, customer_first_name, customer_last_name, ...payload } = formData;
       
-      payload.vehicle_count = parseInt(atv_count) || 1;
+      const customer_name = `${customer_first_name || ''} ${customer_last_name || ''}`.trim();
+      payload.customer_name = customer_name || 'Müşteri';
+      
       payload.person_count = parseInt(payload.person_count) || 1;
+      payload.vehicle_count = parseInt(payload.vehicle_count) || 1;
       payload.price = parseFloat(payload.price) || 0;
       payload.exchange_rate = parseFloat(payload.exchange_rate) || 1.0;
       
-      if (payload.customer_details) {
-        const details = payload.customer_details;
-        const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
-        if (!hasDetails) {
-          payload.customer_details = null;
-        }
+      const details = {};
+      if (customerDetails.phone) details.phone = customerDetails.phone;
+      if (customerDetails.email) details.email = customerDetails.email;
+      if (customerDetails.nationality) details.nationality = customerDetails.nationality;
+      if (customerDetails.id_number) details.id_number = customerDetails.id_number;
+      if (customerDetails.birth_date) details.birth_date = customerDetails.birth_date;
+      
+      const hasDetails = Object.keys(details).length > 0;
+      payload.customer_details = hasDetails ? details : null;
+      
+      if (payload.tour_type_id === '' || payload.tour_type_id === null) {
+        payload.tour_type_id = null;
+      }
+      if (payload.customer_contact === '' || payload.customer_contact === null) {
+        payload.customer_contact = null;
+      }
+      if (payload.pickup_location === '' || payload.pickup_location === null) {
+        payload.pickup_location = null;
+      }
+      if (payload.pickup_maps_link === '' || payload.pickup_maps_link === null) {
+        payload.pickup_maps_link = null;
+      }
+      if (payload.notes === '' || payload.notes === null) {
+        payload.notes = null;
       }
       
       await axios.put(`${API}/reservations/${editingReservation.id}`, payload);
@@ -537,16 +511,23 @@ const Calendar = () => {
   const handleCopyReservation = (reservation) => {
     setCopyReservation(reservation);
     setReservationDate(new Date());
+    
+    const customerName = reservation.customer_name || '';
+    const nameParts = customerName.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
     setFormData({
       cari_id: reservation.cari_id || '',
       date: format(new Date(), 'yyyy-MM-dd'),
       time: reservation.time || '',
       tour_type_id: reservation.tour_type_id || '',
-      customer_name: reservation.customer_name || '',
+      customer_first_name: firstName,
+      customer_last_name: lastName,
       customer_contact: reservation.customer_contact || '',
       customer_details: reservation.customer_details || null,
       person_count: reservation.person_count || 1,
-      atv_count: reservation.vehicle_count || reservation.atv_count || 1,
+      vehicle_count: reservation.vehicle_count || reservation.atv_count || 1,
       pickup_location: reservation.pickup_location || '',
       pickup_maps_link: reservation.pickup_maps_link || '',
       price: reservation.price || 0,
@@ -554,7 +535,27 @@ const Calendar = () => {
       exchange_rate: reservation.exchange_rate || 1.0,
       notes: reservation.notes || ''
     });
+    
+    if (reservation.customer_details) {
+      setCustomerDetails({
+        phone: reservation.customer_details.phone || '',
+        email: reservation.customer_details.email || '',
+        nationality: reservation.customer_details.nationality || '',
+        id_number: reservation.customer_details.id_number || '',
+        birth_date: reservation.customer_details.birth_date || ''
+      });
+    } else {
+      setCustomerDetails({
+        phone: '',
+        email: '',
+        nationality: '',
+        id_number: '',
+        birth_date: ''
+      });
+    }
+    
     setCariSearch(reservation.cari_name || '');
+    setActiveTab('reservation');
     setReservationDialogOpen(true);
   };
 
@@ -693,16 +694,16 @@ const Calendar = () => {
     const dateStr = format(date, 'yyyy-MM-dd');
     setReservationDate(date);
     setFormData({
-      ...formData,
+      cari_id: '',
       date: dateStr,
       time: '',
       tour_type_id: '',
-      cari_id: '',
-      customer_name: '',
+      customer_first_name: '',
+      customer_last_name: '',
       customer_contact: '',
       customer_details: null,
       person_count: 1,
-      atv_count: 1,
+      vehicle_count: 1,
       pickup_location: '',
       pickup_maps_link: '',
       price: 0,
@@ -710,24 +711,43 @@ const Calendar = () => {
       exchange_rate: rates.EUR || 1.0,
       notes: ''
     });
-    setBasePricePerAtv(null);
-    setSeasonalPriceCurrency(null);
+    setCustomerDetails({
+      phone: '',
+      email: '',
+      nationality: '',
+      id_number: '',
+      birth_date: ''
+    });
     setCariSearch('');
+    setActiveTab('reservation');
+    setPaymentAdded(false);
+    setSavedPaymentTransactionId(null);
     setReservationDialogOpen(true);
   };
 
   const handleReservationSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { status, atv_count, ...payload } = formData;
+      const { status, customer_first_name, customer_last_name, ...payload } = formData;
       
-      // Type conversions - Backend expects specific types
-      payload.vehicle_count = parseInt(atv_count) || 1;
+      const customer_name = `${customer_first_name || ''} ${customer_last_name || ''}`.trim();
+      payload.customer_name = customer_name || 'Müşteri';
+      
       payload.person_count = parseInt(payload.person_count) || 1;
+      payload.vehicle_count = parseInt(payload.vehicle_count) || 1;
       payload.price = parseFloat(payload.price) || 0;
       payload.exchange_rate = parseFloat(payload.exchange_rate) || 1.0;
       
-      // Convert empty strings to null for optional fields
+      const details = {};
+      if (customerDetails.phone) details.phone = customerDetails.phone;
+      if (customerDetails.email) details.email = customerDetails.email;
+      if (customerDetails.nationality) details.nationality = customerDetails.nationality;
+      if (customerDetails.id_number) details.id_number = customerDetails.id_number;
+      if (customerDetails.birth_date) details.birth_date = customerDetails.birth_date;
+      
+      const hasDetails = Object.keys(details).length > 0;
+      payload.customer_details = hasDetails ? details : null;
+      
       if (payload.tour_type_id === '' || payload.tour_type_id === null) {
         payload.tour_type_id = null;
       }
@@ -744,29 +764,42 @@ const Calendar = () => {
         payload.notes = null;
       }
       
-      if (payload.customer_details) {
-        const details = payload.customer_details;
-        const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
-        if (!hasDetails) {
-          payload.customer_details = null;
+      const selectedCari = cariAccounts.find(c => c.id === formData.cari_id);
+      const isMunferit = selectedCari && (selectedCari.is_munferit || selectedCari.name === "Münferit");
+      
+      const response = await axios.post(`${API}/reservations`, payload);
+      
+      if (isMunferit && paymentAdded && savedPaymentTransactionId) {
+        try {
+          await axios.put(`${API}/transactions/${savedPaymentTransactionId}`, {
+            reference_id: response.data.id,
+            reference_type: 'reservation',
+            description: paymentFormData.description || `Rezervasyon tahsilatı - ${payload.customer_name} - ${payload.date}`
+          });
+          toast.success('Rezervasyon oluşturuldu ve tahsilat ile ilişkilendirildi');
+        } catch (error) {
+          console.error('Tahsilat güncellenirken hata:', error);
+          toast.success('Rezervasyon oluşturuldu');
+          toast.warning('Tahsilat rezervasyon ile ilişkilendirilemedi');
         }
+      } else if (isMunferit && !paymentAdded) {
+        toast.success('Rezervasyon oluşturuldu');
+        toast.warning('⚠️ Ödeme alınmadı - Tahsilat eklenmemiş rezervasyon');
+      } else {
+        toast.success('Rezervasyon oluşturuldu');
       }
       
-      await axios.post(`${API}/reservations`, payload);
-      toast.success('Rezervasyon oluşturuldu');
       setReservationDialogOpen(false);
       setEditingReservation(null);
       resetReservationForm();
       fetchReservations();
       fetchStatistics();
     } catch (error) {
-      // Handle 422 validation errors with detailed messages
       if (error.response?.status === 422) {
         const detail = error.response?.data?.detail;
         let errorMessage = 'Doğrulama hatası: ';
         
         if (Array.isArray(detail)) {
-          // Pydantic validation errors format
           const messages = detail.map(err => {
             const field = err.loc && err.loc.length > 0 ? err.loc[err.loc.length - 1] : 'bilinmeyen alan';
             const msg = err.msg || 'Geçersiz değer';
@@ -783,7 +816,6 @@ const Calendar = () => {
         
         toast.error(errorMessage);
       } else if (error.response?.status === 401 || error.response?.status === 403) {
-        // Don't redirect on 422, but handle auth errors normally
         toast.error(error.response?.data?.detail || 'Yetkilendirme hatası');
       } else {
         toast.error(error.response?.data?.detail || 'Rezervasyon kaydedilemedi');
@@ -791,17 +823,107 @@ const Calendar = () => {
     }
   };
 
+  const handleAddPayment = async () => {
+    try {
+      const amount = parseFloat(paymentFormData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        toast.error('Geçerli bir tutar giriniz');
+        return;
+      }
+
+      if (!paymentFormData.payment_type) {
+        toast.error('Ödeme tipi seçilmelidir');
+        return;
+      }
+
+      if (paymentFormData.payment_type === 'bank_transfer' && !paymentFormData.bank_account_id) {
+        toast.error('Havale için banka hesabı seçilmelidir');
+        return;
+      }
+      if (paymentFormData.payment_type === 'credit_card' && !paymentFormData.bank_account_id) {
+        toast.error('Kredi kartı için hesap seçilmelidir');
+        return;
+      }
+      if (paymentFormData.payment_type === 'check_promissory' && !paymentFormData.due_date) {
+        toast.error('Çek/Senet için vade tarihi girilmelidir');
+        return;
+      }
+      if (paymentFormData.payment_type === 'transfer_to_cari' && !paymentFormData.transfer_to_cari_id) {
+        toast.error('Cariye Aktar için cari hesap seçilmelidir');
+        return;
+      }
+
+      const paymentType = paymentTypes.find(pt => pt.code === paymentFormData.payment_type);
+      if (!paymentType) {
+        toast.error('Geçersiz ödeme tipi');
+        return;
+      }
+
+      const selectedCari = cariAccounts.find(c => c.id === formData.cari_id);
+      const isMunferit = selectedCari && (selectedCari.is_munferit || selectedCari.name === "Münferit");
+      
+      if (!isMunferit) {
+        toast.error('Tahsilat sadece Münferit rezervasyonlar için eklenebilir');
+        return;
+      }
+
+      const munferitCari = cariAccounts.find(c => c.is_munferit || c.name === "Münferit");
+      if (!munferitCari) {
+        toast.error('Münferit cari hesabı bulunamadı');
+        return;
+      }
+
+      const exchangeRate = rates[paymentFormData.currency] || 1.0;
+      const customer_name = `${formData.customer_first_name || ''} ${formData.customer_last_name || ''}`.trim() || 'Müşteri';
+      
+      const transactionData = {
+        cari_id: munferitCari.id,
+        transaction_type: 'payment',
+        amount: amount,
+        currency: paymentFormData.currency,
+        exchange_rate: exchangeRate,
+        payment_type_id: paymentType.id,
+        payment_type_name: paymentType.name,
+        description: paymentFormData.description || `Rezervasyon tahsilatı - ${customer_name} - ${formData.date}`,
+        date: paymentFormData.date,
+        time: paymentFormData.time
+      };
+
+      if (paymentFormData.payment_type === 'bank_transfer' || paymentFormData.payment_type === 'credit_card') {
+        transactionData.bank_account_id = paymentFormData.bank_account_id;
+      }
+      if (paymentFormData.payment_type === 'transfer_to_cari') {
+        transactionData.transfer_to_cari_id = paymentFormData.transfer_to_cari_id;
+      }
+      if (paymentFormData.payment_type === 'check_promissory') {
+        transactionData.due_date = paymentFormData.due_date;
+        transactionData.check_number = paymentFormData.check_number || '';
+        transactionData.bank_name = paymentFormData.bank_name || '';
+      }
+
+      const response = await axios.post(`${API}/transactions`, transactionData);
+      setSavedPaymentTransactionId(response.data.id);
+      setPaymentAdded(true);
+      toast.success('Tahsilat başarıyla eklendi');
+      setFilteredCariAccountsForPayment([]);
+    } catch (error) {
+      console.error('Tahsilat eklenirken hata:', error);
+      toast.error('Tahsilat eklenemedi: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
   const resetReservationForm = () => {
     setFormData({
       cari_id: '',
-      date: '',
+      date: reservationDate ? format(reservationDate, 'yyyy-MM-dd') : '',
       time: '',
       tour_type_id: '',
-      customer_name: '',
+      customer_first_name: '',
+      customer_last_name: '',
       customer_contact: '',
       customer_details: null,
       person_count: 1,
-      atv_count: 1,
+      vehicle_count: 1,
       pickup_location: '',
       pickup_maps_link: '',
       price: 0,
@@ -809,10 +931,32 @@ const Calendar = () => {
       exchange_rate: 1.0,
       notes: ''
     });
-    setBasePricePerAtv(null);
-    setSeasonalPriceCurrency(null);
+    setCustomerDetails({
+      phone: '',
+      email: '',
+      nationality: '',
+      id_number: '',
+      birth_date: ''
+    });
     setCariSearch('');
-    setReservationDate(null);
+    setActiveTab('reservation');
+    setPaymentAdded(false);
+    setSavedPaymentTransactionId(null);
+    setPaymentFormData({
+      amount: '',
+      currency: 'EUR',
+      payment_type: '',
+      description: '',
+      date: format(new Date(), 'yyyy-MM-dd'),
+      time: format(new Date(), 'HH:mm'),
+      bank_account_id: '',
+      transfer_to_cari_id: '',
+      transfer_to_cari_search: '',
+      due_date: '',
+      check_number: '',
+      bank_name: ''
+    });
+    setFilteredCariAccountsForPayment([]);
   };
 
   const handleCariSelect = (cariId) => {
@@ -866,6 +1010,65 @@ const Calendar = () => {
       toast.error('Dönemsel fiyatlar yüklenemedi');
     }
   };
+
+  const fetchPaymentTypes = async () => {
+    try {
+      const response = await axios.get(`${API}/payment-types`);
+      setPaymentTypes(response.data);
+    } catch (error) {
+      console.error('Ödeme tipleri yüklenemedi');
+    }
+  };
+
+  const fetchBankAccounts = async () => {
+    try {
+      const response = await axios.get(`${API}/cash-accounts`);
+      setBankAccounts(response.data);
+    } catch (error) {
+      console.error('Banka hesapları yüklenemedi');
+    }
+  };
+
+  const handleCariSelect = (cariId) => {
+    const cari = cariAccounts.find(c => c.id === cariId);
+    if (cari) {
+      setCariSearch(cari.name);
+      setFormData({
+        ...formData,
+        cari_id: cariId,
+        pickup_location: cari.pickup_location || '',
+        pickup_maps_link: cari.pickup_maps_link || ''
+      });
+    }
+  };
+
+  const handleQuickCreateCari = async () => {
+    try {
+      const response = await axios.post(`${API}/cari-accounts`, newCariData);
+      toast.success('Cari hesap oluşturuldu');
+      setCariDialogOpen(false);
+      setNewCariData({ name: '', phone: '', pickup_location: '' });
+      await fetchCariAccounts();
+      
+      const newCariId = response.data.id;
+      const newCari = response.data;
+      setCariSearch(newCari.name);
+      setFormData({ 
+        ...formData, 
+        cari_id: newCariId,
+        pickup_location: newCari.pickup_location || '',
+        pickup_maps_link: newCari.pickup_maps_link || ''
+      });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Cari hesap oluşturulamadı');
+    }
+  };
+
+  const filteredCariAccounts = useMemo(() => {
+    return cariAccounts.filter(c => 
+      c.name.toLowerCase().includes(cariSearch.toLowerCase())
+    );
+  }, [cariAccounts, cariSearch]);
 
   const handleSelectAllCaris = () => {
     // Tüm carileri kontrol et (filtrelenmiş değil)
@@ -1833,23 +2036,39 @@ const Calendar = () => {
       </Dialog>
 
       {/* Rezervasyon Form Dialog */}
-          <Dialog open={reservationDialogOpen} onOpenChange={(open) => {
-            setReservationDialogOpen(open);
-            if (!open) {
-              setEditingReservation(null);
-              setCopyReservation(null);
-              resetReservationForm();
-            }
-          }}>
-        <DialogContent className="max-w-2xl bg-[#25272A] border-[#2D2F33] text-white max-h-[90vh] overflow-y-auto">
+      <Dialog open={reservationDialogOpen} onOpenChange={(open) => {
+        setReservationDialogOpen(open);
+        if (!open) {
+          setEditingReservation(null);
+          setCopyReservation(null);
+          resetReservationForm();
+        }
+      }}>
+        <DialogContent className="max-w-4xl bg-[#25272A] border-[#2D2F33] text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              {editingReservation ? 'Rezervasyon Düzenle' : 'Yeni Rezervasyon'} - {reservationDate && format(reservationDate, 'd MMMM yyyy, EEEE', { locale: tr })}
+              {editingReservation ? 'Rezervasyonu Düzenle' : 'Yeni Rezervasyon'} - {reservationDate && format(reservationDate, 'd MMMM yyyy, EEEE', { locale: tr })}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={editingReservation ? handleUpdateReservation : handleReservationSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
+            {(() => {
+              const selectedCari = cariAccounts.find(c => c.id === formData.cari_id);
+              const isMunferit = selectedCari && (selectedCari.is_munferit || selectedCari.name === "Münferit");
+              const showPaymentTab = isMunferit;
+              
+              return (
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className={`grid w-full ${showPaymentTab ? 'grid-cols-3' : 'grid-cols-2'} bg-[#2D2F33]`}>
+                    <TabsTrigger value="reservation">Rezervasyon Detayları</TabsTrigger>
+                    <TabsTrigger value="customer">Müşteri Detay</TabsTrigger>
+                    {showPaymentTab && (
+                      <TabsTrigger value="payment">Tahsilat Detayları</TabsTrigger>
+                    )}
+                  </TabsList>
+                  
+                  <TabsContent value="reservation" className="space-y-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
                 <label className="block text-sm font-medium mb-2">Cari Firma</label>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
@@ -1957,206 +2176,563 @@ const Calendar = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Saat</label>
-                <input
-                  type="time"
-                  value={formData.time}
-                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                  required
-                />
-              </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Saat</label>
+                        <input
+                          type="time"
+                          value={formData.time}
+                          onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          required
+                        />
+                      </div>
 
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-2">Tur Tipi</label>
-                <select
-                  value={formData.tour_type_id}
-                  onChange={(e) => setFormData({ ...formData, tour_type_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                >
-                  <option value="">Tur tipi seçin</option>
-                  {tourTypes.map(tt => (
-                    <option key={tt.id} value={tt.id}>{tt.name}</option>
-                  ))}
-                </select>
-              </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-2">Tur Tipi</label>
+                        <select
+                          value={formData.tour_type_id}
+                          onChange={(e) => setFormData({ ...formData, tour_type_id: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#3EA6FF]/30 rounded-lg text-white focus:outline-none focus:border-[#3EA6FF]"
+                        >
+                          <option value="">Tur tipi seçin</option>
+                          {tourTypes.map(tt => (
+                            <option key={tt.id} value={tt.id}>{tt.name}</option>
+                          ))}
+                        </select>
+                      </div>
 
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-2">Müşteri Adı</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={formData.customer_name}
-                    onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                    className="flex-1 px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (!formData.customer_name.trim()) {
-                        toast.error('Önce müşteri adını girin');
-                        return;
-                      }
-                      setCustomerDetailDialogOpen(true);
-                    }}
-                    className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
-                    title="Müşteri Detay Gir"
-                  >
-                    <User size={18} />
-                  </Button>
-                </div>
-              </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Kişi Sayısı</label>
+                        <input
+                          type="number"
+                          value={formData.person_count}
+                          onChange={(e) => setFormData({ ...formData, person_count: parseInt(e.target.value) })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          min="1"
+                          required
+                        />
+                      </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Kişi Sayısı</label>
-                <input
-                  type="number"
-                  value={formData.person_count}
-                  onChange={(e) => setFormData({ ...formData, person_count: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                  min="1"
-                  required
-                />
-              </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Araç Sayısı</label>
+                        <input
+                          type="number"
+                          value={formData.vehicle_count}
+                          onChange={(e) => {
+                            const newVehicleCount = parseInt(e.target.value) || 1;
+                            setFormData({ ...formData, vehicle_count: newVehicleCount });
+                          }}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          min="1"
+                          required
+                        />
+                      </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">ATV Sayısı</label>
-                <input
-                  type="number"
-                  value={formData.atv_count}
-                  onChange={(e) => {
-                    const newAtvCount = parseInt(e.target.value) || 1;
-                    // Dönemsel fiyat varsa, fiyatı anında hesapla
-                    if (basePricePerAtv !== null) {
-                      const totalPrice = basePricePerAtv * newAtvCount;
-                      const currency = seasonalPriceCurrency || formData.currency;
-                      const exchangeRate = rates[currency] || 1.0;
-                      setFormData(prev => ({
-                        ...prev,
-                        atv_count: newAtvCount,
-                        price: totalPrice,
-                        currency: currency,
-                        exchange_rate: exchangeRate
-                      }));
-                    } else {
-                      setFormData({ ...formData, atv_count: newAtvCount });
-                    }
-                  }}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                  min="1"
-                  required
-                />
-              </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-2">Pick-up Yeri</label>
+                        <input
+                          type="text"
+                          value={formData.pickup_location}
+                          onChange={(e) => setFormData({ ...formData, pickup_location: e.target.value })}
+                          placeholder="Pick-up yeri otomatik doldurulur veya manuel girebilirsiniz"
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                        />
+                      </div>
 
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-2">Pick-up Yeri</label>
-                <input
-                  type="text"
-                  value={formData.pickup_location}
-                  onChange={(e) => setFormData({ ...formData, pickup_location: e.target.value })}
-                  placeholder="Pick-up yeri otomatik doldurulur veya manuel girebilirsiniz"
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                />
-              </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-2">Google Maps Link</label>
+                        <input
+                          type="url"
+                          value={formData.pickup_maps_link}
+                          onChange={(e) => setFormData({ ...formData, pickup_maps_link: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          placeholder="https://maps.google.com/..."
+                        />
+                      </div>
 
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-2">Google Maps Link</label>
-                <input
-                  type="url"
-                  value={formData.pickup_maps_link}
-                  onChange={(e) => setFormData({ ...formData, pickup_maps_link: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                  placeholder="https://maps.google.com/..."
-                />
-              </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Fiyat</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={formData.price}
+                          onChange={(e) => {
+                            const newPrice = parseFloat(e.target.value) || 0;
+                            setFormData({ ...formData, price: newPrice });
+                          }}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          required
+                        />
+                      </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Fiyat</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) => {
-                    const newPrice = parseFloat(e.target.value) || 0;
-                    // Manuel fiyat değişikliği yapılıyorsa, dönemsel fiyat bağlantısını kaldır
-                    if (basePricePerAtv !== null) {
-                      setBasePricePerAtv(null);
-                      setSeasonalPriceCurrency(null);
-                    }
-                    setFormData({ ...formData, price: newPrice });
-                  }}
-                  disabled={basePricePerAtv !== null}
-                  className={`w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF] ${
-                    basePricePerAtv !== null ? 'opacity-60 cursor-not-allowed' : ''
-                  }`}
-                  required
-                />
-                {basePricePerAtv !== null && (
-                  <p className="text-xs text-[#A5A5A5] mt-1">
-                    Dönemsel fiyat: {basePricePerAtv} {seasonalPriceCurrency}/ATV × {formData.atv_count} = {formData.price} {formData.currency}
-                  </p>
-                )}
-              </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Döviz</label>
+                        <select
+                          value={formData.currency}
+                          onChange={(e) => {
+                            const newCurrency = e.target.value;
+                            setFormData({ 
+                              ...formData, 
+                              currency: newCurrency, 
+                              exchange_rate: rates[newCurrency] || 1.0 
+                            });
+                          }}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#3EA6FF]/30 rounded-lg text-white focus:outline-none focus:border-[#3EA6FF]"
+                        >
+                          <option value="EUR">EUR</option>
+                          <option value="USD">USD</option>
+                          <option value="TRY">TRY</option>
+                        </select>
+                      </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Döviz</label>
-                <select
-                  value={formData.currency}
-                  onChange={(e) => {
-                    const newCurrency = e.target.value;
-                    // Dönemsel fiyat varsa ve kullanıcı manuel değiştiriyorsa, base price'ı sıfırla
-                    if (basePricePerAtv !== null && newCurrency !== seasonalPriceCurrency) {
-                      setBasePricePerAtv(null);
-                      setSeasonalPriceCurrency(null);
-                    }
-                    setFormData({ 
-                      ...formData, 
-                      currency: newCurrency, 
-                      exchange_rate: rates[newCurrency] || 1.0 
-                    });
-                  }}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                >
-                  <option value="EUR">EUR</option>
-                  <option value="USD">USD</option>
-                  <option value="TRY">TRY</option>
-                </select>
-                {basePricePerAtv !== null && seasonalPriceCurrency && (
-                  <p className="text-xs text-[#A5A5A5] mt-1">
-                    Dönemsel fiyat: {seasonalPriceCurrency}
-                  </p>
-                )}
-              </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-2">Açıklama</label>
+                        <textarea
+                          value={formData.notes}
+                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          rows="3"
+                          placeholder="Açıklama (opsiyonel)"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-4">
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (!formData.cari_id) {
+                            toast.error('Cari firma seçilmelidir');
+                            return;
+                          }
+                          if (!formData.date) {
+                            toast.error('Tarih seçilmelidir');
+                            return;
+                          }
+                          if (!formData.time) {
+                            toast.error('Saat seçilmelidir');
+                            return;
+                          }
+                          setActiveTab('customer');
+                        }}
+                        className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
+                      >
+                        Devam
+                      </Button>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="customer" className="space-y-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium text-white">Ad</Label>
+                        <Input
+                          type="text"
+                          value={formData.customer_first_name}
+                          onChange={(e) => setFormData({ ...formData, customer_first_name: e.target.value })}
+                          className="bg-[#2D2F33] border-[#2D2F33] text-white focus:border-[#3EA6FF]"
+                          placeholder="Ad"
+                        />
+                      </div>
 
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-2">Notlar</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
-                  rows="3"
-                />
-              </div>
-            </div>
+                      <div>
+                        <Label className="text-sm font-medium text-white">Soyad</Label>
+                        <Input
+                          type="text"
+                          value={formData.customer_last_name}
+                          onChange={(e) => setFormData({ ...formData, customer_last_name: e.target.value })}
+                          className="bg-[#2D2F33] border-[#2D2F33] text-white focus:border-[#3EA6FF]"
+                          placeholder="Soyad"
+                        />
+                      </div>
 
-            <div className="flex gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setReservationDialogOpen(false)}
-                className="flex-1 border-[#2D2F33] text-[#A5A5A5] hover:bg-[#2D2F33]"
-              >
-                İptal
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 bg-[#3EA6FF] hover:bg-[#005a9e] text-white"
-              >
-                {editingReservation ? 'Güncelle' : 'Oluştur'}
-              </Button>
-            </div>
+                      <div>
+                        <Label className="text-sm font-medium text-white">Telefon</Label>
+                        <Input
+                          type="tel"
+                          value={customerDetails.phone}
+                          onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
+                          placeholder="Telefon numarası"
+                          className="bg-[#2D2F33] border-[#2D2F33] text-white focus:border-[#3EA6FF]"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-sm font-medium text-white">Email</Label>
+                        <Input
+                          type="email"
+                          value={customerDetails.email}
+                          onChange={(e) => setCustomerDetails({ ...customerDetails, email: e.target.value })}
+                          placeholder="Email adresi"
+                          className="bg-[#2D2F33] border-[#2D2F33] text-white focus:border-[#3EA6FF]"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-sm font-medium text-white">Uyruk</Label>
+                        <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={nationalityOpen}
+                              className="w-full justify-between bg-[#2D2F33] border-[#2D2F33] text-white hover:bg-[#2D2F33] hover:text-white"
+                            >
+                              {customerDetails.nationality
+                                ? (() => {
+                                    const country = COUNTRIES.find((c) => c.code === customerDetails.nationality);
+                                    return country ? country.name : customerDetails.nationality;
+                                  })()
+                                : "Uyruk seçin veya yazın..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0 bg-[#2D2F33] border-[#2D2F33]">
+                            <Command className="bg-[#2D2F33]">
+                              <CommandInput
+                                placeholder="Uyruk ara..."
+                                value={nationalitySearch}
+                                onValueChange={setNationalitySearch}
+                                className="text-white placeholder:text-[#A5A5A5]"
+                              />
+                              <CommandList className="max-h-[300px]">
+                                <CommandEmpty className="text-[#A5A5A5] py-6 text-center text-sm">
+                                  {nationalitySearch ? (
+                                    <div>
+                                      <div className="mb-2">Sonuç bulunamadı</div>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setCustomerDetails({ ...customerDetails, nationality: nationalitySearch.toUpperCase() });
+                                          setNationalityOpen(false);
+                                          setNationalitySearch('');
+                                        }}
+                                        className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white border-0"
+                                      >
+                                        "{nationalitySearch.toUpperCase()}" olarak kaydet
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    'Uyruk bulunamadı'
+                                  )}
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  {COUNTRIES
+                                    .filter((country) =>
+                                      country.name.toLowerCase().includes(nationalitySearch.toLowerCase()) ||
+                                      country.code.toLowerCase().includes(nationalitySearch.toLowerCase())
+                                    )
+                                    .map((country) => (
+                                      <CommandItem
+                                        key={country.code}
+                                        value={country.code}
+                                        onSelect={() => {
+                                          setCustomerDetails({ ...customerDetails, nationality: country.code });
+                                          setNationalityOpen(false);
+                                          setNationalitySearch('');
+                                        }}
+                                        className="text-white hover:bg-[#3EA6FF]/20 cursor-pointer"
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            customerDetails.nationality === country.code ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {country.name} ({country.code})
+                                      </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      <div>
+                        <Label className="text-sm font-medium text-white">TC/Pasaport No</Label>
+                        <Input
+                          type="text"
+                          value={customerDetails.id_number}
+                          onChange={(e) => setCustomerDetails({ ...customerDetails, id_number: e.target.value })}
+                          placeholder="TC veya Pasaport numarası"
+                          className="bg-[#2D2F33] border-[#2D2F33] text-white focus:border-[#3EA6FF]"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-sm font-medium text-white">Doğum Tarihi</Label>
+                        <Input
+                          type="date"
+                          value={customerDetails.birth_date}
+                          onChange={(e) => setCustomerDetails({ ...customerDetails, birth_date: e.target.value })}
+                          className="bg-[#2D2F33] border-[#2D2F33] text-white focus:border-[#3EA6FF]"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-4">
+                      {(() => {
+                        const selectedCari = cariAccounts.find(c => c.id === formData.cari_id);
+                        const isMunferit = selectedCari && (selectedCari.is_munferit || selectedCari.name === "Münferit");
+                        
+                        if (isMunferit) {
+                          return (
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                setActiveTab('payment');
+                              }}
+                              className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
+                            >
+                              Devam
+                            </Button>
+                          );
+                        } else {
+                          return (
+                            <Button
+                              type="submit"
+                              className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
+                            >
+                              Rezervasyon Oluştur
+                            </Button>
+                          );
+                        }
+                      })()}
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="payment" className="space-y-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-white">Döviz *</label>
+                        <select
+                          value={paymentFormData.currency}
+                          onChange={(e) => {
+                            const selectedCurrency = e.target.value;
+                            setPaymentFormData({
+                              ...paymentFormData,
+                              currency: selectedCurrency
+                            });
+                          }}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          required
+                        >
+                          <option value="TRY">TRY - Türk Lirası</option>
+                          <option value="EUR">EUR - Euro</option>
+                          <option value="USD">USD - Dolar</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-white">
+                          Tutar ({paymentFormData.currency}) {!paymentAdded && <span className="text-red-400">*</span>}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={paymentFormData.amount}
+                          onChange={(e) => setPaymentFormData({
+                            ...paymentFormData,
+                            amount: e.target.value
+                          })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          placeholder="0.00"
+                          required={!paymentAdded}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-white">
+                          Tarih {!paymentAdded && <span className="text-red-400">*</span>}
+                        </label>
+                        <input
+                          type="date"
+                          value={paymentFormData.date}
+                          onChange={(e) => setPaymentFormData({ ...paymentFormData, date: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          required={!paymentAdded}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-white">
+                          Saat {!paymentAdded && <span className="text-red-400">*</span>}
+                        </label>
+                        <input
+                          type="time"
+                          value={paymentFormData.time}
+                          onChange={(e) => setPaymentFormData({ ...paymentFormData, time: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          required={!paymentAdded}
+                        />
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-2 text-white">
+                          Ödeme Tipi {!paymentAdded && <span className="text-red-400">*</span>}
+                        </label>
+                        <select
+                          value={paymentFormData.payment_type}
+                          onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_type: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          required={!paymentAdded}
+                        >
+                          <option value="">Seçiniz</option>
+                          {paymentTypes
+                            .filter(pt => pt.is_active && ['cash', 'bank_transfer', 'credit_card', 'check_promissory', 'transfer_to_cari', 'write_off'].includes(pt.code))
+                            .map((type) => (
+                              <option key={type.id} value={type.code}>{type.name}</option>
+                            ))}
+                        </select>
+                      </div>
+
+                      {paymentFormData.payment_type === 'bank_transfer' && (
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium mb-2 text-white">
+                            Havale Hesabı {!paymentAdded && <span className="text-red-400">*</span>}
+                          </label>
+                          <select
+                            value={paymentFormData.bank_account_id}
+                            onChange={(e) => setPaymentFormData({ ...paymentFormData, bank_account_id: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                            required={!paymentAdded}
+                          >
+                            <option value="">Seçiniz</option>
+                            {bankAccounts
+                              .filter(acc => acc.account_type === 'bank_account' && acc.is_active && acc.currency === paymentFormData.currency)
+                              .map((account) => (
+                                <option key={account.id} value={account.id}>
+                                  {account.bank_name} - {account.account_name}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {paymentFormData.payment_type === 'credit_card' && (
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium mb-2 text-white">
+                            Kredi Kartı Hesabı {!paymentAdded && <span className="text-red-400">*</span>}
+                          </label>
+                          <select
+                            value={paymentFormData.bank_account_id}
+                            onChange={(e) => setPaymentFormData({ ...paymentFormData, bank_account_id: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                            required={!paymentAdded}
+                          >
+                            <option value="">Seçiniz</option>
+                            {bankAccounts
+                              .filter(acc => acc.account_type === 'credit_card' && acc.is_active && acc.currency === paymentFormData.currency)
+                              .map((account) => (
+                                <option key={account.id} value={account.id}>
+                                  {account.bank_name} - {account.account_name}
+                                  {account.commission_rate ? ` (Komisyon: %${account.commission_rate})` : ''}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {paymentFormData.payment_type === 'check_promissory' && (
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium mb-2 text-white">
+                            Vade Tarihi {!paymentAdded && <span className="text-red-400">*</span>}
+                          </label>
+                          <input
+                            type="date"
+                            value={paymentFormData.due_date}
+                            onChange={(e) => setPaymentFormData({ ...paymentFormData, due_date: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                            required={!paymentAdded}
+                          />
+                        </div>
+                      )}
+
+                      {paymentFormData.payment_type === 'transfer_to_cari' && (
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium mb-2 text-white">
+                            Hedef Cari Hesap Ara {!paymentAdded && <span className="text-red-400">*</span>}
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentFormData.transfer_to_cari_search}
+                            onChange={(e) => setPaymentFormData({ ...paymentFormData, transfer_to_cari_search: e.target.value, transfer_to_cari_id: '' })}
+                            className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                            placeholder="En az 2 karakter giriniz"
+                            required={!paymentAdded}
+                          />
+                          {filteredCariAccountsForPayment.length > 0 && (
+                            <div className="mt-2 max-h-40 overflow-y-auto bg-[#2D2F33] rounded-lg border border-[#3EA6FF]/30">
+                              {filteredCariAccountsForPayment.map((cari) => (
+                                <div
+                                  key={cari.id}
+                                  onClick={() => {
+                                    setPaymentFormData({
+                                      ...paymentFormData,
+                                      transfer_to_cari_id: cari.id,
+                                      transfer_to_cari_search: cari.name
+                                    });
+                                    setFilteredCariAccountsForPayment([]);
+                                  }}
+                                  className="px-3 py-2 hover:bg-[#3EA6FF]/20 cursor-pointer text-white"
+                                >
+                                  {cari.name} - Bakiye: {
+                                    paymentFormData.currency === 'EUR' 
+                                      ? (cari.balance_eur || 0).toFixed(2)
+                                      : paymentFormData.currency === 'USD'
+                                      ? (cari.balance_usd || 0).toFixed(2)
+                                      : (cari.balance_try || 0).toFixed(2)
+                                  } {paymentFormData.currency}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-2 text-white">Açıklama</label>
+                        <textarea
+                          value={paymentFormData.description}
+                          onChange={(e) => setPaymentFormData({ ...paymentFormData, description: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
+                          rows="3"
+                          placeholder="Açıklama (opsiyonel)"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                      {!paymentAdded && (
+                        <Button
+                          type="button"
+                          onClick={handleAddPayment}
+                          className="bg-green-500 hover:bg-green-600 text-white"
+                        >
+                          Tahsilat Ekle
+                        </Button>
+                      )}
+                      {paymentAdded && (
+                        <div className="flex items-center gap-2 text-green-400 text-sm font-semibold mr-auto">
+                          ✓ Tahsilat eklendi
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleReservationSubmit(e);
+                        }}
+                        className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
+                      >
+                        Rezervasyon Oluştur
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              );
+            })()}
           </form>
         </DialogContent>
       </Dialog>

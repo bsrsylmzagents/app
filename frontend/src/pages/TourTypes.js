@@ -25,7 +25,8 @@ const TourTypes = () => {
     order: 0,
     color: '#3EA6FF',
     icon: '',
-    is_active: true
+    is_active: true,
+    pricing_model: 'vehicle_based'
   });
 
   useEffect(() => {
@@ -95,7 +96,8 @@ const TourTypes = () => {
         order: parseInt(formData.order) || 0,
         color: formData.color,
         icon: formData.icon || null,
-        is_active: formData.is_active
+        is_active: formData.is_active,
+        pricing_model: formData.pricing_model || 'vehicle_based'
       };
 
       if (editingTourType) {
@@ -137,7 +139,8 @@ const TourTypes = () => {
       order: tourType.order || 0,
       color: tourType.color || '#3EA6FF',
       icon: tourType.icon || '',
-      is_active: tourType.is_active !== false
+      is_active: tourType.is_active !== false,
+      pricing_model: tourType.pricing_model || 'vehicle_based'
     });
     setDialogOpen(true);
   };
@@ -150,7 +153,8 @@ const TourTypes = () => {
       order: 0,
       color: '#3EA6FF',
       icon: '',
-      is_active: true
+      is_active: true,
+      pricing_model: 'vehicle_based'
     });
     setEditingTourType(null);
   };
@@ -412,6 +416,27 @@ const TourTypes = () => {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium mb-2">Fiyatlandırma Modeli *</label>
+                <Select
+                  value={formData.pricing_model}
+                  onValueChange={(value) => setFormData({ ...formData, pricing_model: value })}
+                >
+                  <SelectTrigger className="w-full bg-[#2D2F33] border-[#2D2F33] text-white focus:border-[#3EA6FF]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#25272A] border-[#2D2F33]">
+                    <SelectItem value="vehicle_based">Araç Bazlı</SelectItem>
+                    <SelectItem value="person_based">Kişi Bazlı</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-[#A5A5A5] mt-1">
+                  {formData.pricing_model === 'vehicle_based' 
+                    ? 'Fiyat araç sayısına göre hesaplanır' 
+                    : 'Fiyat kişi sayısına göre hesaplanır'}
+                </p>
+              </div>
+
               <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2">
                   <Switch
@@ -520,6 +545,7 @@ const TourTypes = () => {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Sıra</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Tur Tipi Adı</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Süre</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Fiyatlandırma Modeli</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Varsayılan Fiyat</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">İstatistikler</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">Durum</th>
@@ -553,6 +579,15 @@ const TourTypes = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-gray-300">{tourType.duration_hours} saat</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          tourType.pricing_model === 'vehicle_based'
+                            ? 'bg-blue-500/20 text-blue-400'
+                            : 'bg-green-500/20 text-green-400'
+                        }`}>
+                          {tourType.pricing_model === 'vehicle_based' ? 'Araç Bazlı' : 'Kişi Bazlı'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-gray-300">
                         Fiyat Yönetimi'nden belirlenir
                       </td>

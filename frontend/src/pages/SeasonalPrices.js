@@ -259,14 +259,23 @@ const SeasonalPrices = () => {
             <label className="block text-sm font-medium mb-2 text-white">Tur Tipleri</label>
             <div className="bg-[#2D2F33] border border-[#2D2F33] rounded-lg p-4 max-h-40 overflow-y-auto">
               {tourTypes.map(tourType => (
-                <label key={tourType.id} className="flex items-center space-x-2 py-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={seasonalPriceForm.tour_type_ids.includes(tourType.id)}
-                    onChange={() => handleToggleTourType(tourType.id)}
-                    className="w-4 h-4 text-[#3EA6FF] bg-[#2D2F33] border-[#3EA6FF] rounded focus:ring-[#3EA6FF]"
-                  />
-                  <span className="text-white">{tourType.name}</span>
+                <label key={tourType.id} className="flex items-center justify-between py-2 cursor-pointer">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={seasonalPriceForm.tour_type_ids.includes(tourType.id)}
+                      onChange={() => handleToggleTourType(tourType.id)}
+                      className="w-4 h-4 text-[#3EA6FF] bg-[#2D2F33] border-[#3EA6FF] rounded focus:ring-[#3EA6FF]"
+                    />
+                    <span className="text-white">{tourType.name}</span>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    tourType.pricing_model === 'vehicle_based'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-green-500/20 text-green-400'
+                  }`}>
+                    {tourType.pricing_model === 'vehicle_based' ? 'Araç Bazlı' : 'Kişi Bazlı'}
+                  </span>
                 </label>
               ))}
               {tourTypes.length === 0 && (

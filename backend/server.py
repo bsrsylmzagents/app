@@ -1280,6 +1280,7 @@ class TourType(BaseModel):
     color: Optional[str] = None
     icon: Optional[str] = None
     is_active: Optional[bool] = True
+    pricing_model: Optional[str] = Field(default="vehicle_based")  # "vehicle_based" veya "person_based"
     # iCal Synchronization
     icalLinks: Optional[List[Dict[str, str]]] = Field(default_factory=list)  # [{ provider: 'Viator', url: '...' }]
 
@@ -2867,7 +2868,8 @@ async def create_tour_type(data: dict, current_user: dict = Depends(get_current_
         order=data.get("order", 0),
         color=data.get("color"),
         icon=data.get("icon"),
-        is_active=data.get("is_active", True)
+        is_active=data.get("is_active", True),
+        pricing_model=data.get("pricing_model", "vehicle_based")
     )
     tour_type_doc = tour_type.model_dump()
     await db.tour_types.insert_one(tour_type_doc)
