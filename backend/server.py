@@ -3814,70 +3814,79 @@ async def get_reservations(
 
 @api_router.post("/reservations")
 async def create_reservation(data: ReservationCreate, current_user: dict = Depends(get_current_user)):
-    # Get user info for logging
-    user = await db.users.find_one({"id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Get cari info
-    cari = await db.cari_accounts.find_one({"id": data.cari_id})
-    if not cari:
-        raise HTTPException(status_code=404, detail="Cari account not found")
-    
-    # Get tour type name if provided
-    tour_type_name = None
-    if data.tour_type_id:
-        tour_type = await db.tour_types.find_one({"id": data.tour_type_id})
-        if tour_type:
-            tour_type_name = tour_type["name"]
-    
-    # Otomatik voucher kodu oluştur
-    voucher_code = generate_voucher_code()
-    # Benzersizlik kontrolü (hem rezervasyonlarda hem extra sales'te kontrol et)
-    while await db.reservations.find_one({"voucher_code": voucher_code}) or \
-          await db.extra_sales.find_one({"voucher_code": voucher_code}):
+    try:
+        # Get user info for logging
+        user = await db.users.find_one({"id": current_user["user_id"]})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get cari info
+        cari = await db.cari_accounts.find_one({"id": data.cari_id})
+        if not cari:
+            raise HTTPException(status_code=404, detail="Cari account not found")
+        
+        # Get tour type name if provided
+        tour_type_name = None
+        if data.tour_type_id:
+            tour_type = await db.tour_types.find_one({"id": data.tour_type_id})
+            if tour_type:
+                tour_type_name = tour_type["name"]
+        
+        # Otomatik voucher kodu oluştur
         voucher_code = generate_voucher_code()
-    
-    # Customer details'i parse et
-    customer_details_obj = None
-    if data.customer_details:
-        customer_details_obj = CustomerDetail(**data.customer_details)
-    
-    # Create reservation
-    reservation = Reservation(
-        company_id=current_user["company_id"],
-        cari_id=data.cari_id,
-        cari_name=cari["name"],
-        date=data.date,
-        time=data.time,
-        tour_type_id=data.tour_type_id,
-        tour_type_name=tour_type_name,
-        customer_name=data.customer_name,
-        customer_contact=data.customer_contact,
-        customer_details=customer_details_obj,
-        person_count=data.person_count,
-        vehicle_count=data.vehicle_count if hasattr(data, 'vehicle_count') else (data.atv_count if hasattr(data, 'atv_count') else 1),
-        pickup_location=data.pickup_location or cari.get("pickup_location"),
-        pickup_maps_link=data.pickup_maps_link or cari.get("pickup_maps_link"),
-        price=data.price,
-        currency=data.currency,
-        exchange_rate=data.exchange_rate,
-        notes=data.notes,
-        status="confirmed",
-        voucher_code=voucher_code,
-        created_by=current_user["user_id"]
-    )
-    
-    reservation_doc = reservation.model_dump()
-    reservation_doc['created_at'] = reservation_doc['created_at'].isoformat()
-    reservation_doc['updated_at'] = reservation_doc['updated_at'].isoformat()
-    # Customer details'i dict olarak kaydet
-    if reservation_doc.get('customer_details'):
-        reservation_doc['customer_details'] = reservation_doc['customer_details'].model_dump() if hasattr(reservation_doc['customer_details'], 'model_dump') else reservation_doc['customer_details']
-    await db.reservations.insert_one(reservation_doc)
-    
-    # Müşteriyi kaydet (Cari veya Münferit)
-    is_munferit = cari.get("is_munferit", False)
+        # Benzersizlik kontrolü (hem rezervasyonlarda hem extra sales'te kontrol et)
+        attempts = 0
+        while await db.reservations.find_one({"voucher_code": voucher_code}) or \
+              await db.extra_sales.find_one({"voucher_code": voucher_code}):
+            voucher_code = generate_voucher_code()
+            attempts += 1
+            if attempts > 100:
+                raise HTTPException(status_code=500, detail="Voucher kodu oluşturulamadı")
+        
+        # Customer details'i parse et
+        customer_details_obj = None
+        if data.customer_details:
+            try:
+                customer_details_obj = CustomerDetail(**data.customer_details)
+            except Exception as e:
+                logger.error(f"Customer details parse error: {str(e)}")
+                customer_details_obj = None
+        
+        # Create reservation
+        reservation = Reservation(
+            company_id=current_user["company_id"],
+            cari_id=data.cari_id,
+            cari_name=cari["name"],
+            date=data.date,
+            time=data.time,
+            tour_type_id=data.tour_type_id,
+            tour_type_name=tour_type_name,
+            customer_name=data.customer_name,
+            customer_contact=data.customer_contact,
+            customer_details=customer_details_obj,
+            person_count=data.person_count,
+            vehicle_count=data.vehicle_count if hasattr(data, 'vehicle_count') else (data.atv_count if hasattr(data, 'atv_count') else 1),
+            pickup_location=data.pickup_location or cari.get("pickup_location"),
+            pickup_maps_link=data.pickup_maps_link or cari.get("pickup_maps_link"),
+            price=data.price,
+            currency=data.currency,
+            exchange_rate=data.exchange_rate,
+            notes=data.notes,
+            status="confirmed",
+            voucher_code=voucher_code,
+            created_by=current_user["user_id"]
+        )
+        
+        reservation_doc = reservation.model_dump()
+        reservation_doc['created_at'] = reservation_doc['created_at'].isoformat()
+        reservation_doc['updated_at'] = reservation_doc['updated_at'].isoformat()
+        # Customer details'i dict olarak kaydet
+        if reservation_doc.get('customer_details'):
+            reservation_doc['customer_details'] = reservation_doc['customer_details'].model_dump() if hasattr(reservation_doc['customer_details'], 'model_dump') else reservation_doc['customer_details']
+        await db.reservations.insert_one(reservation_doc)
+        
+        # Müşteriyi kaydet (Cari veya Münferit)
+        is_munferit = cari.get("is_munferit", False)
     if is_munferit:
         # Münferit müşteri kaydet/güncelle
         existing_customer = await db.munferit_customers.find_one({
@@ -3968,52 +3977,58 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
             customer_doc['created_at'] = customer_doc['created_at'].isoformat()
             customer_doc['updated_at'] = customer_doc['updated_at'].isoformat()
             await db.cari_customers.insert_one(customer_doc)
-    
-    # Create activity log
-    await create_activity_log(
-        company_id=current_user["company_id"],
-        user_id=current_user["user_id"],
-        username=user.get("username", ""),
-        full_name=user.get("full_name", ""),
-        action="create",
-        entity_type="reservation",
-        entity_id=reservation.id,
-        entity_name=f"{data.customer_name} - {data.date} {data.time}",
-        description=f"Rezervasyon oluşturuldu: {data.customer_name}, {data.date} {data.time}, {data.price} {data.currency}"
-    )
-    
-    # Münferit cari için transaction oluşturma (tahsilat eklenene kadar beklemeli)
-    # Cari firma için transaction oluştur (debit - borç)
-    is_munferit = cari.get("is_munferit", False) or cari.get("name") == "Münferit"
-    if not is_munferit:
-        # Create transaction (debit - borç) - Sadece cari firmalar için
-        transaction = Transaction(
+        
+        # Create activity log
+        await create_activity_log(
             company_id=current_user["company_id"],
-            cari_id=data.cari_id,
-            transaction_type="debit",
-            amount=data.price,
-            currency=data.currency,
-            exchange_rate=data.exchange_rate,
-            description=f"Rezervasyon - {data.customer_name} - {data.date} {data.time}",
-            reference_id=reservation.id,
-            reference_type="reservation",
-            date=data.date,
-            created_by=current_user["user_id"]
+            user_id=current_user["user_id"],
+            username=user.get("username", ""),
+            full_name=user.get("full_name", ""),
+            action="create",
+            entity_type="reservation",
+            entity_id=reservation.id,
+            entity_name=f"{data.customer_name} - {data.date} {data.time}",
+            description=f"Rezervasyon oluşturuldu: {data.customer_name}, {data.date} {data.time}, {data.price} {data.currency}"
         )
         
-        transaction_doc = transaction.model_dump()
-        transaction_doc['created_at'] = transaction_doc['created_at'].isoformat()
-        await db.transactions.insert_one(transaction_doc)
+        # Münferit cari için transaction oluşturma (tahsilat eklenene kadar beklemeli)
+        # Cari firma için transaction oluştur (debit - borç)
+        is_munferit_transaction = cari.get("is_munferit", False) or cari.get("name") == "Münferit"
+        if not is_munferit_transaction:
+            # Create transaction (debit - borç) - Sadece cari firmalar için
+            transaction = Transaction(
+                company_id=current_user["company_id"],
+                cari_id=data.cari_id,
+                transaction_type="debit",
+                amount=data.price,
+                currency=data.currency,
+                exchange_rate=data.exchange_rate,
+                description=f"Rezervasyon - {data.customer_name} - {data.date} {data.time}",
+                reference_id=reservation.id,
+                reference_type="reservation",
+                date=data.date,
+                created_by=current_user["user_id"]
+            )
+            
+            transaction_doc = transaction.model_dump()
+            transaction_doc['created_at'] = transaction_doc['created_at'].isoformat()
+            await db.transactions.insert_one(transaction_doc)
+            
+            # Update cari balance
+            balance_field = f"balance_{data.currency.lower()}"
+            await db.cari_accounts.update_one(
+                {"id": data.cari_id},
+                {"$inc": {balance_field: data.price}}
+            )
+        # Münferit için transaction oluşturulmaz, tahsilat eklenene kadar bekler
         
-        # Update cari balance
-        balance_field = f"balance_{data.currency.lower()}"
-        await db.cari_accounts.update_one(
-            {"id": data.cari_id},
-            {"$inc": {balance_field: data.price}}
-        )
-    # Münferit için transaction oluşturulmaz, tahsilat eklenene kadar bekler
-    
-    return reservation
+        return reservation_doc
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Rezervasyon oluşturma hatası: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Rezervasyon oluşturulurken bir hata oluştu")
 
 @api_router.put("/reservations/{reservation_id}")
 async def update_reservation(reservation_id: str, data: dict, current_user: dict = Depends(get_current_user)):
