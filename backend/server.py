@@ -4047,6 +4047,37 @@ async def create_reservation(data: ReservationCreate, current_user: dict = Depen
         logger.error(f"Rezervasyon oluşturma hatası: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Rezervasyon oluşturulurken bir hata oluştu")
 
+@api_router.get("/reservations/calculate-price")
+async def calculate_price(
+    tour_type_id: str,
+    date: str,
+    vehicle_count: int,
+    cari_id: Optional[str] = None,
+    person_count: int = 1,
+    current_user: dict = Depends(get_current_user)
+):
+    """Rezervasyon fiyatını hesapla - frontend için (pricing_model'e göre)"""
+    try:
+        # Boş string'i None'a çevir
+        if cari_id == "" or cari_id is None:
+            cari_id = None
+        
+        total_price, currency = await calculate_reservation_price(
+            company_id=current_user["company_id"],
+            cari_id=cari_id,
+            tour_type_id=tour_type_id,
+            date=date,
+            vehicle_count=vehicle_count,
+            person_count=person_count
+        )
+        return {
+            "price": total_price,
+            "currency": currency
+        }
+    except Exception as e:
+        logger.error(f"Fiyat hesaplama hatası: {e}")
+        raise HTTPException(status_code=500, detail="Fiyat hesaplanamadı")
+
 @api_router.put("/reservations/{reservation_id}")
 async def update_reservation(reservation_id: str, data: dict, current_user: dict = Depends(get_current_user)):
     # Get user info for logging
@@ -4574,37 +4605,6 @@ async def calculate_reservation_price(
                     f"currency={currency}, source={price_source}")
     
     return total_price, currency
-
-@api_router.get("/reservations/calculate-price")
-async def calculate_price(
-    tour_type_id: str,
-    date: str,
-    vehicle_count: int,
-    cari_id: Optional[str] = None,
-    person_count: int = 1,
-    current_user: dict = Depends(get_current_user)
-):
-    """Rezervasyon fiyatını hesapla - frontend için (pricing_model'e göre)"""
-    try:
-        # Boş string'i None'a çevir
-        if cari_id == "" or cari_id is None:
-            cari_id = None
-        
-        total_price, currency = await calculate_reservation_price(
-            company_id=current_user["company_id"],
-            cari_id=cari_id,
-            tour_type_id=tour_type_id,
-            date=date,
-            vehicle_count=vehicle_count,
-            person_count=person_count
-        )
-        return {
-            "price": total_price,
-            "currency": currency
-        }
-    except Exception as e:
-        logger.error(f"Fiyat hesaplama hatası: {e}")
-        raise HTTPException(status_code=500, detail="Fiyat hesaplanamadı")
 
 @api_router.post("/cari/reservations")
 async def cari_create_reservation(
