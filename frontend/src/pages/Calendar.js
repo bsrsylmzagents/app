@@ -165,10 +165,10 @@ const Calendar = () => {
     }
   }, [cariAccounts]);
 
-  // Dönemsel fiyat kontrolü - rezervasyon formunda cari, tur tipi ve tarih seçildiğinde
+  // Dönemsel fiyat kontrolü ve backend fiyat hesaplama - rezervasyon formunda cari, tur tipi ve tarih seçildiğinde
   useEffect(() => {
     const checkSeasonalPrice = async () => {
-      if (formData.cari_id && formData.tour_type_id && formData.date && reservationDialogOpen) {
+      if (formData.tour_type_id && formData.date && formData.atv_count && formData.atv_count > 0 && reservationDialogOpen) {
         try {
           // Tarih aralığında ve tur tipine uygun dönemsel fiyat ara
           const matchingPrices = seasonalPrices.filter(price => {
@@ -188,9 +188,9 @@ const Calendar = () => {
             const seasonalExchangeRate = rates[seasonalCurrency] || 1.0;
             
             // Cari ID'sine özel fiyat var mı?
-            if (seasonalPrice.cari_prices && seasonalPrice.cari_prices[formData.cari_id]) {
-              const pricePerAtv = seasonalPrice.cari_prices[formData.cari_id]; // 1 ATV için fiyat
-              const totalPrice = pricePerAtv * formData.atv_count; // ATV sayısı ile çarp
+            if (formData.cari_id && seasonalPrice.cari_prices && seasonalPrice.cari_prices[formData.cari_id]) {
+              const pricePerAtv = seasonalPrice.cari_prices[formData.cari_id];
+              const totalPrice = pricePerAtv * formData.atv_count;
               
               setBasePricePerAtv(pricePerAtv);
               setSeasonalPriceCurrency(seasonalCurrency);
@@ -205,7 +205,7 @@ const Calendar = () => {
               return;
             }
             // Yeni cariler için geçerli mi?
-            else if (seasonalPrice.apply_to_new_caris) {
+            else if (seasonalPrice.apply_to_new_caris && formData.cari_id) {
               const cari = cariAccounts.find(c => c.id === formData.cari_id);
               if (cari && cari.created_at) {
                 const cariCreated = new Date(cari.created_at);
@@ -213,11 +213,10 @@ const Calendar = () => {
                 const priceEnd = new Date(seasonalPrice.end_date);
                 
                 if (priceStart <= cariCreated && cariCreated <= priceEnd) {
-                  // İlk bulunan fiyatı kullan
                   const prices = Object.values(seasonalPrice.cari_prices || {});
                   if (prices.length > 0) {
-                    const pricePerAtv = prices[0]; // 1 ATV için fiyat
-                    const totalPrice = pricePerAtv * formData.atv_count; // ATV sayısı ile çarp
+                    const pricePerAtv = prices[0];
+                    const totalPrice = pricePerAtv * formData.atv_count;
                     
                     setBasePricePerAtv(pricePerAtv);
                     setSeasonalPriceCurrency(seasonalCurrency);
@@ -236,10 +235,36 @@ const Calendar = () => {
             }
           }
           
-          // Dönemsel fiyat bulunamadıysa base price'ı sıfırla
+          // Dönemsel fiyat bulunamadıysa backend'den fiyat hesapla
           if (matchingPrices.length === 0) {
             setBasePricePerAtv(null);
             setSeasonalPriceCurrency(null);
+            
+            try {
+              const params = {
+                tour_type_id: formData.tour_type_id,
+                date: formData.date,
+                vehicle_count: parseInt(formData.atv_count) || 1,
+                person_count: parseInt(formData.person_count) || 1
+              };
+              
+              if (formData.cari_id && formData.cari_id.trim() !== '') {
+                params.cari_id = formData.cari_id;
+              }
+              
+              const response = await axios.get(`${API}/reservations/calculate-price`, { params });
+              
+              if (response.data && response.data.price !== undefined) {
+                setFormData(prev => ({
+                  ...prev,
+                  price: response.data.price,
+                  currency: response.data.currency || 'EUR',
+                  exchange_rate: rates[response.data.currency || 'EUR'] || 1.0
+                }));
+              }
+            } catch (error) {
+              console.error('Fiyat hesaplama hatası:', error);
+            }
           }
         } catch (error) {
           console.error('Dönemsel fiyat kontrolü hatası:', error);
@@ -248,7 +273,7 @@ const Calendar = () => {
     };
 
     checkSeasonalPrice();
-  }, [formData.cari_id, formData.tour_type_id, formData.date, reservationDialogOpen, seasonalPrices, cariAccounts, rates]);
+  }, [formData.cari_id, formData.tour_type_id, formData.date, formData.atv_count, formData.person_count, reservationDialogOpen, seasonalPrices, cariAccounts, rates]);
 
   // ATV sayısı değiştiğinde fiyatı güncelle (dönemsel fiyat varsa)
   useEffect(() => {
