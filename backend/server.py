@@ -4558,18 +4558,28 @@ async def calculate_reservation_price(
         price_source = "error_fallback"
         logger.warning(f"Seasonal price bulunamadı - fiyat yönetiminden fiyat tanımlanmalı: tour_type_id={tour_type_id}, date={date}")
     
-    # Güvenlik kontrolü: price_per_vehicle mutlaka sayısal olmalı
+    # Güvenlik kontrolü: price_per_unit mutlaka sayısal olmalı
     if price_per_vehicle is None or not isinstance(price_per_vehicle, (int, float)):
         logger.error(f"Fiyat hesaplama hatası: price_per_vehicle={price_per_vehicle}, tour_type_id={tour_type_id}")
         price_per_vehicle = 0.0
         price_source = "error_fallback"
     
-    # Toplam fiyat = Araç sayısı * Araç başına fiyat
-    total_price = float(price_per_vehicle) * int(vehicle_count)
+    # Pricing model'e göre fiyat hesaplama
+    pricing_model = tour_type.get("pricing_model", "vehicle_based")
+    price_per_unit = float(price_per_vehicle)
     
-    logger.info(f"Fiyat hesaplandı: cari_id={cari_id}, tour_type_id={tour_type_id}, date={date}, "
-                f"vehicle_count={vehicle_count}, price_per_vehicle={price_per_vehicle}, total_price={total_price}, "
-                f"currency={currency}, source={price_source}")
+    if pricing_model == "person_based":
+        # Kişi bazlı: fiyat * kişi sayısı
+        total_price = price_per_unit * int(person_count)
+        logger.info(f"Fiyat hesaplandı (Kişi Bazlı): cari_id={cari_id}, tour_type_id={tour_type_id}, date={date}, "
+                    f"person_count={person_count}, price_per_person={price_per_unit}, total_price={total_price}, "
+                    f"currency={currency}, source={price_source}")
+    else:
+        # Araç bazlı (varsayılan): fiyat * araç sayısı
+        total_price = price_per_unit * int(vehicle_count)
+        logger.info(f"Fiyat hesaplandı (Araç Bazlı): cari_id={cari_id}, tour_type_id={tour_type_id}, date={date}, "
+                    f"vehicle_count={vehicle_count}, price_per_vehicle={price_per_unit}, total_price={total_price}, "
+                    f"currency={currency}, source={price_source}")
     
     return total_price, currency
 
@@ -4582,7 +4592,7 @@ async def calculate_price(
     person_count: int = 1,
     current_user: dict = Depends(get_current_user)
 ):
-    """Rezervasyon fiyatını hesapla - frontend için (araç sayısı üzerine)"""
+    """Rezervasyon fiyatını hesapla - frontend için (pricing_model'e göre)"""
     try:
         # Boş string'i None'a çevir
         if cari_id == "" or cari_id is None:

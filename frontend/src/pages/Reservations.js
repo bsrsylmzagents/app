@@ -88,8 +88,6 @@ const Reservations = () => {
     check_number: '',
     bank_name: ''
   });
-  const [basePricePerAtv, setBasePricePerAtv] = useState(null); // 1 araç için dönemsel fiyat
-  const [seasonalPriceCurrency, setSeasonalPriceCurrency] = useState(null); // Dönemsel fiyat döviz tipi
   const [customerDetails, setCustomerDetails] = useState({
     phone: '',
     email: '',
@@ -134,97 +132,74 @@ const Reservations = () => {
     fetchSeasonalPrices();
   }, []);
 
-  // Dönemsel fiyat kontrolü - rezervasyon formunda cari, tur tipi ve tarih seçildiğinde
+  // Fiyat hesaplama - pricing_model'e göre (araç bazlı veya kişi bazlı)
   useEffect(() => {
-    const checkSeasonalPrice = async () => {
-      // Tur tipi, tarih ve araç sayısı zorunlu
-      if (formData.tour_type_id && formData.date && formData.vehicle_count && formData.vehicle_count > 0 && dialogOpen) {
-        try {
-          // Backend'den fiyat hesapla (cari_id opsiyonel - münferit rezervasyonlar için None olabilir)
-          const params = {
-            tour_type_id: formData.tour_type_id,
-            date: formData.date,
-            vehicle_count: formData.vehicle_count,
-            person_count: formData.person_count || 1
-          };
+    const calculatePrice = async () => {
+      // Tur tipi, tarih ve gerekli sayılar zorunlu
+      if (!formData.tour_type_id || !formData.date || !dialogOpen) {
+        return;
+      }
+
+      // Pricing model'e göre kontrol
+      const tourType = tourTypes.find(t => t.id === formData.tour_type_id);
+      if (!tourType) return;
+
+      const pricingModel = tourType.pricing_model || 'vehicle_based';
+      
+      // Araç bazlı ise araç sayısı, kişi bazlı ise kişi sayısı kontrolü
+      if (pricingModel === 'vehicle_based' && (!formData.vehicle_count || formData.vehicle_count <= 0)) {
+        return;
+      }
+      if (pricingModel === 'person_based' && (!formData.person_count || formData.person_count <= 0)) {
+        return;
+      }
+
+      try {
+        const params = {
+          tour_type_id: formData.tour_type_id,
+          date: formData.date,
+          vehicle_count: formData.vehicle_count || 1,
+          person_count: formData.person_count || 1
+        };
+        
+        if (formData.cari_id && formData.cari_id.trim() !== '') {
+          params.cari_id = formData.cari_id;
+        }
+        
+        const response = await axios.get(`${API}/reservations/calculate-price`, { params });
+        
+        if (response.data && response.data.price !== undefined) {
+          const totalPrice = response.data.price;
+          const currency = response.data.currency || 'EUR';
           
-          // Cari ID varsa ekle (boş string değilse)
-          if (formData.cari_id && formData.cari_id.trim() !== '') {
-            params.cari_id = formData.cari_id;
-          }
-          
-          console.log('Fiyat hesaplama isteği gönderiliyor:', params);
-          const response = await axios.get(`${API}/reservations/calculate-price`, { params });
-          console.log('Fiyat hesaplama yanıtı:', response.data);
-          
-          if (response.data && response.data.price !== undefined) {
-            const totalPrice = response.data.price;
-            const currency = response.data.currency || 'EUR';
+          if (totalPrice > 0) {
+            const exchangeRate = rates[currency] || 1.0;
             
-            if (totalPrice > 0) {
-              const exchangeRate = rates[currency] || 1.0;
-              
-              // Araç başına fiyatı hesapla (gösterim için)
-              const pricePerVehicle = totalPrice / formData.vehicle_count;
-              
-              setBasePricePerAtv(pricePerVehicle);
-              setSeasonalPriceCurrency(currency);
-              
-              setFormData(prev => ({
-                ...prev,
-                price: totalPrice,
-                currency: currency,
-                exchange_rate: exchangeRate
-              }));
-              
-              toast.success(`Dönemsel fiyat uygulandı: ${totalPrice} ${currency}`);
-            } else {
-              // Fiyat 0 - fiyat tanımlanmamış
-              setBasePricePerAtv(null);
-              setSeasonalPriceCurrency(null);
-              console.warn('Fiyat hesaplama: Fiyat 0 döndü. Backend loglarını kontrol edin. Parametreler:', params);
-              toast.warning('Bu tarih ve tur tipi için fiyat tanımlanmamış. Lütfen fiyat yönetiminden fiyat ekleyin.');
-            }
+            setFormData(prev => ({
+              ...prev,
+              price: totalPrice,
+              currency: currency,
+              exchange_rate: exchangeRate
+            }));
           } else {
-            // Response data yok
-            setBasePricePerAtv(null);
-            setSeasonalPriceCurrency(null);
-            console.error('Fiyat hesaplama: Response data yok. Response:', response);
-          }
-        } catch (error) {
-          console.error('Dönemsel fiyat kontrolü hatası:', error);
-          setBasePricePerAtv(null);
-          setSeasonalPriceCurrency(null);
-          // Hata mesajını sadece gerçek bir hata varsa göster
-          if (error.response?.status !== 404) {
-            toast.error('Fiyat hesaplanırken hata oluştu');
+            setFormData(prev => ({
+              ...prev,
+              price: 0,
+              currency: currency
+            }));
+            toast.warning('Bu tarih ve tur tipi için fiyat tanımlanmamış. Lütfen fiyat yönetiminden fiyat ekleyin.');
           }
         }
-      } else {
-        // Eksik bilgi varsa base price'ı sıfırla
-        setBasePricePerAtv(null);
-        setSeasonalPriceCurrency(null);
+      } catch (error) {
+        console.error('Fiyat hesaplama hatası:', error);
+        if (error.response?.status !== 404) {
+          toast.error('Fiyat hesaplanırken hata oluştu');
+        }
       }
     };
 
-    checkSeasonalPrice();
-  }, [formData.cari_id, formData.tour_type_id, formData.date, formData.vehicle_count, dialogOpen, rates]);
-
-  // Araç sayısı değiştiğinde fiyatı güncelle (dönemsel fiyat varsa)
-  useEffect(() => {
-    if (basePricePerAtv !== null && dialogOpen) {
-      const totalPrice = basePricePerAtv * formData.vehicle_count;
-      const currency = seasonalPriceCurrency || formData.currency;
-      const exchangeRate = rates[currency] || 1.0;
-      
-      setFormData(prev => ({
-        ...prev,
-        price: totalPrice,
-        currency: currency,
-        exchange_rate: exchangeRate
-      }));
-    }
-  }, [formData.vehicle_count, basePricePerAtv, seasonalPriceCurrency, rates, dialogOpen]);
+    calculatePrice();
+  }, [formData.cari_id, formData.tour_type_id, formData.date, formData.vehicle_count, formData.person_count, dialogOpen, rates, tourTypes]);
 
   const fetchReservations = async (status = null) => {
     try {
@@ -777,10 +752,7 @@ const Reservations = () => {
       bank_name: ''
     });
     
-    // Düzenleme modunda base price'ı sıfırla (manuel fiyat girişi için)
-    setBasePricePerAtv(null);
-    setSeasonalPriceCurrency(null);
-    setActiveTab('reservation'); // İlk sekmeye dön
+    setActiveTab('reservation');
     setDialogOpen(true);
   };
 
@@ -828,9 +800,7 @@ const Reservations = () => {
       check_number: '',
       bank_name: ''
     });
-    setBasePricePerAtv(null);
-    setSeasonalPriceCurrency(null);
-    setCariSearch(''); // Cari arama input'unu da temizle
+    setCariSearch('');
     setNationalityOpen(false);
     setNationalitySearch('');
     setActiveTab('reservation'); // İlk sekmeye dön
@@ -1190,21 +1160,7 @@ const Reservations = () => {
                       value={formData.vehicle_count}
                       onChange={(e) => {
                         const newVehicleCount = parseInt(e.target.value) || 1;
-                        // Dönemsel fiyat varsa, fiyatı anında hesapla
-                        if (basePricePerAtv !== null) {
-                          const totalPrice = basePricePerAtv * newVehicleCount;
-                          const currency = seasonalPriceCurrency || formData.currency;
-                          const exchangeRate = rates[currency] || 1.0;
-                          setFormData(prev => ({
-                            ...prev,
-                            vehicle_count: newVehicleCount,
-                            price: totalPrice,
-                            currency: currency,
-                            exchange_rate: exchangeRate
-                          }));
-                        } else {
-                          setFormData({ ...formData, vehicle_count: newVehicleCount });
-                        }
+                        setFormData({ ...formData, vehicle_count: newVehicleCount });
                       }}
                       className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
                       min="1"
@@ -1243,25 +1199,12 @@ const Reservations = () => {
                       value={formData.price}
                       onChange={(e) => {
                         const newPrice = parseFloat(e.target.value) || 0;
-                        // Manuel fiyat değişikliği yapılıyorsa, dönemsel fiyat bağlantısını kaldır
-                        if (basePricePerAtv !== null) {
-                          setBasePricePerAtv(null);
-                          setSeasonalPriceCurrency(null);
-                        }
                         setFormData({ ...formData, price: newPrice });
                       }}
-                      disabled={basePricePerAtv !== null}
-                      className={`w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF] ${
-                        basePricePerAtv !== null ? 'opacity-60 cursor-not-allowed' : ''
-                      }`}
+                      className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
                       required
                       data-testid="reservation-price"
                     />
-                    {basePricePerAtv !== null && (
-                      <p className="text-xs text-[#A5A5A5] mt-1">
-                        Dönemsel fiyat: {formData.price} {formData.currency}
-                      </p>
-                    )}
                   </div>
 
                   <div>
@@ -1270,11 +1213,6 @@ const Reservations = () => {
                       value={formData.currency}
                       onChange={(e) => {
                         const newCurrency = e.target.value;
-                        // Dönemsel fiyat varsa ve kullanıcı manuel değiştiriyorsa, base price'ı sıfırla
-                        if (basePricePerAtv !== null && newCurrency !== seasonalPriceCurrency) {
-                          setBasePricePerAtv(null);
-                          setSeasonalPriceCurrency(null);
-                        }
                         setFormData({ 
                           ...formData, 
                           currency: newCurrency, 
@@ -1287,11 +1225,6 @@ const Reservations = () => {
                       <option value="USD">USD</option>
                       <option value="TRY">TRY</option>
                     </select>
-                    {basePricePerAtv !== null && seasonalPriceCurrency && (
-                      <p className="text-xs text-[#A5A5A5] mt-1">
-                        Dönemsel fiyat: {seasonalPriceCurrency}
-                      </p>
-                    )}
                   </div>
 
                   <div className="col-span-2">
