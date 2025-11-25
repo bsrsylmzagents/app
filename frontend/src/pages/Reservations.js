@@ -647,7 +647,7 @@ const Reservations = () => {
       customer_contact: reservation.customer_contact || '',
       customer_details: reservation.customer_details || null,
       person_count: reservation.person_count,
-      vehicle_count: reservation.vehicle_count || reservation.atv_count, // Backward compatibility
+      vehicle_count: reservation.vehicle_count || 1,
       pickup_location: reservation.pickup_location || '',
       pickup_maps_link: reservation.pickup_maps_link || '',
       price: reservation.price,
@@ -846,7 +846,7 @@ const Reservations = () => {
           (reservation.pickup_location || '').toLowerCase().includes(query) ||
           String(reservation.price || '').includes(query) ||
           (reservation.currency || '').toLowerCase().includes(query) ||
-          String(reservation.vehicle_count || reservation.atv_count || '').includes(query) ||
+          String(reservation.vehicle_count || '').includes(query) ||
           String(reservation.person_count || '').includes(query)
         );
       });
@@ -1676,7 +1676,7 @@ const Reservations = () => {
                     {reservation.cari_name}
                   </td>
                   <td className={`px-6 py-4 text-sm font-semibold ${reservation.status === 'cancelled' ? 'text-red-400 line-through' : 'text-[#3EA6FF]'}`}>
-                    {reservation.vehicle_count || reservation.atv_count}
+                    {reservation.vehicle_count || 0}
                   </td>
                   <td className={`px-6 py-4 text-sm ${reservation.status === 'cancelled' ? 'text-red-400 line-through' : 'text-white'}`}>
                     {reservation.price} {reservation.currency}
