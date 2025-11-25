@@ -683,10 +683,24 @@
   :root[data-theme="dynamic"] .sidebar a.nav-item,
   :root[data-theme="dynamic"] aside[class*="sidebar"] a.nav-item,
   :root[data-theme="dynamic"] .sidebar li .nav-item,
-  :root[data-theme="dynamic"] aside[class*="sidebar"] li .nav-item {
+  :root[data-theme="dynamic"] aside[class*="sidebar"] li .nav-item,
+  :root[data-theme="dynamic"] .sidebar ul li .nav-item,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] ul li .nav-item,
+  :root[data-theme="dynamic"] .sidebar ul .nav-item,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] ul .nav-item {
     background: transparent !important;
     background-color: transparent !important;
     background-image: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* Remove background from parent containers (ul, li) in dynamic theme */
+  :root[data-theme="dynamic"] .sidebar ul,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] ul,
+  :root[data-theme="dynamic"] .sidebar ul li,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] ul li {
+    background: transparent !important;
+    background-color: transparent !important;
   }
   
   /* Only active items get glass effect */
