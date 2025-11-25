@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import '@/App.css';
 import { Toaster } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 // Auth Pages
@@ -136,23 +137,42 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 401 hatası = Unauthenticated (token geçersiz/süresi dolmuş) → login'e yönlendir
-    // 403 hatası = Unauthorized (yetki yok) → component'in handle etmesine izin ver
-    if (error.response?.status === 401) {
-      // /auth/me endpoint'i için özel işlem yapma (App.js'deki useEffect zaten hallediyor)
+    if (!error.response) {
+      toast.error("Sunucuya ulaşılamıyor. İnternet bağlantınızı kontrol edin.");
+      return Promise.reject(error);
+    }
+
+    if (error.response.status === 422) {
+      const details = error.response.data.detail;
+      let message;
+      
+      if (Array.isArray(details)) {
+        message = details.map(err => {
+          const field = err.loc && err.loc.length > 1 ? err.loc[err.loc.length - 1] : 'alan';
+          return `${field}: ${err.msg}`;
+        }).join('\n');
+      } else if (typeof details === 'string') {
+        message = details;
+      } else {
+        message = "Veri doğrulama hatası (Eksik veya yanlış alan).";
+      }
+      
+      toast.error(message, { duration: 5000 });
+      console.error("Validation Error Payload:", error.config?.data);
+      return Promise.reject(error);
+    }
+
+    if (error.response.status === 401) {
       if (error.config?.url?.includes('/auth/me')) {
         return Promise.reject(error);
       }
       
-      // Cari routes için özel işlem
       const isCariRoute = window.location.pathname.startsWith('/cari/') || window.location.pathname.startsWith('/r/');
       if (isCariRoute) {
-        // Cari token hatası - cari login'e yönlendir
         if (error.config?.url?.includes('/cari/')) {
           localStorage.removeItem('cari_token');
           localStorage.removeItem('cari');
           localStorage.removeItem('cari_company');
-          // Cari login sayfasına yönlendir
           if (window.location.pathname !== '/cari/login' && !window.location.pathname.startsWith('/r/')) {
             window.location.href = '/cari/login';
           }
@@ -160,17 +180,14 @@ axios.interceptors.response.use(
         return Promise.reject(error);
       }
       
-      // Portal routes için özel işlem
       const isPortalRoute = window.location.pathname.startsWith('/portal/');
       if (isPortalRoute) {
-        // Portal token hatası - portal login'e yönlendir
         if (error.config?.url?.includes('/portal/') || error.config?.url?.includes('/auth/b2b-login')) {
           const pathParts = window.location.pathname.split('/');
-          const agencySlug = pathParts[2]; // /portal/:agencySlug/...
+          const agencySlug = pathParts[2];
           localStorage.removeItem('portal_token');
           localStorage.removeItem('portal_corporate');
           localStorage.removeItem('portal_agency');
-          // Portal login sayfasına yönlendir
           if (!window.location.pathname.includes('/login')) {
             window.location.href = `/portal/${agencySlug}/login`;
           }
@@ -178,8 +195,6 @@ axios.interceptors.response.use(
         return Promise.reject(error);
       }
       
-      // Normal admin routes için (cari ve portal route'ları hariç)
-      // Sadece login/register sayfalarında değilsek ve cari/portal route'da değilsek yönlendir
       const isAdminRoute = !window.location.pathname.startsWith('/cari/') && 
                           !window.location.pathname.startsWith('/r/') && 
                           !window.location.pathname.startsWith('/portal/') &&
@@ -191,9 +206,15 @@ axios.interceptors.response.use(
         localStorage.removeItem('is_admin_view');
         window.location.href = '/login';
       }
+      return Promise.reject(error);
     }
-    // 403 hatası için component'in handle etmesine izin ver (yetki kontrolü)
-    // Component'ler bu hatayı yakalayıp uygun şekilde yönlendirebilir
+
+    if (error.response.status === 403) {
+      return Promise.reject(error);
+    }
+
+    const errorMessage = error.response.data?.message || error.response.data?.detail || "Bir hata oluştu.";
+    toast.error(errorMessage);
     console.error("Axios error:", error.response?.data || error.message);
     return Promise.reject(error);
   }

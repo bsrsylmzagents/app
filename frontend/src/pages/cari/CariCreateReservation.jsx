@@ -117,8 +117,8 @@ const CariCreateReservation = () => {
         date: formData.date,
         time: formData.time,
         tour_id: formData.tour_id,
-        person_count: formData.person_count || 1,
-        atv_count: formData.atv_count || 1
+        person_count: parseInt(formData.person_count) || 1,
+        vehicle_count: parseInt(formData.atv_count) || 1
       };
       
       // Add optional fields only if they have values
