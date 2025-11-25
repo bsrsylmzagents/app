@@ -122,7 +122,8 @@ else:
         "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
-        "http://127.0.0.1:5173"
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:52846"
     ]
     logger.warning("⚠️ CORS_ORIGINS not set in environment, using default origins")
 
@@ -15360,6 +15361,32 @@ class B2BLoginRequest(BaseModel):
     agencySlug: str  # Company code (slug)
     corporateCode: str  # Cari code
     password: str
+
+@api_router.post("/auth/oauth/callback")
+async def oauth_callback(data: dict):
+    """OAuth callback handler - processes OAuth code and returns JWT token"""
+    try:
+        code = data.get("code")
+        state = data.get("state")
+        
+        if not code:
+            raise HTTPException(status_code=400, detail="OAuth code is required")
+        
+        # TODO: Implement OAuth provider-specific logic here
+        # This is a placeholder - you need to:
+        # 1. Exchange code for access token with OAuth provider
+        # 2. Get user info from OAuth provider
+        # 3. Find or create user in database
+        # 4. Return JWT token
+        
+        logger.warning("OAuth callback endpoint called but not fully implemented")
+        raise HTTPException(status_code=501, detail="OAuth callback not yet implemented")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OAuth callback error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="OAuth callback işlemi başarısız oldu")
 
 @api_router.post("/auth/b2b-login")
 async def b2b_login(data: B2BLoginRequest):

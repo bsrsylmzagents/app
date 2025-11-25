@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API } from '../App';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -84,6 +84,25 @@ const Login = ({ setAuth }) => {
   });
   const [demoLoading, setDemoLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // OAuth callback handler
+  useEffect(() => {
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    const error = searchParams.get('error');
+
+    if (error) {
+      toast.error(`OAuth hatası: ${error}`);
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    if (code && state) {
+      // OAuth callback - backend'e code ve state gönder
+      handleOAuthCallback(code, state);
+    }
+  }, [searchParams, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -142,6 +161,31 @@ const Login = ({ setAuth }) => {
       } else {
         toast.error('Bağlantı hatası: ' + (error.message || 'Bilinmeyen hata'));
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOAuthCallback = async (code, state) => {
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API}/auth/oauth/callback`, {
+        code,
+        state
+      });
+
+      if (response.data.access_token) {
+        localStorage.setItem('token', response.data.access_token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('company', JSON.stringify(response.data.company));
+        toast.success('Giriş başarılı!');
+        setAuth(true);
+        navigate('/', { replace: true });
+      }
+    } catch (error) {
+      console.error('OAuth callback error:', error);
+      toast.error('OAuth girişi başarısız oldu. Lütfen tekrar deneyin.');
+      navigate('/login', { replace: true });
     } finally {
       setLoading(false);
     }

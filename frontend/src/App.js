@@ -331,6 +331,7 @@ function App() {
         <BrowserRouter>
         <Routes>
           <Route path="/login" element={!isAuthenticated ? <Login setAuth={handleAuthChange} /> : <Navigate to="/" />} />
+          <Route path="/auth/callback" element={<Login setAuth={handleAuthChange} />} />
           <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" />} />
           
           {/* Cari Routes - Özel route'lar önce */}
