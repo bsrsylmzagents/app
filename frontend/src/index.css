@@ -6,6 +6,23 @@
 @tailwind utilities;
 
 @layer base {
+  /* Root Font Scaling - High Density (Compact) for Desktop */
+  html {
+    font-size: 16px; /* Default for Mobile */
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      font-size: 14px; /* 12.5% smaller on Laptops/Desktops */
+    }
+  }
+  
+  @media (min-width: 1536px) {
+    html {
+      font-size: 14.5px; /* Slightly adjusted for huge 2K/4K screens */
+    }
+  }
+
   /* DARK MODE ONLY - Contrast Level System */
   /* Always dark mode - contrast levels change the shade */
   
