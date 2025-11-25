@@ -15679,13 +15679,13 @@ async def create_portal_reservation(
             raise HTTPException(status_code=404, detail="Corporate account not found")
         
         # Calculate price using existing function
-        atv_count = max(1, (data.pax + 1) // 2)
+        vehicle_count = max(1, (data.pax + 1) // 2)
         total_price, currency = await calculate_reservation_price(
             company_id=current_corporate["company_id"],
             cari_id=current_corporate["cari_account_id"],
             tour_type_id=data.tourId,
             date=data.date,
-            atv_count=atv_count,
+            vehicle_count=vehicle_count,
             person_count=data.pax
         )
         
