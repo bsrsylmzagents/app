@@ -4687,7 +4687,7 @@ async def cari_create_reservation(
         tour_type_name=tour_type.get("name"),
         customer_name=getattr(data, 'customer_name'),
         person_count=person_count,
-        atv_count=atv_count,
+        vehicle_count=vehicle_count,
         customer_contact=getattr(data, 'customer_contact', None),
         price=price,
         currency=currency,
