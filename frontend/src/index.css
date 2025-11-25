@@ -840,21 +840,25 @@
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important; /* shadow-xl */
   }
   
-  /* Currency Converter Pop-up Title */
-  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] h3 {
-    color: #1f2937 !important; /* text-gray-800 */
+  /* Currency Converter Pop-up Title - FORCE BLACK */
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] h3,
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] h3.text-black {
+    color: #000000 !important; /* Pure black */
     font-weight: 700 !important; /* font-bold */
   }
   
-  /* Currency Converter Pop-up Labels */
-  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] label {
-    color: #374151 !important; /* text-gray-700 */
+  /* Currency Converter Pop-up Labels - FORCE BLACK */
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] label,
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] label.text-black {
+    color: #000000 !important; /* Pure black */
   }
   
-  /* Currency Converter Pop-up Text (secondary) */
+  /* Currency Converter Pop-up Text (secondary) - FORCE BLACK */
   :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] .text-xs,
-  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] p.text-xs {
-    color: #4b5563 !important; /* text-gray-600 */
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] p.text-xs,
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] p,
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] span:not(button span) {
+    color: #000000 !important; /* Pure black */
   }
   
   /* Currency Converter Pop-up Inputs */
@@ -893,9 +897,26 @@
     background: #c2410c !important; /* hover:bg-orange-700 */
   }
   
-  /* Currency Converter Pop-up - Converted Amounts */
-  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] .font-semibold {
-    color: #111827 !important; /* text-gray-900 */
+  /* Currency Converter Pop-up - Converted Amounts - FORCE BLACK */
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] .font-semibold,
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] span.font-semibold {
+    color: #000000 !important; /* Pure black */
+  }
+  
+  /* Currency Converter Pop-up - ALL TEXT ELEMENTS - ULTRA AGGRESSIVE BLACK OVERRIDE */
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] *:not(button):not(button *) {
+    color: #000000 !important; /* Force black for all text elements except buttons */
+  }
+  
+  /* Currency Converter Pop-up - Buttons text (keep white for selected, black for unselected) */
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] button.bg-orange-600,
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] button[class*="bg-orange-600"] {
+    color: #ffffff !important; /* White text on orange button */
+  }
+  
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] button.bg-gray-100,
+  :root[data-theme="dynamic"] [data-testid="currency-converter-panel"] button[class*="bg-gray-100"] {
+    color: #000000 !important; /* Black text on gray button */
   }
   
   /* Currency Converter Pop-up - Borders */

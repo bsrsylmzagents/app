@@ -305,11 +305,15 @@ const Reservations = () => {
       // Status'u payload'dan çıkar (backend default "confirmed" kullanacak)
       const { status, customer_first_name, customer_last_name, ...payload } = formData;
       
-      // Ad ve Soyad'ı birleştir (opsiyonel)
+      // Ad ve Soyad'ı birleştir
       const customer_name = `${customer_first_name || ''} ${customer_last_name || ''}`.trim();
       payload.customer_name = customer_name || 'Müşteri';
       
-      // Customer details'i customerDetails state'inden al
+      payload.person_count = parseInt(payload.person_count) || 1;
+      payload.vehicle_count = parseInt(payload.vehicle_count) || 1;
+      payload.price = parseFloat(payload.price) || 0;
+      payload.exchange_rate = parseFloat(payload.exchange_rate) || 1.0;
+      
       const details = {};
       if (customerDetails.phone) details.phone = customerDetails.phone;
       if (customerDetails.email) details.email = customerDetails.email;
@@ -319,6 +323,29 @@ const Reservations = () => {
       
       const hasDetails = Object.keys(details).length > 0;
       payload.customer_details = hasDetails ? details : null;
+      
+      // Type conversions - Backend expects specific types
+      payload.person_count = parseInt(payload.person_count) || 1;
+      payload.vehicle_count = parseInt(payload.vehicle_count) || 1;
+      payload.price = parseFloat(payload.price) || 0;
+      payload.exchange_rate = parseFloat(payload.exchange_rate) || 1.0;
+      
+      // Convert empty strings to null for optional fields
+      if (payload.tour_type_id === '' || payload.tour_type_id === null) {
+        payload.tour_type_id = null;
+      }
+      if (payload.customer_contact === '' || payload.customer_contact === null) {
+        payload.customer_contact = null;
+      }
+      if (payload.pickup_location === '' || payload.pickup_location === null) {
+        payload.pickup_location = null;
+      }
+      if (payload.pickup_maps_link === '' || payload.pickup_maps_link === null) {
+        payload.pickup_maps_link = null;
+      }
+      if (payload.notes === '' || payload.notes === null) {
+        payload.notes = null;
+      }
       
       // Seçili cari'nin münferit olup olmadığını kontrol et
       const selectedCari = cariAccounts.find(c => c.id === formData.cari_id);
@@ -364,7 +391,34 @@ const Reservations = () => {
         // Cari firma için tutar zaten backend'de cari hesabına yansıyor (transaction oluşturuluyor)
       }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Rezervasyon kaydedilemedi');
+      // Handle 422 validation errors with detailed messages
+      if (error.response?.status === 422) {
+        const detail = error.response?.data?.detail;
+        let errorMessage = 'Doğrulama hatası: ';
+        
+        if (Array.isArray(detail)) {
+          // Pydantic validation errors format
+          const messages = detail.map(err => {
+            const field = err.loc && err.loc.length > 0 ? err.loc[err.loc.length - 1] : 'bilinmeyen alan';
+            const msg = err.msg || 'Geçersiz değer';
+            return `${field}: ${msg}`;
+          });
+          errorMessage += messages.join(', ');
+        } else if (typeof detail === 'string') {
+          errorMessage += detail;
+        } else if (typeof detail === 'object' && detail.msg) {
+          errorMessage += detail.msg;
+        } else {
+          errorMessage += 'Form verileri geçersiz. Lütfen tüm alanları kontrol edin.';
+        }
+        
+        toast.error(errorMessage);
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        // Don't redirect on 422, but handle auth errors normally
+        toast.error(error.response?.data?.detail || 'Yetkilendirme hatası');
+      } else {
+        toast.error(error.response?.data?.detail || 'Rezervasyon kaydedilemedi');
+      }
     }
   };
 

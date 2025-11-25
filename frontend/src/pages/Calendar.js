@@ -454,7 +454,7 @@ const Calendar = () => {
       customer_contact: reservation.customer_contact || '',
       customer_details: reservation.customer_details || null,
       person_count: reservation.person_count || 1,
-      atv_count: reservation.atv_count || 1,
+      atv_count: reservation.vehicle_count || reservation.atv_count || 1,
       pickup_location: reservation.pickup_location || '',
       pickup_maps_link: reservation.pickup_maps_link || '',
       price: reservation.price || 0,
@@ -469,7 +469,12 @@ const Calendar = () => {
   const handleUpdateReservation = async (e) => {
     e.preventDefault();
     try {
-      const { status, ...payload } = formData;
+      const { status, atv_count, ...payload } = formData;
+      
+      payload.vehicle_count = parseInt(atv_count) || 1;
+      payload.person_count = parseInt(payload.person_count) || 1;
+      payload.price = parseFloat(payload.price) || 0;
+      payload.exchange_rate = parseFloat(payload.exchange_rate) || 1.0;
       
       if (payload.customer_details) {
         const details = payload.customer_details;
@@ -516,7 +521,7 @@ const Calendar = () => {
       customer_contact: reservation.customer_contact || '',
       customer_details: reservation.customer_details || null,
       person_count: reservation.person_count || 1,
-      atv_count: reservation.atv_count || 1,
+      atv_count: reservation.vehicle_count || reservation.atv_count || 1,
       pickup_location: reservation.pickup_location || '',
       pickup_maps_link: reservation.pickup_maps_link || '',
       price: reservation.price || 0,
@@ -689,8 +694,30 @@ const Calendar = () => {
   const handleReservationSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Status'u payload'dan çıkar (backend default "confirmed" kullanacak)
-      const { status, ...payload } = formData;
+      const { status, atv_count, ...payload } = formData;
+      
+      // Type conversions - Backend expects specific types
+      payload.vehicle_count = parseInt(atv_count) || 1;
+      payload.person_count = parseInt(payload.person_count) || 1;
+      payload.price = parseFloat(payload.price) || 0;
+      payload.exchange_rate = parseFloat(payload.exchange_rate) || 1.0;
+      
+      // Convert empty strings to null for optional fields
+      if (payload.tour_type_id === '' || payload.tour_type_id === null) {
+        payload.tour_type_id = null;
+      }
+      if (payload.customer_contact === '' || payload.customer_contact === null) {
+        payload.customer_contact = null;
+      }
+      if (payload.pickup_location === '' || payload.pickup_location === null) {
+        payload.pickup_location = null;
+      }
+      if (payload.pickup_maps_link === '' || payload.pickup_maps_link === null) {
+        payload.pickup_maps_link = null;
+      }
+      if (payload.notes === '' || payload.notes === null) {
+        payload.notes = null;
+      }
       
       if (payload.customer_details) {
         const details = payload.customer_details;
@@ -708,7 +735,34 @@ const Calendar = () => {
       fetchReservations();
       fetchStatistics();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Rezervasyon kaydedilemedi');
+      // Handle 422 validation errors with detailed messages
+      if (error.response?.status === 422) {
+        const detail = error.response?.data?.detail;
+        let errorMessage = 'Doğrulama hatası: ';
+        
+        if (Array.isArray(detail)) {
+          // Pydantic validation errors format
+          const messages = detail.map(err => {
+            const field = err.loc && err.loc.length > 0 ? err.loc[err.loc.length - 1] : 'bilinmeyen alan';
+            const msg = err.msg || 'Geçersiz değer';
+            return `${field}: ${msg}`;
+          });
+          errorMessage += messages.join(', ');
+        } else if (typeof detail === 'string') {
+          errorMessage += detail;
+        } else if (typeof detail === 'object' && detail.msg) {
+          errorMessage += detail.msg;
+        } else {
+          errorMessage += 'Form verileri geçersiz. Lütfen tüm alanları kontrol edin.';
+        }
+        
+        toast.error(errorMessage);
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        // Don't redirect on 422, but handle auth errors normally
+        toast.error(error.response?.data?.detail || 'Yetkilendirme hatası');
+      } else {
+        toast.error(error.response?.data?.detail || 'Rezervasyon kaydedilemedi');
+      }
     }
   };
 
