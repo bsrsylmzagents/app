@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { API } from '../../App';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, User } from 'lucide-react';
+import { ArrowLeft, Save, User, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import CustomerDetailDialog from '../../components/CustomerDetailDialog';
@@ -15,17 +15,20 @@ const CariCreateReservation = () => {
     customer_details: null,
     date: '',
     time: '',
-    tour_id: '',
+    tour_type_id: '',
     person_count: 1,
-    atv_count: 1,
+    vehicle_count: 1,
+    pickup_location: '',
+    pickup_maps_link: '',
+    price: 0,
+    currency: 'EUR',
+    exchange_rate: 1.0,
     notes: ''
   });
   const [customerDetailDialogOpen, setCustomerDetailDialogOpen] = useState(false);
   const [tourTypes, setTourTypes] = useState([]);
-  const [calculatedPrice, setCalculatedPrice] = useState(null);
-  const [calculatedCurrency, setCalculatedCurrency] = useState('EUR');
+  const [rates, setRates] = useState({ EUR: 1.0, USD: 1.0, TRY: 1.0 });
   const [loading, setLoading] = useState(false);
-  const [fetchingPrice, setFetchingPrice] = useState(false);
   const [cari, setCari] = useState(null);
   const navigate = useNavigate();
 
@@ -40,13 +43,21 @@ const CariCreateReservation = () => {
 
     setCari(cariData);
     fetchTourTypes();
+    fetchRates();
+    
+    // Cari bilgilerini form'a set et
+    if (cariData.pickup_location) {
+      setFormData(prev => ({
+        ...prev,
+        pickup_location: cariData.pickup_location || '',
+        pickup_maps_link: cariData.pickup_maps_link || ''
+      }));
+    }
   }, [navigate]);
 
   const fetchTourTypes = async () => {
     try {
       const token = localStorage.getItem('cari_token');
-      // Tour types endpoint'i cari token ile çalışmalı (backend'de kontrol edilmeli)
-      // Şimdilik company_id'ye göre filtreleme yapılabilir
       const response = await axios.get(`${API}/cari/tour-types`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -57,32 +68,19 @@ const CariCreateReservation = () => {
     }
   };
 
-  const calculatePrice = async () => {
-    if (!formData.tour_id || !formData.date) {
-      setCalculatedPrice(null);
-      return;
-    }
-
-    setFetchingPrice(true);
+  const fetchRates = async () => {
     try {
-      // Fiyat hesaplama için geçici bir rezervasyon oluşturup fiyatı alabiliriz
-      // Veya backend'de ayrı bir price calculation endpoint'i eklenebilir
-      // Şimdilik frontend'de tour type'ın default price'ını gösterelim
-      const tourType = tourTypes.find(t => t.id === formData.tour_id);
-      if (tourType) {
-        setCalculatedPrice(tourType.default_price || 0);
-        setCalculatedCurrency(tourType.default_currency || 'EUR');
+      const token = localStorage.getItem('cari_token');
+      const response = await axios.get(`${API}/cari/company-info`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data?.currency_rates) {
+        setRates(response.data.currency_rates);
       }
     } catch (error) {
-      console.error('Calculate price error:', error);
-    } finally {
-      setFetchingPrice(false);
+      console.error('Fetch rates error:', error);
     }
   };
-
-  useEffect(() => {
-    calculatePrice();
-  }, [formData.tour_id, formData.date, tourTypes]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -96,41 +94,34 @@ const CariCreateReservation = () => {
         return;
       }
 
-      // API URL'i oluştur
-      const apiUrl = `${API}/cari/reservations`;
-      console.log('📤 Sending request to:', apiUrl);
-      console.log('📤 Request data:', {
-        customer_name: formData.customer_name,
-        customer_contact: formData.customer_contact,
-        date: formData.date,
-        time: formData.time,
-        tour_id: formData.tour_id,
-        person_count: formData.person_count,
-        atv_count: formData.atv_count,
-        notes: formData.notes
-      });
-      console.log('📤 Token exists:', !!token);
-
-      // Prepare request payload - only send fields that backend expects
       const requestPayload = {
         customer_name: formData.customer_name,
         date: formData.date,
         time: formData.time,
-        tour_id: formData.tour_id,
+        tour_id: formData.tour_type_id,
         person_count: parseInt(formData.person_count) || 1,
-        vehicle_count: parseInt(formData.atv_count) || 1
+        vehicle_count: parseInt(formData.vehicle_count) || 1,
+        price: parseFloat(formData.price) || 0,
+        currency: formData.currency,
+        exchange_rate: formData.exchange_rate
       };
       
-      // Add optional fields only if they have values
       if (formData.customer_contact) {
         requestPayload.customer_contact = formData.customer_contact;
+      }
+      
+      if (formData.pickup_location) {
+        requestPayload.pickup_location = formData.pickup_location;
+      }
+      
+      if (formData.pickup_maps_link) {
+        requestPayload.pickup_maps_link = formData.pickup_maps_link;
       }
       
       if (formData.notes) {
         requestPayload.notes = formData.notes;
       }
       
-      // Customer details - only include if it has actual data
       if (formData.customer_details) {
         const details = formData.customer_details;
         const hasDetails = details.phone || details.email || details.nationality || details.id_number || details.birth_date;
@@ -140,14 +131,14 @@ const CariCreateReservation = () => {
       }
       
       const response = await axios.post(
-        apiUrl,
+        `${API}/cari/reservations`,
         requestPayload,
         {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          timeout: 30000 // 30 saniye timeout
+          timeout: 30000
         }
       );
 
@@ -155,35 +146,20 @@ const CariCreateReservation = () => {
       navigate('/cari/dashboard', { replace: true });
     } catch (error) {
       console.error('Create reservation error:', error);
-      console.error('Error details:', error.response?.data);
-      console.error('Request URL:', `${API}/cari/reservations`);
-      console.error('Request data:', {
-        customer_name: formData.customer_name,
-        customer_contact: formData.customer_contact,
-        date: formData.date,
-        time: formData.time,
-        tour_id: formData.tour_id,
-        person_count: formData.person_count,
-        atv_count: formData.atv_count,
-        notes: formData.notes
-      });
       
       if (error.response) {
         let errorMessage = 'Rezervasyon oluşturulamadı';
         const detail = error.response?.data?.detail;
         const message = error.response?.data?.message;
         
-        // Handle different error formats
         if (typeof detail === 'string') {
           errorMessage = detail;
         } else if (Array.isArray(detail) && detail.length > 0) {
-          // Pydantic validation errors - extract first error message
           const firstError = detail[0];
           errorMessage = typeof firstError === 'string' 
             ? firstError 
             : firstError?.msg || 'Rezervasyon oluşturulamadı';
         } else if (detail && typeof detail === 'object') {
-          // If detail is an object, try to extract a message
           errorMessage = detail.msg || detail.message || 'Rezervasyon oluşturulamadı';
         } else if (typeof message === 'string') {
           errorMessage = message;
@@ -224,14 +200,14 @@ const CariCreateReservation = () => {
 
         <div className="rounded-lg p-6" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Cari Name (Display Only) */}
+            {/* Cari Name (Display Only - Fixed) */}
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Cari Adı
+                Cari Firma
               </label>
               <input
                 type="text"
-                value={cari?.display_name || ''}
+                value={cari?.display_name || cari?.name || ''}
                 disabled
                 className="w-full px-4 py-3 rounded-lg"
                 style={{
@@ -243,17 +219,37 @@ const CariCreateReservation = () => {
               />
             </div>
 
-            {/* Customer Name */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Müşteri Adı <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Date */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Tarih <span className="text-red-500">*</span>
+                </label>
                 <input
-                  type="text"
-                  value={formData.customer_name}
-                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                  className="flex-1 px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
+                  required
+                />
+              </div>
+
+              {/* Time */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Saat <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
                   style={{
                     background: 'var(--input-bg)',
                     border: '1px solid var(--input-border)',
@@ -261,184 +257,236 @@ const CariCreateReservation = () => {
                   }}
                   required
                 />
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (!formData.customer_name.trim()) {
-                      toast.error('Önce müşteri adını girin');
-                      return;
-                    }
-                    setCustomerDetailDialogOpen(true);
+              </div>
+
+              {/* Tour Type */}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Tur Tipi <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.tour_type_id}
+                  onChange={(e) => setFormData({ ...formData, tour_type_id: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
                   }}
-                  className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
-                  title="Müşteri Detay Gir"
+                  required
                 >
-                  <User size={18} />
-                </Button>
+                  <option value="">Tur tipi seçin</option>
+                  {tourTypes.map((tour) => (
+                    <option key={tour.id} value={tour.id}>
+                      {tour.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Customer Name */}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Müşteri Adı <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.customer_name}
+                    onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                    className="flex-1 px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                    style={{
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--input-border)',
+                      color: 'var(--text-primary)'
+                    }}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (!formData.customer_name.trim()) {
+                        toast.error('Önce müşteri adını girin');
+                        return;
+                      }
+                      setCustomerDetailDialogOpen(true);
+                    }}
+                    className="bg-[#3EA6FF] hover:bg-[#2B8FE6] text-white"
+                    title="Müşteri Detay Gir"
+                  >
+                    <User size={18} />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Customer Contact */}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Müşteri İletişim
+                </label>
+                <input
+                  type="text"
+                  value={formData.customer_contact}
+                  onChange={(e) => setFormData({ ...formData, customer_contact: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                />
+              </div>
+
+              {/* Person Count */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Kişi Sayısı <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.person_count}
+                  onChange={(e) => setFormData({ ...formData, person_count: parseInt(e.target.value) || 1 })}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                  required
+                />
+              </div>
+
+              {/* Vehicle Count */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Araç Sayısı <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.vehicle_count}
+                  onChange={(e) => setFormData({ ...formData, vehicle_count: parseInt(e.target.value) || 1 })}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                  required
+                />
+              </div>
+
+              {/* Pick-up Location */}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Pick-up Yeri
+                </label>
+                <input
+                  type="text"
+                  value={formData.pickup_location}
+                  onChange={(e) => setFormData({ ...formData, pickup_location: e.target.value })}
+                  placeholder="Pick-up yeri otomatik doldurulur veya manuel girebilirsiniz"
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                />
+              </div>
+
+              {/* Google Maps Link */}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Google Maps Link
+                </label>
+                <input
+                  type="url"
+                  value={formData.pickup_maps_link}
+                  onChange={(e) => setFormData({ ...formData, pickup_maps_link: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                  placeholder="https://maps.google.com/..."
+                />
+              </div>
+
+              {/* Price */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Fiyat <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={(e) => {
+                    const newPrice = parseFloat(e.target.value) || 0;
+                    setFormData({ ...formData, price: newPrice });
+                  }}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                  required
+                />
+              </div>
+
+              {/* Currency */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Döviz <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.currency}
+                  onChange={(e) => {
+                    const newCurrency = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      currency: newCurrency, 
+                      exchange_rate: rates[newCurrency] || 1.0 
+                    });
+                  }}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                  required
+                >
+                  <option value="EUR">EUR</option>
+                  <option value="USD">USD</option>
+                  <option value="TRY">TRY</option>
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Notlar
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                />
               </div>
             </div>
 
-            {/* Customer Contact */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Müşteri İletişim
-              </label>
-              <input
-                type="text"
-                value={formData.customer_contact}
-                onChange={(e) => setFormData({ ...formData, customer_contact: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
-                style={{
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-primary)'
-                }}
-              />
-            </div>
-
-            {/* Date */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Tarih <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
-                style={{
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-primary)'
-                }}
-                min={new Date().toISOString().split('T')[0]}
-                required
-              />
-            </div>
-
-            {/* Time */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Saat <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                value={formData.time}
-                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
-                style={{
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-primary)'
-                }}
-                required
-              />
-            </div>
-
-            {/* Tour Type */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Tur Tipi <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.tour_id}
-                onChange={(e) => setFormData({ ...formData, tour_id: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
-                style={{
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-primary)'
-                }}
-                required
-              >
-                <option value="">Tur tipi seçin</option>
-                {tourTypes.map((tour) => (
-                  <option key={tour.id} value={tour.id}>
-                    {tour.name} {tour.default_price ? `(${tour.default_price} ${tour.default_currency})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Person Count */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Kişi Sayısı
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={formData.person_count}
-                onChange={(e) => setFormData({ ...formData, person_count: parseInt(e.target.value) || 1 })}
-                className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
-                style={{
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-primary)'
-                }}
-              />
-            </div>
-
-            {/* ATV Count */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                ATV Sayısı
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={formData.atv_count}
-                onChange={(e) => setFormData({ ...formData, atv_count: parseInt(e.target.value) || 1 })}
-                className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
-                style={{
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-primary)'
-                }}
-              />
-            </div>
-
-            {/* Price (Display Only) */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Fiyat (Hesaplanan)
-              </label>
-              <input
-                type="text"
-                value={fetchingPrice ? 'Hesaplanıyor...' : calculatedPrice !== null ? `${calculatedPrice} ${calculatedCurrency}` : 'Tur tipi ve tarih seçin'}
-                disabled
-                className="w-full px-4 py-3 rounded-lg"
-                style={{
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-secondary)',
-                  cursor: 'not-allowed'
-                }}
-              />
-              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Fiyat sunucu tarafından otomatik hesaplanacaktır
-              </p>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Notlar
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={4}
-                className="w-full px-4 py-3 rounded-lg focus:outline-none transition-colors"
-                style={{
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--input-border)',
-                  color: 'var(--text-primary)'
-                }}
-              />
-            </div>
-
-            <div className="flex gap-4">
+            <div className="flex gap-4 pt-4">
               <button
                 type="submit"
                 disabled={loading}
@@ -476,4 +524,3 @@ const CariCreateReservation = () => {
 };
 
 export default CariCreateReservation;
-
