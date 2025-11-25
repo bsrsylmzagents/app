@@ -58,7 +58,7 @@ const Calendar = () => {
     customer_contact: '',
     customer_details: null,
     person_count: 1,
-    atv_count: 1,
+    vehicle_count: 1,
     pickup_location: '',
     pickup_maps_link: '',
     price: 0,
@@ -67,8 +67,6 @@ const Calendar = () => {
     notes: ''
   });
   const [customerDetailDialogOpen, setCustomerDetailDialogOpen] = useState(false);
-  const [basePricePerAtv, setBasePricePerAtv] = useState(null); // 1 ATV için dönemsel fiyat
-  const [seasonalPriceCurrency, setSeasonalPriceCurrency] = useState(null); // Dönemsel fiyat döviz tipi
   const [newCariData, setNewCariData] = useState({
     name: '',
     phone: '',
@@ -165,106 +163,6 @@ const Calendar = () => {
     }
   }, [cariAccounts]);
 
-  // Dönemsel fiyat kontrolü - rezervasyon formunda cari, tur tipi ve tarih seçildiğinde
-  useEffect(() => {
-    const checkSeasonalPrice = async () => {
-      if (formData.cari_id && formData.tour_type_id && formData.date && reservationDialogOpen) {
-        try {
-          // Tarih aralığında ve tur tipine uygun dönemsel fiyat ara
-          const matchingPrices = seasonalPrices.filter(price => {
-            const priceStart = new Date(price.start_date);
-            const priceEnd = new Date(price.end_date);
-            const reservationDate = new Date(formData.date);
-            
-            return priceStart <= reservationDate && 
-                   reservationDate <= priceEnd &&
-                   price.tour_type_ids && price.tour_type_ids.includes(formData.tour_type_id);
-          });
-
-          // En uygun fiyatı bul
-          for (const seasonalPrice of matchingPrices) {
-            // Dönemsel fiyattan currency'yi direkt al, varsayılan EUR kullanma
-            const seasonalCurrency = seasonalPrice.currency || formData.currency || 'EUR';
-            const seasonalExchangeRate = rates[seasonalCurrency] || 1.0;
-            
-            // Cari ID'sine özel fiyat var mı?
-            if (seasonalPrice.cari_prices && seasonalPrice.cari_prices[formData.cari_id]) {
-              const pricePerAtv = seasonalPrice.cari_prices[formData.cari_id]; // 1 ATV için fiyat
-              const totalPrice = pricePerAtv * formData.atv_count; // ATV sayısı ile çarp
-              
-              setBasePricePerAtv(pricePerAtv);
-              setSeasonalPriceCurrency(seasonalCurrency);
-              
-              setFormData(prev => ({
-                ...prev,
-                price: totalPrice,
-                currency: seasonalCurrency,
-                exchange_rate: seasonalExchangeRate
-              }));
-              toast.success(`Dönemsel fiyat uygulandı: ${pricePerAtv} ${seasonalCurrency}/ATV x ${formData.atv_count} = ${totalPrice} ${seasonalCurrency}`);
-              return;
-            }
-            // Yeni cariler için geçerli mi?
-            else if (seasonalPrice.apply_to_new_caris) {
-              const cari = cariAccounts.find(c => c.id === formData.cari_id);
-              if (cari && cari.created_at) {
-                const cariCreated = new Date(cari.created_at);
-                const priceStart = new Date(seasonalPrice.start_date);
-                const priceEnd = new Date(seasonalPrice.end_date);
-                
-                if (priceStart <= cariCreated && cariCreated <= priceEnd) {
-                  // İlk bulunan fiyatı kullan
-                  const prices = Object.values(seasonalPrice.cari_prices || {});
-                  if (prices.length > 0) {
-                    const pricePerAtv = prices[0]; // 1 ATV için fiyat
-                    const totalPrice = pricePerAtv * formData.atv_count; // ATV sayısı ile çarp
-                    
-                    setBasePricePerAtv(pricePerAtv);
-                    setSeasonalPriceCurrency(seasonalCurrency);
-                    
-                    setFormData(prev => ({
-                      ...prev,
-                      price: totalPrice,
-                      currency: seasonalCurrency,
-                      exchange_rate: seasonalExchangeRate
-                    }));
-                    toast.success(`Dönemsel fiyat uygulandı: ${pricePerAtv} ${seasonalCurrency}/ATV x ${formData.atv_count} = ${totalPrice} ${seasonalCurrency}`);
-                    return;
-                  }
-                }
-              }
-            }
-          }
-          
-          // Dönemsel fiyat bulunamadıysa base price'ı sıfırla
-          if (matchingPrices.length === 0) {
-            setBasePricePerAtv(null);
-            setSeasonalPriceCurrency(null);
-          }
-        } catch (error) {
-          console.error('Dönemsel fiyat kontrolü hatası:', error);
-        }
-      }
-    };
-
-    checkSeasonalPrice();
-  }, [formData.cari_id, formData.tour_type_id, formData.date, reservationDialogOpen, seasonalPrices, cariAccounts, rates]);
-
-  // ATV sayısı değiştiğinde fiyatı güncelle (dönemsel fiyat varsa)
-  useEffect(() => {
-    if (basePricePerAtv !== null && reservationDialogOpen) {
-      const totalPrice = basePricePerAtv * formData.atv_count;
-      const currency = seasonalPriceCurrency || formData.currency;
-      const exchangeRate = rates[currency] || 1.0;
-      
-      setFormData(prev => ({
-        ...prev,
-        price: totalPrice,
-        currency: currency,
-        exchange_rate: exchangeRate
-      }));
-    }
-  }, [formData.atv_count, basePricePerAtv, seasonalPriceCurrency, rates, reservationDialogOpen]);
 
   const fetchReservations = async () => {
     try {
@@ -327,7 +225,7 @@ const Calendar = () => {
       const todayReservations = monthReservations.filter(r => r.date === today);
       
       const totalReservations = monthReservations.length;
-      const totalAtvs = monthReservations.reduce((sum, r) => sum + (r.atv_count || 0), 0);
+      const totalAtvs = monthReservations.reduce((sum, r) => sum + (r.vehicle_count || 0), 0);
       const totalPersons = monthReservations.reduce((sum, r) => sum + (r.person_count || 0), 0);
       
       const revenue = { EUR: 0, USD: 0, TRY: 0 };
@@ -337,7 +235,7 @@ const Calendar = () => {
         }
       });
       
-      const todayTotalAtvs = todayReservations.reduce((sum, r) => sum + (r.atv_count || 0), 0);
+      const todayTotalAtvs = todayReservations.reduce((sum, r) => sum + (r.vehicle_count || 0), 0);
       const todayTotalPersons = todayReservations.reduce((sum, r) => sum + (r.person_count || 0), 0);
       
       setStatistics({
@@ -389,7 +287,7 @@ const Calendar = () => {
 
   const getTotalAtvs = (date) => {
     const dayReservations = getReservationsForDate(date);
-    return dayReservations.reduce((sum, r) => sum + r.atv_count, 0);
+    return dayReservations.reduce((sum, r) => sum + (r.vehicle_count || 0), 0);
   };
 
   // Renk kodlaması fonksiyonları
@@ -454,7 +352,7 @@ const Calendar = () => {
       customer_contact: reservation.customer_contact || '',
       customer_details: reservation.customer_details || null,
       person_count: reservation.person_count || 1,
-      atv_count: reservation.atv_count || 1,
+      vehicle_count: reservation.vehicle_count || 1,
       pickup_location: reservation.pickup_location || '',
       pickup_maps_link: reservation.pickup_maps_link || '',
       price: reservation.price || 0,
@@ -516,7 +414,7 @@ const Calendar = () => {
       customer_contact: reservation.customer_contact || '',
       customer_details: reservation.customer_details || null,
       person_count: reservation.person_count || 1,
-      atv_count: reservation.atv_count || 1,
+      vehicle_count: reservation.vehicle_count || 1,
       pickup_location: reservation.pickup_location || '',
       pickup_maps_link: reservation.pickup_maps_link || '',
       price: reservation.price || 0,
@@ -580,7 +478,7 @@ const Calendar = () => {
         r.time || '-',
         safeText(r.customer_name || '-'),
         safeText(r.cari_name || '-'),
-        (r.atv_count || 0).toString(),
+        (r.vehicle_count || 0).toString(),
         (r.person_count || 0).toString(),
         `${(r.price || 0).toFixed(2)} ${r.currency || 'EUR'}`,
         r.status || 'confirmed'
@@ -608,7 +506,7 @@ const Calendar = () => {
         'Müşteri': r.customer_name || '-',
         'Cari': r.cari_name || '-',
         'Tur Tipi': r.tour_type_name || '-',
-        'ATV': r.atv_count || 0,
+        'ATV': r.vehicle_count || 0,
         'Kişi': r.person_count || 0,
         'Fiyat': r.price || 0,
         'Döviz': r.currency || 'EUR',
@@ -1148,7 +1046,7 @@ const Calendar = () => {
               >
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{format(parseISO(res.date), 'd MMM', { locale: tr })} {res.time}</p>
                 <p className="text-sm font-semibold text-white mt-1">{res.customer_name}</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--accent)' }}>{res.atv_count} ATV • {res.person_count} Kişi</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--accent)' }}>{res.vehicle_count || 0} Araç • {res.person_count} Kişi</p>
               </div>
             ))}
           </div>
@@ -1301,7 +1199,7 @@ const Calendar = () => {
                           </div>
                           <div className="text-right">
                             <p className="text-orange-600 font-bold text-lg">
-                              {reservation.atv_count} ATV
+                              {reservation.vehicle_count || 0} Araç
                             </p>
                             <p className="text-sm text-gray-600">{reservation.person_count} Kişi</p>
                             <p className="text-sm text-green-600 mt-1 font-semibold">
@@ -1644,7 +1542,7 @@ const Calendar = () => {
                               )}
                             </div>
                             <div className="text-right">
-                              <p className="text-[#3EA6FF] font-bold text-lg">{reservation.atv_count} ATV</p>
+                              <p className="text-[#3EA6FF] font-bold text-lg">{reservation.vehicle_count || 0} Araç</p>
                               <p className="text-sm text-[#A5A5A5]">{reservation.person_count} Kişi</p>
                               <p className="text-sm text-green-400 mt-1">
                                 {(reservation.price || 0).toFixed(2)} {reservation.currency || 'EUR'}
@@ -1943,27 +1841,13 @@ const Calendar = () => {
                       </div>
 
                       <div>
-                <label className="block text-sm font-medium mb-2">ATV Sayısı</label>
+                <label className="block text-sm font-medium mb-2">Araç Sayısı</label>
                         <input
                           type="number"
-                  value={formData.atv_count}
+                  value={formData.vehicle_count}
                           onChange={(e) => {
-                    const newAtvCount = parseInt(e.target.value) || 1;
-                    // Dönemsel fiyat varsa, fiyatı anında hesapla
-                    if (basePricePerAtv !== null) {
-                      const totalPrice = basePricePerAtv * newAtvCount;
-                      const currency = seasonalPriceCurrency || formData.currency;
-                      const exchangeRate = rates[currency] || 1.0;
-                      setFormData(prev => ({
-                        ...prev,
-                        atv_count: newAtvCount,
-                        price: totalPrice,
-                        currency: currency,
-                        exchange_rate: exchangeRate
-                      }));
-                    } else {
-                      setFormData({ ...formData, atv_count: newAtvCount });
-                    }
+                    const newVehicleCount = parseInt(e.target.value) || 1;
+                    setFormData({ ...formData, vehicle_count: newVehicleCount });
                           }}
                           className="w-full px-3 py-2 bg-[#2D2F33] border border-[#2D2F33] rounded-lg text-white focus:border-[#3EA6FF]"
                           min="1"
@@ -2014,11 +1898,6 @@ const Calendar = () => {
                   }`}
                           required
                         />
-                {basePricePerAtv !== null && (
-                  <p className="text-xs text-[#A5A5A5] mt-1">
-                    Dönemsel fiyat: {basePricePerAtv} {seasonalPriceCurrency}/ATV × {formData.atv_count} = {formData.price} {formData.currency}
-                  </p>
-                )}
                       </div>
 
                       <div>
