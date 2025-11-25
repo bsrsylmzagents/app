@@ -4055,6 +4055,12 @@ async def update_reservation(reservation_id: str, data: dict, current_user: dict
     if not existing:
         raise HTTPException(status_code=404, detail="Reservation not found")
     
+    # Backward compatibility: atv_count -> vehicle_count
+    if "atv_count" in data and "vehicle_count" not in data:
+        data["vehicle_count"] = data.pop("atv_count")
+    elif "atv_count" in data:
+        data.pop("atv_count")
+    
     # Track changes for logging
     changes = {}
     if "price" in data and data["price"] != existing.get("price"):
@@ -5038,10 +5044,16 @@ async def edit_and_approve_cari_reservation(
     if not reservation:
         raise HTTPException(status_code=404, detail="Pending reservation not found")
     
+    # Backward compatibility: atv_count -> vehicle_count
+    if "atv_count" in data and "vehicle_count" not in data:
+        data["vehicle_count"] = data.pop("atv_count")
+    elif "atv_count" in data:
+        data.pop("atv_count")
+    
     # İzin verilen alanlar (price ve cari alanları değiştirilemez)
     allowed_fields = [
         "customer_name", "date", "time", "tour_type_id", "person_count",
-        "atv_count", "pickup_location", "pickup_maps_link", "notes"
+        "vehicle_count", "pickup_location", "pickup_maps_link", "notes"
     ]
     
     update_data = {}
@@ -5049,7 +5061,7 @@ async def edit_and_approve_cari_reservation(
     
     for field in allowed_fields:
         if field in data:
-            old_value = reservation.get(field)
+            old_value = reservation.get(field) or reservation.get("atv_count" if field == "vehicle_count" else field)
             new_value = data[field]
             if old_value != new_value:
                 update_data[field] = new_value
@@ -15292,7 +15304,7 @@ async def create_public_booking(data: PublicBookingRequest, request: Request):
         # Calculate price (use default price for now, can be enhanced with seasonal pricing)
         # Fiyat hesaplama - artık sadece seasonal prices kullanılacak
         # Fiyat yönetiminden fiyat alınmalı
-        atv_count = max(1, (data.pax + 1) // 2)
+        vehicle_count = max(1, (data.pax + 1) // 2)
         
         # Fiyat hesaplama fonksiyonunu kullan
         try:
@@ -15301,7 +15313,7 @@ async def create_public_booking(data: PublicBookingRequest, request: Request):
                 cari_id=None,
                 tour_type_id=data.tourId,
                 date=data.date,
-                atv_count=atv_count
+                vehicle_count=vehicle_count
             )
         except Exception as e:
             logger.error(f"Fiyat hesaplama hatası: {e}")
@@ -15326,7 +15338,7 @@ async def create_public_booking(data: PublicBookingRequest, request: Request):
                 "email": data.email
             },
             "person_count": data.pax,
-            "atv_count": atv_count,
+            "vehicle_count": vehicle_count,
             "price": total_price,
             "currency": currency,
             "exchange_rate": 1.0,
