@@ -4303,7 +4303,7 @@ class CariReservationCreate(BaseModel):
     time: str
     tour_id: str  # tour_type_id
     person_count: int = 1
-    vehicle_count: int  # Araç sayısı (eski adı: atv_count) = 1
+    vehicle_count: int = 1
     extras: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
     # Price ve cari_name alanları KABUL EDİLMEZ - server-side hesaplanacak
