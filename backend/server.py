@@ -1878,7 +1878,8 @@ class ReservationCreate(BaseModel):
     customer_contact: Optional[str] = None
     customer_details: Optional[Dict[str, Any]] = None  # Müşteri detay bilgileri
     person_count: int
-    vehicle_count: int  # Araç sayısı (eski adı: atv_count)
+    vehicle_count: Optional[int] = None  # Araç sayısı (eski adı: atv_count)
+    atv_count: Optional[int] = None  # Backward compatibility - will be converted to vehicle_count
     pickup_location: Optional[str] = None
     pickup_maps_link: Optional[str] = None
     price: float
@@ -3827,6 +3828,11 @@ async def get_reservations(
 
 @api_router.post("/reservations")
 async def create_reservation(data: ReservationCreate, current_user: dict = Depends(get_current_user)):
+    # Backward compatibility: atv_count -> vehicle_count
+    if data.vehicle_count is None and data.atv_count is not None:
+        data.vehicle_count = data.atv_count
+    elif data.vehicle_count is None:
+        data.vehicle_count = 1
     try:
         # Get user info for logging
         user = await db.users.find_one({"id": current_user["user_id"]})
