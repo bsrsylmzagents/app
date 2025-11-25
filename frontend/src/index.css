@@ -580,6 +580,23 @@
   :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item span {
     color: #ffffff !important; /* FORCE white text - override everything */
     border-radius: 1rem !important; /* rounded-2xl */
+    border: none !important; /* Çerçeveyi kaldır */
+    outline: none !important; /* Focus outline'ı kaldır */
+    box-shadow: none !important; /* Shadow'u kaldır */
+  }
+  
+  /* Focus durumunda da çerçeve yok */
+  :root[data-theme="dynamic"] .sidebar .nav-item:focus,
+  :root[data-theme="dynamic"] .sidebar .nav-item:focus-visible,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:focus,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:focus-visible,
+  :root[data-theme="dynamic"] .sidebar a.nav-item:focus,
+  :root[data-theme="dynamic"] .sidebar a.nav-item:focus-visible,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] a.nav-item:focus,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] a.nav-item:focus-visible {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
   }
   
   /* Inactive: Transparent background - NO solid blocks */
@@ -604,6 +621,9 @@
     font-weight: 700 !important; /* font-bold */
     color: #ffffff !important; /* White text */
     border-radius: 1rem !important; /* rounded-2xl */
+    border: none !important; /* Çerçeveyi kaldır */
+    outline: none !important; /* Focus outline'ı kaldır */
+    box-shadow: none !important; /* Shadow'u kaldır */
   }
   
   /* Hover: 10% white - subtle glow, rounded-2xl */
@@ -615,6 +635,9 @@
     background-color: rgba(255, 255, 255, 0.1) !important; /* Double override */
     color: #ffffff !important;
     border-radius: 1rem !important; /* rounded-2xl */
+    border: none !important; /* Hover'da da çerçeve yok */
+    outline: none !important;
+    box-shadow: none !important;
   }
   
   /* Icons: ALL white - no exceptions */
@@ -639,6 +662,9 @@
     color: #ffffff !important; /* White text, NOT orange */
     font-weight: 700 !important;
     border-radius: 1rem !important; /* rounded-2xl */
+    border: none !important; /* Çerçeveyi kaldır */
+    outline: none !important;
+    box-shadow: none !important;
   }
   
   
@@ -1020,8 +1046,8 @@
     color: var(--primary-foreground) !important;
   }
   
-  /* Dynamic Theme Focus Rings - Orange */
-  :root[data-theme="dynamic"] *:focus-visible {
+  /* Dynamic Theme Focus Rings - Orange (menü öğeleri hariç) */
+  :root[data-theme="dynamic"] *:focus-visible:not(.nav-item):not(a.nav-item) {
     outline: 2px solid #f97316 !important; /* Orange-500 */
     outline-offset: 2px;
   }
