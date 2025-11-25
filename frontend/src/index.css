@@ -599,14 +599,19 @@
     box-shadow: none !important;
   }
   
-  /* Inactive: Transparent background - NO solid blocks */
+  /* Inactive: Transparent background - NO solid blocks - AGGRESSIVE OVERRIDE */
   :root[data-theme="dynamic"] .sidebar .nav-item.bg-transparent,
   :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-transparent,
-  :root[data-theme="dynamic"] .sidebar .nav-item:not([class*="bg-white/20"]):not([class*="bg-white"]):not([class*="bg-elevated"]),
-  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:not([class*="bg-white/20"]):not([class*="bg-white"]):not([class*="bg-elevated"]) {
-    background: transparent !important; /* NO solid backgrounds */
-    background-color: transparent !important; /* Double override */
+  :root[data-theme="dynamic"] .sidebar .nav-item:not([class*="bg-white/20"]):not([class*="bg-white"]):not([class*="bg-elevated"]):not([class*="active"]),
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item:not([class*="bg-white/20"]):not([class*="bg-white"]):not([class*="bg-elevated"]):not([class*="active"]),
+  :root[data-theme="dynamic"] .sidebar a.nav-item:not([class*="bg-white/20"]):not([class*="bg-white"]):not([class*="bg-elevated"]):not([class*="active"]),
+  :root[data-theme="dynamic"] aside[class*="sidebar"] a.nav-item:not([class*="bg-white/20"]):not([class*="bg-white"]):not([class*="bg-elevated"]):not([class*="active"]) {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
     color: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
   }
   
   /* Active: Glass effect - 20% white with blur, rounded-2xl */
@@ -650,21 +655,48 @@
     stroke: #ffffff !important;
   }
   
-  /* Override ANY legacy bg-white or bg-elevated classes */
+  /* Override ANY legacy bg-white, bg-elevated, bg-surface, or solid background classes - AGGRESSIVE */
   :root[data-theme="dynamic"] .sidebar .nav-item.bg-white,
   :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-white,
   :root[data-theme="dynamic"] .sidebar .nav-item.bg-elevated,
-  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-elevated {
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-elevated,
+  :root[data-theme="dynamic"] .sidebar .nav-item.bg-surface,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item.bg-surface,
+  :root[data-theme="dynamic"] .sidebar .nav-item[class*="bg-"]:not([class*="bg-white/20"]):not([class*="bg-white/10"]):not([class*="bg-transparent"]),
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item[class*="bg-"]:not([class*="bg-white/20"]):not([class*="bg-white/10"]):not([class*="bg-transparent"]) {
     background: rgba(255, 255, 255, 0.2) !important; /* Convert to glass */
-    background-color: rgba(255, 255, 255, 0.2) !important; /* Double override */
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    background-image: none !important;
     backdrop-filter: blur(12px) !important; /* backdrop-blur-md */
     -webkit-backdrop-filter: blur(12px) !important;
     color: #ffffff !important; /* White text, NOT orange */
     font-weight: 700 !important;
     border-radius: 1rem !important; /* rounded-2xl */
-    border: none !important; /* Çerçeveyi kaldır */
+    border: none !important;
     outline: none !important;
     box-shadow: none !important;
+  }
+  
+  /* Force ALL nav-items to be transparent by default (unless active) - ULTRA AGGRESSIVE */
+  :root[data-theme="dynamic"] .sidebar .nav-item,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item,
+  :root[data-theme="dynamic"] .sidebar a.nav-item,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] a.nav-item,
+  :root[data-theme="dynamic"] .sidebar li .nav-item,
+  :root[data-theme="dynamic"] aside[class*="sidebar"] li .nav-item {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+  }
+  
+  /* Only active items get glass effect */
+  :root[data-theme="dynamic"] .sidebar .nav-item[class*="bg-white/20"],
+  :root[data-theme="dynamic"] aside[class*="sidebar"] .nav-item[class*="bg-white/20"],
+  :root[data-theme="dynamic"] .sidebar a.nav-item[class*="bg-white/20"],
+  :root[data-theme="dynamic"] aside[class*="sidebar"] a.nav-item[class*="bg-white/20"] {
+    background: rgba(255, 255, 255, 0.2) !important;
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    background-image: none !important;
   }
   
   

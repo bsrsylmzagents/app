@@ -519,6 +519,35 @@
   color: var(--text-secondary);
 }
 
+/* Dynamic Theme: Override ALL nav-item backgrounds - NO solid boxes */
+[data-theme="dynamic"] .nav-item,
+[data-theme="dynamic"] .sidebar .nav-item,
+[data-theme="dynamic"] aside .nav-item {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Dynamic Theme: Only active items get glass effect */
+[data-theme="dynamic"] .nav-item[class*="bg-white/20"],
+[data-theme="dynamic"] .sidebar .nav-item[class*="bg-white/20"],
+[data-theme="dynamic"] aside .nav-item[class*="bg-white/20"] {
+  background: rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Dynamic Theme: Hover effect */
+[data-theme="dynamic"] .nav-item:hover:not([class*="bg-white/20"]),
+[data-theme="dynamic"] .sidebar .nav-item:hover:not([class*="bg-white/20"]),
+[data-theme="dynamic"] aside .nav-item:hover:not([class*="bg-white/20"]) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
 /* Light mode nav-item */
 [data-theme="light"] .nav-item {
   color: var(--sidebar-text) !important;
