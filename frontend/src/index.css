@@ -191,8 +191,8 @@
     --bg-card: #ffffff; /* White cards */
     --bg-elevated: #f5f5f4; /* Stone-100 for elevated surfaces */
     --bg-input: #ffffff; /* White inputs */
-    --border-color: #a8a29e; /* Stone-400 borders - Daha belirgin */
-    --border-subtle: #d6d3d1; /* Stone-300 subtle borders - Daha belirgin */
+    --border-color: #78716c; /* Stone-500 borders - Çok daha belirgin */
+    --border-subtle: #a8a29e; /* Stone-400 subtle borders - Çok daha belirgin */
     
     /* Semantic Color System - Brand Colors */
     --color-primary: #ea580c; /* Orange 600 */
@@ -200,12 +200,12 @@
     
     /* Semantic Color System - Text Colors */
     --color-text-main: #1c1917; /* Stone 900 (Headings) */
-    --color-text-body: #292524; /* Stone 800 (Paragraphs) - Daha belirgin */
-    --color-text-muted: #57534e; /* Stone 600 (Labels/Icons) - Daha belirgin */
+    --color-text-body: #292524; /* Stone 800 (Paragraphs) - Çok belirgin */
+    --color-text-muted: #44403c; /* Stone 700 (Labels/Icons) - Çok daha belirgin */
     --color-text-on-primary: #ffffff; /* Text inside orange buttons */
     
     /* Semantic Color System - UI Elements */
-    --color-border: #a8a29e; /* Stone 400 - Daha belirgin border */
+    --color-border: #78716c; /* Stone 500 - Çok daha belirgin border */
     --color-input-bg: #f5f5f4; /* Stone 100 */
     
     /* Sidebar - Orange Gradient */
@@ -250,7 +250,7 @@
     --text-primary: #0c0a09; /* Stone-950 - Almost Black for headings */
     --text-secondary: #292524; /* Stone-800 - Darker Grey Body text */
     --text-main: #0c0a09;
-    --text-muted: #57534e; /* Stone-600 - Readable muted */
+    --text-muted: #44403c; /* Stone-700 - Çok daha belirgin muted */
     --primary-color: #ea580c; /* Orange-600 */
     --sidebar-bg: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
     --sidebar-hover: rgba(255, 255, 255, 0.1); /* White glassmorphism */
@@ -263,7 +263,7 @@
     --tooltip-text: #ffffff;
     --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0,0,0,0.05); /* Stronger shadow with border-like ring */
     --timeline-bg: #fafaf9;
-    --placeholder: #57534e; /* Stone-600 - Daha belirgin placeholder */
+    --placeholder: #44403c; /* Stone-700 - Çok daha belirgin placeholder */
   }
 
   /* HIGH CONTRAST - Pure Black for OLED */
@@ -1017,7 +1017,7 @@
   :root[data-theme="dynamic"] textarea,
   :root[data-theme="dynamic"] select {
     background-color: #ffffff !important;
-    border-color: #d6d3d1 !important; /* Stone-300 */
+    border-color: var(--color-border) !important; /* Çok daha belirgin border */
     color: #0c0a09 !important; /* Belirgin yazı */
   }
   
@@ -1039,7 +1039,7 @@
   }
   
   :root[data-theme="dynamic"] table td {
-    color: var(--color-text-body) !important; /* Daha belirgin hücre yazısı */
+    color: var(--color-text-main) !important; /* Çok daha belirgin hücre yazısı */
     background-color: #ffffff !important;
   }
   
